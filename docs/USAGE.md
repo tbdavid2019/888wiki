@@ -67,6 +67,8 @@ Published Whiteboards are read-only. Export a drawing as PNG or SVG from the Whi
 
 Use the footer's **Share** controls to publish a note and create its share link. The publication dialog controls publishing, autosave, and public indexing. You can also configure reader/edit passwords and paragraph annotations. Copy the share URL to send the published page.
 
+Share pages adapt to phone screens. When the author opens a protected or expiring share, the author preview notice appears above the article and does not count as a visitor view.
+
 Readers can open supported notes as a book or slide presentation. The detailed feature guide covers book structure, presentation separators, exports, and other reader tools.
 
 ## 7. Control release with Seal

@@ -1325,6 +1325,32 @@ html[data-ui-theme="dark"] .share-pulse-select option {
     text-align: center;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
+/* Share notices and the reader occupy separate rows. Without this, the
+   author notice becomes a full-height flex column beside the article and
+   leaves mobile readers with a blank page. */
+body.share-view .layer_3 {
+    flex-direction: column;
+}
+body.share-view .share-author-preview-banner,
+body.share-view .share-deadman-released-banner,
+body.share-view .share-burn-active-banner {
+    flex: 0 0 auto;
+    width: 100%;
+}
+body.share-view #preview-md,
+body.share-view #preview-plain {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    height: 0;
+}
+body.share-view .canvas-editor-pane,
+body.share-view .whiteboard-editor-pane {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 0;
+}
 @media (prefers-color-scheme: dark) {
     .share-author-preview-banner {
         background: #2e2008;

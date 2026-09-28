@@ -1,5 +1,9 @@
 # Changelog
 
+## [2026-09-28]
+
+- **📱 修正手機分享頁作者提示列擠掉文章內容 (Mobile Share Preview Layout)**：分享頁改用直向排列作者預覽、Seal 狀態提示與文章區，避免 flex 橫向排列在手機上將文章擠到畫面外；Markdown、Canvas 與 Whiteboard 分享檢視都保留完整可用高度。
+
 ## [2026-09-23]
 
 - **📸 將實際產品截圖放入對應指南 (Product Screenshots in Context)**：中英文使用指南在 Markdown 撰寫／搜尋取代、音訊與檔案匯入、Seal 情境範本段落旁加入介面截圖；功能詳情在 Markdown 編輯、簡報及段落註解段落旁加入截圖。首頁定位明確改為 Markdown-first，並補充 20 款繽紛主題，以及 MCP、WebMCP、REST/OpenAPI 和 Agent Skill 整合入口。
