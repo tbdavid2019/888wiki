@@ -172,6 +172,7 @@ dist
 
 wrangler.owner.toml
 local.md
+CLAUDE.md
 !wrangler.toml
 .DS_Store
 *.sync-conflict-*
