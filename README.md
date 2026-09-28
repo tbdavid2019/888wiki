@@ -34,7 +34,7 @@ Seal separates content passwords from release timing. Set a scheduled unlock, bu
 ## Your writing and publishing workspace
 
 - **AI writing:** Format, rewrite, and translate drafts; transcribe recordings with Groq as the primary provider and Workers AI as fallback.
-- **Publish and present:** Share public or password-protected notes in a responsive reader, restore D1 history, discuss selected passages, and present content as books or slides.
+- **Publish and present:** Share public or password-protected notes in a responsive reader, print clean pages without floating controls, restore D1 history, discuss selected passages, and present content as books or slides.
 - **Work offline:** Keep browser drafts in IndexedDB and sync pending changes when the connection returns.
 - **Keep control of the stack:** One-click deploy the Worker, KV/D1 note storage, and R2 image storage to your Cloudflare account. Core notes and images stay in your account; published audio and large-file attachments use the external 888box service.
 

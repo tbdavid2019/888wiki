@@ -5110,6 +5110,8 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
     .dropdown-menu,
     .share-menu-dropdown,
     .reading-progress-container,
+    .reading-progress-host,
+    .reading-progress,
     #reading-progress-bar,
     .scroll-indicator-arrow,
     .annotation-rail-button,
@@ -5133,6 +5135,7 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
     .tiptap-bubble-menu,
     .david-blocknote-view .bn-side-menu,
     .david-blocknote-view .bn-toolbar,
+    webtalk-widget,
     [class*="webtalk"],
     [id*="webtalk"] {
         display: none !important;
