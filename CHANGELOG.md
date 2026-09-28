@@ -2,6 +2,7 @@
 
 ## [2026-09-28]
 
+- **🖨️ 修正瀏覽器列印預覽重複列印文章正文**：列印按鈕會建立整理後的文章副本；列印期間隱藏原始預覽，只輸出副本，關閉列印預覽後恢復原頁面。
 - **🎨 全面巡檢換裝 Lucide / Tabler 現代化向量圖示與置中對齊優化 (Modern Lucide / Tabler Icon Harmonization & True Centering across UI)**：
   - **核心 App 圖示換裝**：`src/icon.js` 全面更換舊版點陣風格，升級為現代化高質感向量筆記本圖示（典雅封面底座、圓角內頁、邊緣裝訂環節與金黃羽毛筆焦點），PWA、Favicon 與高解析度螢幕顯示更清晰。
   - **SVG 圖示庫規格化**：`src/templates/common.js` 的 `SVG_ICONS` 字典全面換裝為標準 24x24、`viewBox="0 0 24 24"`、`stroke-width="2"` 的 Lucide / Tabler 線條風格，淘汰舊版不對稱手繪或多邊形圖示（重構 `canvas` 為 network 節點、`whiteboard` 為 presentation 畫架、`sparkles` 為標準 4 角星、`magic` 為 wand-2，並精緻化 `editLock` / `readLock`、`table`、`rule`、`task`、`pdf`、`shareHistory`、`quote`、`import`、`export`、`search`、`key` 等；新增 `math` 函數徽章、`pulse` 心跳等）。

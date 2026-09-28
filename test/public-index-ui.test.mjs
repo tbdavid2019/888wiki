@@ -255,7 +255,10 @@ test('print preview hides the edit surface instead of printing its dark editor p
     assert.match(printCss, /\.editor-code-shell,/)
     assert.match(printCss, /\.editor-line-numbers,/)
     assert.match(printCss, /\.print-export-content/)
+    assert.match(printCss, /body\.print-export-active #preview-md,[\s\S]*body\.print-export-active #preview-plain\s*\{\s*display:\s*none !important;/)
     assert.match(baseTemplateSource, /className = 'print-export-content markdown-body'/)
+    assert.match(baseTemplateSource, /document\.body\.classList\.add\('print-export-active'\)/)
+    assert.match(baseTemplateSource, /document\.body\.classList\.remove\('print-export-active'\)/)
 })
 
 test('mobile view tables use container-bound width and horizontal scroll without negative margins', () => {

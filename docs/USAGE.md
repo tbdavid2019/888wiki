@@ -71,7 +71,7 @@ Share pages adapt to phone screens. When the author opens a protected or expirin
 
 The reading progress control marks Markdown heading positions and shows which section is active. Hover over or focus the control to hear or read the section name and overall percentage.
 
-Print preview hides the reading progress control and WebTalk widget so they do not cover the printed article.
+The browser print action prints one cleaned copy of the article and hides the live preview, reading progress control, and WebTalk widget. Direct browser printing without this action still prints the live preview.
 
 Readers can open supported notes as a book or slide presentation. The detailed feature guide covers book structure, presentation separators, exports, and other reader tools.
 
