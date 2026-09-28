@@ -346,9 +346,19 @@ html[data-ui-theme="dark"] .editor-pref-lang-btn.is-active {
     100% { transform: scale(1); }
 }
 .math-icon-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    width: 14px;
+    height: 14px;
     font-weight: 700;
     font-style: italic;
     font-family: "KaTeX_Math", "Times New Roman", Cambria, Georgia, serif;
+}
+.math-icon-badge .svg-icon {
+    width: 14px;
+    height: 14px;
 }
 .modal-content {
     position: fixed;
@@ -1012,10 +1022,13 @@ html[data-ui-theme="dark"] .editor-pref-lang-btn.is-active {
 .svg-icon {
     width: 14px;
     height: 14px;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     vertical-align: middle;
     stroke-width: 2px;
     flex-shrink: 0;
+    line-height: 1;
     transition: transform 0.15s ease;
 }
 .lock-combo-icon {
@@ -1023,20 +1036,26 @@ html[data-ui-theme="dark"] .editor-pref-lang-btn.is-active {
     height: 18px;
 }
 .toolbar-icon-button .lock-combo-icon {
-    margin-right: 5px;
+    margin: 0;
 }
 .opt-button .svg-icon,
 .toolbar-icon-button .svg-icon,
 .dropdown-item .svg-icon {
-    margin-right: 4px;
-}
-.toolbar-icon-button .svg-icon {
-    margin-right: 0;
+    margin: 0;
 }
 
+.share-button-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.toolbar-icon-button.dropdown-trigger,
 .dropdown-trigger {
     display: inline-flex !important;
     align-items: center;
+    justify-content: center;
     gap: 4px;
 }
 .btn-label {
@@ -2270,14 +2289,23 @@ html[data-ui-theme="dark"] .seal-countdown-sentence {
 .new-note-menu-trigger,
 .export-menu-trigger,
 .copy-menu-trigger {
+    width: auto;
+    min-width: var(--toolbar-height);
+    padding: 0 6px;
     gap: 4px;
 }
 .share-menu-trigger .toolbar-button-caret,
 .new-note-menu-trigger .toolbar-button-caret,
 .export-menu-trigger .toolbar-button-caret,
-.copy-menu-trigger .toolbar-button-caret {
-    font-size: 11px;
+.copy-menu-trigger .toolbar-button-caret,
+.toolbar-button-caret {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    line-height: 1;
     opacity: 0.7;
+    flex-shrink: 0;
 }
 .share-menu-trigger.is-published {
     color: var(--toolbar-publish-active-color, #1a7f37);
@@ -2287,9 +2315,15 @@ html[data-ui-theme="dark"] .share-menu-trigger.is-published {
     color: #3fb950;
 }
 .new-note-plus {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
     font-size: 15px;
     font-weight: 600;
     line-height: 1;
+    text-align: center;
 }
 
 /* Split action capsule for Share mode (Edit + New dropdown) */

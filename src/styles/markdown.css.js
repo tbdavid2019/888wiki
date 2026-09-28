@@ -357,6 +357,7 @@ export const getMarkdownCss = () => `
     cursor: pointer;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 4px;
     transition: all 0.15s ease;
 }
@@ -718,6 +719,7 @@ pre.has-line-numbers {
 .book-top-nav-btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 4px;
     padding: 4px 10px;
     border-radius: 6px;

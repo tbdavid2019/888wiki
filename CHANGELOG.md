@@ -2,6 +2,11 @@
 
 ## [2026-09-28]
 
+- **🎨 全面巡檢換裝 Lucide / Tabler 現代化向量圖示與置中對齊優化 (Modern Lucide / Tabler Icon Harmonization & True Centering across UI)**：
+  - **核心 App 圖示換裝**：`src/icon.js` 全面更換舊版點陣風格，升級為現代化高質感向量筆記本圖示（典雅封面底座、圓角內頁、邊緣裝訂環節與金黃羽毛筆焦點），PWA、Favicon 與高解析度螢幕顯示更清晰。
+  - **SVG 圖示庫規格化**：`src/templates/common.js` 的 `SVG_ICONS` 字典全面換裝為標準 24x24、`viewBox="0 0 24 24"`、`stroke-width="2"` 的 Lucide / Tabler 線條風格，淘汰舊版不對稱手繪或多邊形圖示（重構 `canvas` 為 network 節點、`whiteboard` 為 presentation 畫架、`sparkles` 為標準 4 角星、`magic` 為 wand-2，並精緻化 `editLock` / `readLock`、`table`、`rule`、`task`、`pdf`、`shareHistory`、`quote`、`import`、`export`、`search`、`key` 等；新增 `math` 函數徽章、`pulse` 心跳等）。
+  - **水平與垂直絕對置中修正**：全面檢視修正 `.svg-icon`、`.toolbar-icon-button`、`.opt-button`、`.dropdown-item`、`.code-copy-btn`、`.diagram-btn` 等元件。消除殘留的 `margin-right` 偏移，改用 flexbox gap；將帶下拉箭頭的觸發按鈕（`.dropdown-trigger`、`.share-menu-trigger`、`.new-note-menu-trigger` 等）由 28px 擠壓寬度重構為自適應寬度與彈性間距；按鈕內各類圖示、加號（`.new-note-plus`）與關閉鈕（`.close-btn`）全部以 `display: inline-flex; align-items: center; justify-content: center; line-height: 1;` 實現像素級水平垂直置中。
+  - **彈窗與徽章細節打磨**：引用彈窗（`CITE_MODAL`）與 Seal 心跳彈窗（`VAULT_PRESETS_MODAL`）全面消除混用之 Emoji 按鈕，改為統一的 Lucide SVG 向量圖示；數學模式標籤改用精準置中的向量 `math` 圖示。
 - **📍 讓讀者看見目前章節 (Section-Aware Reading Progress)**：閱讀進度控制依 Markdown 標題顯示章節位置與段落標記，使用原生 `IntersectionObserver` 偵測目前章節；滑鼠提示與無障礙標籤會讀出章節名稱及整體百分比，沒有標題或瀏覽器不支援時仍保留百分比進度。
 - **🖨️ 修正分享頁列印時進度條與 WebTalk 浮動元件仍出現**：補齊列印樣式對 `.reading-progress` 與 WebTalk Shadow DOM 宿主 `<webtalk-widget>` 的隱藏規則，並加入回歸測試；列印文件只保留文章內容。
 - **📱 修正手機分享頁作者提示列擠掉文章內容 (Mobile Share Preview Layout)**：分享頁改用直向排列作者預覽、Seal 狀態提示與文章區，避免 flex 橫向排列在手機上將文章擠到畫面外；Markdown、Canvas 與 Whiteboard 分享檢視都保留完整可用高度。

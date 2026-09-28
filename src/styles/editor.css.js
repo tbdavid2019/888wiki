@@ -807,7 +807,10 @@ export const getEditorCss = () => `
 }
 
 .markdown-toolbar-button .svg-icon {
-    display: block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
     flex: 0 0 16px;
     width: 16px;
     height: 16px;
