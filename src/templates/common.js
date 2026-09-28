@@ -1172,7 +1172,7 @@ export const MODAL = (lang, { noteHistoryEnabled = false } = {}) => {
         <button type="button" class="close-btn share-modal-close" data-modal-close aria-label="${closeLabel}">×</button>
         <div class="modal-body">
             <input type="text" readonly value="" />
-            <button class="opt-button share-modal-copy-btn">${t.copy}</button>
+            <button class="opt-button share-modal-copy-btn">${SVG_ICONS.copy} <span>${t.copy}</span></button>
         </div>
 </div>
 </div>
@@ -1195,7 +1195,7 @@ export const MODAL = (lang, { noteHistoryEnabled = false } = {}) => {
         <h2 id="embed-modal-title">${lang === 'zh-TW' ? '嵌入分享頁' : 'Embed share page'}</h2>
         <p>${lang === 'zh-TW' ? '將以下 iframe 程式碼貼到你的網站即可嵌入此分享頁。' : 'Copy this iframe code into your website to embed this shared page.'}</p>
         <textarea class="embed-modal-code" readonly spellcheck="false" aria-label="${lang === 'zh-TW' ? '嵌入程式碼' : 'Embed code'}"></textarea>
-        <button type="button" class="opt-button opt-button-accent embed-modal-copy-btn">${t.copy}</button>
+        <button type="button" class="opt-button opt-button-accent embed-modal-copy-btn">${SVG_ICONS.copy} <span>${t.copy}</span></button>
     </div>
 </div>
 <div class="modal password-modal" role="dialog" aria-modal="true" aria-labelledby="password-modal-title" aria-hidden="true">

@@ -3843,9 +3843,29 @@ html[data-ui-theme="dark"] .note-history-body.markdown-body blockquote,
     height: 12px;
 }
 .publication-icon-button {
-    width: 28px;
+    width: 24px;
+    height: 24px;
     padding: 0;
-    font-size: 15px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    transition: all 0.15s ease;
+}
+.publication-icon-button:hover {
+    background: var(--status-control-bg-hover, var(--status-muted-bg));
+    color: var(--status-link, var(--toolbar-accent));
+}
+.publication-icon-button:active {
+    transform: scale(0.92);
+}
+.publication-icon-button .svg-icon {
+    width: 13px;
+    height: 13px;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 .publication-index-button { padding: 3px 8px; }
 .publication-index-button.is-indexed {
@@ -5144,6 +5164,11 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
 @media print {
     @page {
         margin: 12mm 15mm;
+    }
+
+    body.print-export-active #preview-md,
+    body.print-export-active #preview-plain {
+        display: none !important;
     }
 
     /* Hide non-printable elements */

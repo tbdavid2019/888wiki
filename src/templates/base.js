@@ -112,7 +112,7 @@ const EDITOR_PUBLICATION_STATUS = ({ lang, ext = {}, shareId = '' }) => {
             <div class="publication-share-details" ${published ? '' : 'hidden'}>
                 <span class="publication-label">${escapeHtml(t.publicationUrl)}</span>
                 <a id="publication-share-url" href="${escapeHtml(sharePath || '#')}" target="_blank" rel="noopener noreferrer">${escapeHtml(sharePath)}</a>
-                <button type="button" id="publication-copy-url" class="publication-icon-button" aria-label="${escapeHtml(t.copy)}" title="${escapeHtml(t.copy)}">⧉</button>
+                <button type="button" id="publication-copy-url" class="publication-icon-button" aria-label="${escapeHtml(t.copy)}" title="${escapeHtml(t.copy)}">${SVG_ICONS.copy}</button>
                 <button type="button" id="publication-public-index" class="publication-index-button ${ext.publicIndex === true ? 'is-indexed' : ''}" aria-pressed="${ext.publicIndex === true ? 'true' : 'false'}">${escapeHtml(ext.publicIndex === true ? t.publicIndexOn : t.publicIndexOff)}</button>
             </div>
         </div>
@@ -6443,9 +6443,11 @@ themeCss + '\\n' +
                 printContent.innerHTML = getExportHtmlContent();
                 printContent.style.display = 'none';
                 document.body.appendChild(printContent);
+                document.body.classList.add('print-export-active');
 
                 const cleanup = () => {
                     printContent.remove();
+                    document.body.classList.remove('print-export-active');
                     window.removeEventListener('afterprint', cleanup);
                 };
                 window.addEventListener('afterprint', cleanup, { once: true });
