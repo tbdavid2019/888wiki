@@ -877,8 +877,22 @@ pre.has-line-numbers {
         display: none !important;
     }
     .book-top-nav-btn {
-        padding: 4px 7px;
-        font-size: 12px;
+        min-height: 34px;
+        padding: 4px 10px;
+        font-size: 13px;
+    }
+    .book-top-nav-btn .svg-icon {
+        width: 16px;
+        height: 16px;
+    }
+    .code-copy-btn {
+        min-height: 28px;
+        padding: 4px 8px;
+        font-size: 11px;
+    }
+    .code-copy-btn svg {
+        width: 14px;
+        height: 14px;
     }
     .book-export-menu {
         position: fixed;

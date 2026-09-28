@@ -3979,18 +3979,103 @@ body:not(.share-view) .preview-pane .reading-progress {
     .reading-progress { top: 10px; left: 4px; }
     .reading-progress-track { height: 72px; }
     .editor-publication-status {
-        align-items: flex-start;
-        padding: 6px 8px;
+        height: auto;
+        min-height: 38px;
+        align-items: center;
+        padding: 5px 8px;
+        gap: 6px;
     }
-    .publication-status-main { width: 100%; }
-    .publication-share-details { flex: 1; }
+    .publication-status-main {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .publication-share-details {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .publication-present-btn {
+        height: 30px;
+        padding: 0 8px;
+        font-size: 12px;
+        gap: 4px;
+    }
+    .publication-present-btn .svg-icon {
+        width: 14px;
+        height: 14px;
+    }
+    .publication-book-btn {
+        height: 30px;
+        padding: 0 8px;
+        font-size: 12px;
+        gap: 4px;
+    }
+    .publication-book-btn .svg-icon {
+        width: 14px;
+        height: 14px;
+    }
+    .publication-icon-button {
+        width: 30px;
+        height: 30px;
+        flex: 0 0 30px;
+    }
+    .publication-icon-button .svg-icon {
+        width: 15px;
+        height: 15px;
+    }
+    .publication-index-button {
+        min-height: 30px;
+        padding: 0 10px;
+        font-size: 12px;
+    }
     .publication-label,
     .publication-metrics { display: none; }
     #publication-share-url {
         flex: 1;
         max-width: none;
+        font-size: 12px;
     }
     .publication-pending-hint { font-size: 11px; }
+
+    /* Touch-friendly modal close button */
+    .close-btn {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 22px !important;
+    }
+
+    /* Touch-friendly dropdown items */
+    .dropdown-item {
+        min-height: 38px;
+        padding: 8px 12px;
+        font-size: 13px;
+        gap: 8px;
+    }
+    .dropdown-item .svg-icon {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* Touch-friendly floating back to top */
+    .share-back-to-top {
+        width: 44px;
+        height: 44px;
+        font-size: 22px;
+    }
+
+    /* Touch-friendly diagram action buttons */
+    .diagram-btn {
+        min-height: 28px;
+        padding: 4px 8px;
+        font-size: 12px;
+    }
+    .diagram-btn svg {
+        width: 14px;
+        height: 14px;
+    }
 }
 
 @media (min-width: 961px) {
@@ -4877,6 +4962,7 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
     }
 
     .footer {
+        --toolbar-height: 38px;
         position: fixed;
         left: 0;
         right: 0;
@@ -4899,6 +4985,27 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
         scrollbar-width: none !important;
         display: block !important;
         transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.24s ease;
+    }
+
+    .footer .svg-icon {
+        width: 18px !important;
+        height: 18px !important;
+    }
+
+    .footer .lock-combo-icon {
+        width: 20px !important;
+        height: 20px !important;
+    }
+
+    .footer .opt-button,
+    .footer .toolbar-icon-button {
+        font-size: 13px !important;
+    }
+
+    .footer .new-note-plus {
+        width: 16px;
+        height: 16px;
+        font-size: 16px;
     }
 
     .footer::-webkit-scrollbar {

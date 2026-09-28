@@ -898,8 +898,9 @@ textarea#contents {
         flex-wrap: nowrap !important;
         overflow-x: auto !important;
         justify-content: flex-start !important;
-        gap: 2px !important;
-        padding: 3px 5px !important;
+        gap: 4px !important;
+        padding: 4px 6px !important;
+        min-height: 42px !important;
         scrollbar-width: none; /* Firefox */
         -webkit-overflow-scrolling: touch;
     }
@@ -907,9 +908,15 @@ textarea#contents {
         display: none; /* Safari and Chrome */
     }
     .markdown-toolbar-button {
-        flex: 0 0 24px !important;
-        width: 24px !important;
-        height: 24px !important;
+        flex: 0 0 34px !important;
+        width: 34px !important;
+        height: 34px !important;
+        border-radius: 6px !important;
+    }
+    .markdown-toolbar-button .svg-icon {
+        width: 18px !important;
+        height: 18px !important;
+        flex: 0 0 18px !important;
     }
     .markdown-toolbar-separator {
         display: none;
