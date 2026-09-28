@@ -6457,6 +6457,77 @@ themeCss + '\\n' +
             if (exportPdfBtn) exportPdfBtn.addEventListener('click', handleDirectPdfDownload);
             if (printPreviewBtn) printPreviewBtn.addEventListener('click', handlePrint);
 
+            const toolbarPrintBtn = document.getElementById('toolbar-print-btn');
+            if (toolbarPrintBtn) toolbarPrintBtn.addEventListener('click', handlePrint);
+
+            const moreMenuPrintBtn = document.getElementById('more-menu-print-btn');
+            if (moreMenuPrintBtn) moreMenuPrintBtn.addEventListener('click', handlePrint);
+
+            const moreMenuStatsBtn = document.getElementById('more-menu-stats-btn');
+            if (moreMenuStatsBtn) {
+                moreMenuStatsBtn.addEventListener('click', () => {
+                    const text = (window.editorInstance && typeof window.editorInstance.value === 'function')
+                        ? window.editorInstance.value()
+                        : (document.getElementById('content')?.value || document.querySelector('.markdown-body')?.innerText || '');
+                    const chars = text.length;
+                    const words = (text.match(/[\\w\\d]+/g) || []).length + (text.match(/[\\u4e00-\\u9fa5]/g) || []).length;
+                    const paras = text.split(/\\n\\s*\\n/).filter(p => p.trim()).length || (text.trim() ? 1 : 0);
+                    const readMin = Math.max(1, Math.ceil(words / 300));
+                    const msg = isZh
+                        ? '📊 筆記統計：共 ' + chars + ' 字元 · ' + words + ' 字詞 · ' + paras + ' 段落 · 約需 ' + readMin + ' 分鐘閱讀'
+                        : '📊 Statistics: ' + chars + ' chars · ' + words + ' words · ' + paras + ' paragraphs · ~' + readMin + ' min read';
+                    if (typeof window.showToast === 'function') {
+                        window.showToast(msg, 4500);
+                    } else {
+                        alert(msg);
+                    }
+                });
+            }
+
+            const moreMenuThemeBtn = document.getElementById('more-menu-theme-btn');
+            if (moreMenuThemeBtn) {
+                moreMenuThemeBtn.addEventListener('click', () => {
+                    const themeBtn = document.getElementById('theme-menu-btn');
+                    if (themeBtn) {
+                        themeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                        setTimeout(() => themeBtn.click(), 100);
+                    } else if (typeof window.showToast === 'function') {
+                        window.showToast(isZh ? '可在閱讀模式或開啟預覽時調整排版主題' : 'Theme style is available in reader or preview mode');
+                    }
+                });
+            }
+
+            const moreMenuFontBtn = document.getElementById('more-menu-font-btn');
+            if (moreMenuFontBtn) {
+                moreMenuFontBtn.addEventListener('click', () => {
+                    const fontBtn = document.getElementById('share-font-selector')?.querySelector('.footer-rail-switch') || document.querySelector('.share-font-switch');
+                    if (fontBtn) {
+                        fontBtn.click();
+                    }
+                });
+            }
+
+            const moreMenuUiThemeBtn = document.getElementById('more-menu-ui-theme-btn');
+            if (moreMenuUiThemeBtn) {
+                moreMenuUiThemeBtn.addEventListener('click', () => {
+                    const uiBtn = document.getElementById('ui-theme-toggle-btn');
+                    if (uiBtn) uiBtn.click();
+                });
+            }
+
+            const moreEditorPrefBtn = document.getElementById('more-editor-preference-btn');
+            if (moreEditorPrefBtn) {
+                moreEditorPrefBtn.addEventListener('click', () => {
+                    const prefBtn = document.getElementById('editor-preference-btn');
+                    if (prefBtn) {
+                        prefBtn.click();
+                    } else {
+                        const dialog = document.querySelector('[data-editor-preference-dialog]');
+                        if (dialog) dialog.hidden = false;
+                    }
+                });
+            }
+
             // 7. Image Export & Copy Image (html2canvas with offscreen sandbox)
             const exportImageBtn = document.getElementById('export-image-btn');
             const copyImageBtn = document.getElementById('copy-image-btn');

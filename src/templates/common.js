@@ -58,8 +58,9 @@ export const SVG_ICONS = {
     pause: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg>`,
     stop: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2"></rect></svg>`,
     close: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`,
-    import: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`,
-    export: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>`,
+    import: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>`,
+    export: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`,
+    printer: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect width="12" height="8" x="6" y="14"></rect></svg>`,
     pdf: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>`,
     shareHistory: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
     history: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`,
@@ -317,7 +318,7 @@ export const EXPORT_DROPDOWN_MENU = (lang, { includeMarkdown = true } = {}) => {
                         </span>
                     </button>
                     <button type="button" class="dropdown-item dropdown-item-rich" id="print-preview-btn" role="menuitem">
-                        ${SVG_ICONS.pdf}
+                        ${SVG_ICONS.printer}
                         <span class="dropdown-item-copy">
                             <strong>${isZh ? '瀏覽器列印預覽 (Print)' : 'Browser Print Preview'}</strong>
                             <small>${isZh ? '呼叫系統實體列印對話框' : 'Open system print dialog'}</small>
@@ -385,6 +386,89 @@ export const WIDTH_DROPDOWN_MENU = (lang, currentWidth) => {
                         `
                     }).join('')}
                 </div>
+            </div>
+        </div>
+    `
+}
+
+export const TOOLBAR_PRINT_BUTTON = (lang) => {
+    const isZh = lang === 'zh-TW'
+    const printTitle = isZh ? '列印筆記 / 儲存 PDF (Print)' : 'Print note / Save PDF (Print)'
+    return `
+        <button type="button" id="toolbar-print-btn" class="toolbar-icon-button" data-tooltip="${printTitle}" title="${printTitle}" aria-label="${printTitle}">
+            ${SVG_ICONS.printer}
+            <span class="toolbar-button-label">${isZh ? '列印' : 'Print'}</span>
+        </button>
+    `
+}
+
+export const MORE_DROPDOWN_MENU = (lang, { isEdit = false } = {}) => {
+    const isZh = lang === 'zh-TW'
+    const moreToolsTitle = isZh ? '顯示更多工具' : 'Show more tools'
+    return `
+        <div class="dropdown-container more-dropdown" id="more-dropdown">
+            <button type="button" class="toolbar-icon-button dropdown-trigger mobile-more-btn" id="mobile-more-btn" data-tooltip="${moreToolsTitle}" title="${moreToolsTitle}" aria-label="${moreToolsTitle}" aria-haspopup="menu" aria-expanded="false">
+                ${SVG_ICONS.more}
+                <span class="toolbar-button-label">${isZh ? '更多' : 'More'}</span>
+                <span class="toolbar-button-caret" aria-hidden="true">▾</span>
+            </button>
+            <div class="dropdown-menu more-dropdown-menu" role="menu">
+                <div class="dropdown-menu-label">${isZh ? '快捷工具' : 'Quick Tools'}</div>
+                <button type="button" class="dropdown-item dropdown-item-rich" id="more-menu-print-btn" role="menuitem">
+                    ${SVG_ICONS.printer}
+                    <span class="dropdown-item-copy">
+                        <strong>${isZh ? '列印筆記 / 儲存 PDF' : 'Print Note / Save PDF'}</strong>
+                        <small>${isZh ? '呼叫系統列印或儲存為 PDF' : 'Print dialog or save to PDF'}</small>
+                    </span>
+                </button>
+                <button type="button" class="dropdown-item dropdown-item-rich" id="more-menu-stats-btn" role="menuitem">
+                    ${SVG_ICONS.pulse}
+                    <span class="dropdown-item-copy">
+                        <strong>${isZh ? '字數統計與閱讀時間' : 'Word Count & Reading Time'}</strong>
+                        <small>${isZh ? '即時檢視字數、字元與段落數' : 'View words, characters, and reading time'}</small>
+                    </span>
+                </button>
+                <div class="dropdown-divider"></div>
+                <div class="dropdown-menu-label">${isZh ? '外觀與樣式' : 'Appearance & Styles'}</div>
+                <button type="button" class="dropdown-item dropdown-item-rich" id="more-menu-theme-btn" role="menuitem">
+                    ${SVG_ICONS.palette}
+                    <span class="dropdown-item-copy">
+                        <strong>${isZh ? '排版主題樣式' : 'Typography Theme'}</strong>
+                        <small>${isZh ? '切換 20 種精緻排版風格' : 'Switch between 20 reading themes'}</small>
+                    </span>
+                </button>
+                <button type="button" class="dropdown-item dropdown-item-rich" id="more-menu-font-btn" role="menuitem">
+                    ${SVG_ICONS.type}
+                    <span class="dropdown-item-copy">
+                        <strong>${isZh ? '切換字型 (JetBrains / Maple)' : 'Switch Font'}</strong>
+                        <small>${isZh ? '切換 Maple Mono 或 JetBrains Mono' : 'Toggle Maple Mono / JetBrains Mono'}</small>
+                    </span>
+                </button>
+                <button type="button" class="dropdown-item dropdown-item-rich" id="more-menu-ui-theme-btn" role="menuitem">
+                    ${SVG_ICONS.sun}
+                    <span class="dropdown-item-copy">
+                        <strong>${isZh ? '切換深淺外觀' : 'Toggle Dark / Light'}</strong>
+                        <small>${isZh ? '切換日間明亮或夜間深色介面' : 'Switch dark or light interface mode'}</small>
+                    </span>
+                </button>
+                ${isEdit ? `
+                <button type="button" class="dropdown-item dropdown-item-rich" id="more-editor-preference-btn" role="menuitem">
+                    ${SVG_ICONS.settings}
+                    <span class="dropdown-item-copy">
+                        <strong>${isZh ? '設定預設編輯器' : 'Set Default Editor'}</strong>
+                        <small>${isZh ? '選擇 Markdown / Block / Canvas / 白板' : 'Choose Markdown / Block / Canvas / Whiteboard'}</small>
+                    </span>
+                </button>
+                ` : ''}
+                <div class="dropdown-divider"></div>
+                <div class="dropdown-menu-label">${isZh ? '說明與指南' : 'Help & Documentation'}</div>
+                <a class="dropdown-item dropdown-item-rich" href="/docs" target="_blank" rel="noreferrer" role="menuitem">
+                    ${SVG_ICONS.book}
+                    <span class="dropdown-item-copy">
+                        <strong>${isZh ? '使用指南與說明' : 'User Guide & Docs'}</strong>
+                        <small>${isZh ? '查閱快捷鍵、語法與進階技巧' : 'Shortcuts, syntax, and tips'}</small>
+                    </span>
+                </a>
             </div>
         </div>
     `
@@ -712,6 +796,17 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                                 uncheckedValue: 'false',
                             })}
                         </div>
+                        ${isBlockEditor ? `
+                        ${TOOLBAR_PRINT_BUTTON(lang)}
+                        <button type="button" id="import-md-btn" class="toolbar-icon-button" data-tooltip="${t.importFileBlock}" title="${t.importFileBlock}" aria-label="${t.importFileBlock}">
+                            ${SVG_ICONS.import}
+                            <span class="toolbar-button-label">${lang === 'zh-TW' ? '匯入' : 'Import'}</span>
+                        </button>
+                        ${EXPORT_DROPDOWN_MENU(lang, { includeMarkdown: false })}
+                        <button type="button" id="cite-edit-btn" class="toolbar-icon-button cite-edit-btn" data-tooltip="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}" title="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}" aria-label="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}">
+                            ${SVG_ICONS.quote}
+                            <span class="toolbar-button-label">${lang === 'zh-TW' ? '引用' : 'Cite'}</span>
+                        </button>
                         <button class="toolbar-icon-button opt-pw ${pw ? 'toolbar-active-button' : ''}" data-type="edit" data-tooltip="${t.editLockTitle}" title="${t.editLockTitle}" aria-label="${t.editLockTitle}">
                             ${SVG_ICONS.editLock}
                             <span class="toolbar-button-label">${t.editLockTitle}</span>
@@ -720,18 +815,6 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                             ${SVG_ICONS.readLock}
                             <span class="toolbar-button-label">${t.readLockTitle}</span>
                         </button>
-                        ${isBlockEditor ? `
-                        <button type="button" id="import-md-btn" class="toolbar-icon-button" data-tooltip="${t.importFileBlock}" title="${t.importFileBlock}" aria-label="${t.importFileBlock}">
-                            ${SVG_ICONS.import}
-                            <span class="toolbar-button-label">${lang === 'zh-TW' ? '匯入' : 'Import'}</span>
-                        </button>
-                        ` : ''}
-                        ${isBlockEditor ? EXPORT_DROPDOWN_MENU(lang, { includeMarkdown: false }) : ''}
-                        ${isBlockEditor ? `
-                        <button type="button" id="cite-edit-btn" class="toolbar-icon-button cite-edit-btn" data-tooltip="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}" title="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}" aria-label="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}">
-                            ${SVG_ICONS.quote}
-                            <span class="toolbar-button-label">${lang === 'zh-TW' ? '引用' : 'Cite'}</span>
-                        </button>
                         <button type="button" id="vault-presets-toolbar-btn" class="toolbar-icon-button vault-presets-toolbar-btn seal-toolbar-btn" data-tooltip="${lang === 'zh-TW' ? 'Seal 存取控制' : 'Seal Access Control'}" title="${lang === 'zh-TW' ? 'Seal 存取控制' : 'Seal Access Control'}" aria-label="${lang === 'zh-TW' ? 'Seal 存取控制' : 'Seal Access Control'}">
                             <span class="share-button-icon">${SVG_ICONS.lock || SVG_ICONS.shieldCheck}</span>
                             <span class="toolbar-button-label">Seal</span>
@@ -739,6 +822,7 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                         </button>
                         ` : ''}
                         ${!isBlockEditor ? `
+                        ${TOOLBAR_PRINT_BUTTON(lang)}
                         <button type="button" id="import-md-btn" class="toolbar-icon-button" data-tooltip="${t.importMarkdown}" title="${t.importMarkdown}" aria-label="${t.importMarkdown}">
                             ${SVG_ICONS.import}
                             <span class="toolbar-button-label">${lang === 'zh-TW' ? '匯入' : 'Import'}</span>
@@ -748,6 +832,14 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                         <button type="button" id="cite-edit-btn" class="toolbar-icon-button cite-edit-btn" data-tooltip="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}" title="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}" aria-label="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}">
                             ${SVG_ICONS.quote}
                             <span class="toolbar-button-label">${lang === 'zh-TW' ? '引用' : 'Cite'}</span>
+                        </button>
+                        <button class="toolbar-icon-button opt-pw ${pw ? 'toolbar-active-button' : ''}" data-type="edit" data-tooltip="${t.editLockTitle}" title="${t.editLockTitle}" aria-label="${t.editLockTitle}">
+                            ${SVG_ICONS.editLock}
+                            <span class="toolbar-button-label">${t.editLockTitle}</span>
+                        </button>
+                        <button class="toolbar-icon-button opt-pw-view ${vpw ? 'toolbar-active-button' : ''}" data-type="view" data-tooltip="${t.readLockTitle}" title="${t.readLockTitle}" aria-label="${t.readLockTitle}">
+                            ${SVG_ICONS.readLock}
+                            <span class="toolbar-button-label">${t.readLockTitle}</span>
                         </button>
                         <button type="button" id="math-format-btn" class="toolbar-icon-button math-format-trigger" data-tooltip="${lang === 'zh-TW' ? '公式複製格式' : 'Formula copy format'}" title="${lang === 'zh-TW' ? '公式複製格式' : 'Formula copy format'}" aria-label="${lang === 'zh-TW' ? '公式複製格式' : 'Formula copy format'}">
                             <span class="math-icon-badge" aria-hidden="true">${SVG_ICONS.math}</span>
@@ -812,6 +904,7 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                         </div>
                         ` : ''}
                     ` : (path ? `
+                        ${TOOLBAR_PRINT_BUTTON(lang)}
                         ${EXPORT_DROPDOWN_MENU(lang)}
                         ${COPY_DROPDOWN_MENU(lang)}
                         <button type="button" id="cite-share-btn" class="toolbar-icon-button cite-share-btn" data-tooltip="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}" title="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}" aria-label="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}">
@@ -841,10 +934,7 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                             <span class="toolbar-button-label">${lang === 'zh-TW' ? '紀錄' : 'Recent'}</span>
                         </button>
                     ` : '')}
-                    <button type="button" class="toolbar-icon-button mobile-more-btn" id="mobile-more-btn" data-tooltip="${moreToolsTitle}" title="${moreToolsTitle}" aria-label="${moreToolsTitle}">
-                        ${SVG_ICONS.more}
-                        <span class="toolbar-button-label">${lang === 'zh-TW' ? '更多' : 'More'}</span>
-                    </button>
+                    ${MORE_DROPDOWN_MENU(lang, { isEdit })}
                 </div>
             </div>
 

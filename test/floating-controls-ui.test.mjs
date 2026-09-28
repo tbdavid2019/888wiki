@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { JSDOM } from 'jsdom'
 
-import { FOOTER } from '../src/templates/common.js'
+import { FOOTER, SVG_ICONS } from '../src/templates/common.js'
 import { setupDropdownMenus, setupFloatingTooltips } from '../static/js/floating-controls.mjs'
 
 const baseTemplateSource = readFileSync(new URL('../src/templates/base.js', import.meta.url), 'utf8')
@@ -198,5 +198,46 @@ test('clicking select elements, labels, or toggles inside dropdown does not clos
     document.body.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }))
     assert.equal(container.classList.contains('show'), false, 'Clicking outside must close dropdown')
     assert.equal(menu.classList.contains('floating-menu-open'), false)
+})
+
+test('dedicated toolbar print button is rendered in edit and share modes with printer icon', () => {
+    const editDoc = renderFooter({ isEdit: true })
+    const printEditBtn = editDoc.querySelector('#toolbar-print-btn')
+    assert.ok(printEditBtn, 'Edit mode must have #toolbar-print-btn')
+    assert.match(printEditBtn.dataset.tooltip || '', /列印/)
+    assert.match(printEditBtn.innerHTML, /<svg class="svg-icon"/)
+
+    const shareDoc = renderFooter({ isEdit: false, path: 'my-note', sharePath: 'share/id' })
+    const printShareBtn = shareDoc.querySelector('#toolbar-print-btn')
+    assert.ok(printShareBtn, 'Share mode must have #toolbar-print-btn')
+    assert.match(printShareBtn.dataset.tooltip || '', /列印/)
+    assert.match(printShareBtn.innerHTML, /<svg class="svg-icon"/)
+})
+
+test('mobile more button is a dropdown trigger with quick tools and appearance options', () => {
+    const editDoc = renderFooter({ isEdit: true })
+    const moreDropdown = editDoc.querySelector('#more-dropdown')
+    assert.ok(moreDropdown, '#more-dropdown container must exist')
+    assert.ok(moreDropdown.classList.contains('dropdown-container'))
+
+    const trigger = moreDropdown.querySelector('#mobile-more-btn')
+    assert.ok(trigger, '#mobile-more-btn must exist inside #more-dropdown')
+    assert.ok(trigger.classList.contains('dropdown-trigger'))
+
+    const menu = moreDropdown.querySelector('.more-dropdown-menu')
+    assert.ok(menu, '.more-dropdown-menu must exist')
+    assert.ok(menu.querySelector('#more-menu-print-btn'), '#more-menu-print-btn must exist')
+    assert.ok(menu.querySelector('#more-menu-stats-btn'), '#more-menu-stats-btn must exist')
+    assert.ok(menu.querySelector('#more-menu-theme-btn'), '#more-menu-theme-btn must exist')
+    assert.ok(menu.querySelector('#more-menu-font-btn'), '#more-menu-font-btn must exist')
+    assert.ok(menu.querySelector('#more-menu-ui-theme-btn'), '#more-menu-ui-theme-btn must exist')
+    assert.ok(menu.querySelector('#more-editor-preference-btn'), '#more-editor-preference-btn must exist in edit mode')
+    assert.ok(menu.querySelector('a[href="/docs"]'), 'Docs guide link must exist')
+})
+
+test('SVG_ICONS: import has upload icon (arrow up) and export has download icon (arrow down), printer exists', () => {
+    assert.ok(SVG_ICONS.printer, 'printer icon must exist')
+    assert.match(SVG_ICONS.import, /17 8 12 3 7 8/, 'import icon must point up (upload)')
+    assert.match(SVG_ICONS.export, /7 10 12 15 17 10/, 'export icon must point down (download)')
 })
 

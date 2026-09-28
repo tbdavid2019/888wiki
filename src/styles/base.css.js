@@ -2465,9 +2465,17 @@ html[data-ui-theme="dark"] .share-menu-trigger.is-published {
     margin-left: 8px;
 }
 
-/* Mobile more button: hidden on desktop, shown on mobile */
+/* Mobile more dropdown: hidden on desktop, shown on mobile */
+.more-dropdown {
+    display: none !important;
+    position: relative;
+}
 .mobile-more-btn {
     display: none !important;
+}
+.more-dropdown-menu {
+    min-width: 250px;
+    max-width: 320px;
 }
 
 /* Shared state indicator: green dot on published state */
@@ -4912,7 +4920,10 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
     .desktop-split-control {
         display: none !important;
     }
-    /* Show mobile more button */
+    /* Show mobile more button and dropdown */
+    .more-dropdown {
+        display: inline-flex !important;
+    }
     .mobile-more-btn {
         display: inline-flex !important;
     }
@@ -5052,8 +5063,11 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
         display: flex !important;
     }
 
+    .more-dropdown {
+        display: inline-flex !important;
+    }
     .mobile-more-btn {
-        display: none !important;
+        display: inline-flex !important;
     }
 
     .footer-section-create .toolbar-button-label {

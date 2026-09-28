@@ -2,6 +2,23 @@
 
 ## [2026-09-28]
 
+- **🖨️ 獨立專屬「列印 (Print)」按鈕與工具列前端位置優化 (Dedicated One-Tap Print Button & Priority Toolbar Ordering)**：
+  - 將高頻率使用的「列印」功能從「匯出選單」中獨立抽取為一級頂層工具列按鈕（`#toolbar-print-btn`），並配置現代化 Lucide 向量印表機圖示（`SVG_ICONS.printer`）；無論在編輯模式（Edit）或分享閱讀模式（Share）均可一鍵直達實體列印或儲存向量 PDF。
+  - 將「列印」、「匯入 (Import)」與「匯出 (Export)」大幅移至工具列最前段，讓讀者與作者第一時間即可看見與使用，不用再橫向滾動或層層翻找。
+- **📥 修正匯入 (Import) 與匯出 (Export) 向量圖示反向問題 (Correct Intuitive Import / Export Icons)**：
+  - 根據使用者認知模型全面更正反向圖示：將「匯入 (Import)」更換為向上箭頭托盤（Lucide `upload`，代表由本機上傳檔案至筆記）；將「導出／匯出 (Export)」更換為向下箭頭托盤（Lucide `download`，代表將筆記下載至本機電腦），編輯列、分享列與下拉選單全數統一。
+- **📱 修復行動版 RWD 編輯模式「更多 (...)」按鈕點擊無反應問題 (Fully Functional Mobile More Tools Dropdown)**：
+  - 徹底修復行動裝置與小螢幕 RWD 模式下「桌面」開關旁「更多 (...)」（`#mobile-more-btn`）點擊無任何動作之缺陷。
+  - 將其升級為標準彈性浮動下拉選單（`.more-dropdown-menu`），納入行動端常用捷徑：
+    - 🖨️ 列印筆記／儲存 PDF（`#more-menu-print-btn`）
+    - 📊 字數統計與閱讀時間即時計算 Toast（`#more-menu-stats-btn`）
+    - 🎨 20 款排版主題風格快速選取（`#more-menu-theme-btn`）
+    - 🔤 切換閱讀字型（JetBrains Mono / Maple Mono，`#more-menu-font-btn`）
+    - 🌓 切換介面深淺模式（`#more-menu-ui-theme-btn`）
+    - ⚙️ 設定預設編輯器模式（Markdown / Block / Canvas / 白板，`#more-editor-preference-btn`）
+    - 📖 使用指南與快捷鍵說明（`/docs`）
+  - 全面優化 CSS 響應式規則，確保在 `<= 960px` 與 `<= 640px` 手機上均可輕鬆單手點擊並正確彈出浮動面板。
+
 - **📱 手機版 RWD 觸控人體工學與圖示尺寸優化 (Mobile Touch Target & Icon Ergonomics)**：針對行動裝置觸控需求，全面擴大觸控目標與向量圖示。頂部 Markdown 工具列按鈕擴展至 `34×34px`（圖示加大至 18px，間距 4px，橫向滑動更順手）；底欄工具列高度提升至 `38px`（圖示擴大至 18px，鎖定徽章 20px，新增鈕 38×38px）；發布狀態列按鈕提升至 `30px` 高度；彈窗關閉按鈕擴展至 `36×36px`；下拉選單項目提升至 `38px` 高度與 18px 圖示；書本導航與返回頂部擴展至 `44×44px` 熱區，徹底杜絕手指誤觸。
 
 - **🖨️ 修正瀏覽器列印預覽重複列印文章正文**：列印按鈕會建立整理後的文章副本；列印期間隱藏原始預覽，只輸出副本，關閉列印預覽後恢復原頁面。
