@@ -688,11 +688,18 @@ html[data-ui-theme="dark"] .editor-pref-lang-btn.is-active {
     position: absolute;
     right: 12px;
     top: 10px;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     border: 0;
     background: transparent;
     color: var(--modal-muted, #6e7781);
     cursor: pointer;
     font-size: 18px;
+    line-height: 1;
+    border-radius: 4px;
 }
 .publish-nudge-actions {
     display: flex;
@@ -752,12 +759,19 @@ html[data-ui-theme="dark"] .editor-pref-lang-btn.is-active {
     position: absolute;
     right: 12px;
     top: 10px;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     border: 0;
     background: transparent;
     color: var(--modal-muted, #6e7781);
     cursor: pointer;
     font-size: 18px;
-    transition: color 0.15s ease;
+    line-height: 1;
+    border-radius: 6px;
+    transition: color 0.15s ease, background 0.15s ease;
 }
 .password-modal-content .close-btn:hover {
     color: var(--modal-text, #24292f);
@@ -3870,11 +3884,32 @@ html[data-ui-theme="dark"] .note-history-body.markdown-body blockquote,
     box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8);
     transform: translate(-50%, -50%);
 }
+.reading-progress-markers {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+.reading-progress-marker {
+    position: absolute;
+    left: 50%;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.55;
+    transform: translate(-50%, -50%);
+}
+.reading-progress-marker.is-active {
+    width: 6px;
+    height: 6px;
+    opacity: 1;
+}
 .reading-progress-value {
-    min-width: 28px;
+    min-width: 42px;
     color: inherit;
     font: 10px/1 var(--editor-font-family);
     text-align: center;
+    white-space: nowrap;
 }
 body.share-view .reading-progress {
     position: fixed;
@@ -4110,6 +4145,7 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
 .diagram-btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 4px;
     padding: 3px 7px;
     font-size: 11px;
@@ -4139,6 +4175,9 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
     background: rgba(22, 163, 74, 0.12) !important;
 }
 .diagram-btn svg {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: 12px;
     height: 12px;
     flex-shrink: 0;

@@ -2,6 +2,7 @@
 
 ## [2026-09-28]
 
+- **📍 讓讀者看見目前章節 (Section-Aware Reading Progress)**：閱讀進度控制依 Markdown 標題顯示章節位置與段落標記，使用原生 `IntersectionObserver` 偵測目前章節；滑鼠提示與無障礙標籤會讀出章節名稱及整體百分比，沒有標題或瀏覽器不支援時仍保留百分比進度。
 - **🖨️ 修正分享頁列印時進度條與 WebTalk 浮動元件仍出現**：補齊列印樣式對 `.reading-progress` 與 WebTalk Shadow DOM 宿主 `<webtalk-widget>` 的隱藏規則，並加入回歸測試；列印文件只保留文章內容。
 - **📱 修正手機分享頁作者提示列擠掉文章內容 (Mobile Share Preview Layout)**：分享頁改用直向排列作者預覽、Seal 狀態提示與文章區，避免 flex 橫向排列在手機上將文章擠到畫面外；Markdown、Canvas 與 Whiteboard 分享檢視都保留完整可用高度。
 

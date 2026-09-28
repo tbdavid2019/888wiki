@@ -65,3 +65,39 @@ test('updates the rendered reading progress widget as the preview scrolls', () =
     preview.dispatchEvent(new dom.window.Event('scroll'))
     assert.equal(dom.window.document.querySelector('.reading-progress-value').textContent, '50%')
 })
+
+test('uses IntersectionObserver to show the active Markdown section', () => {
+    const dom = new JSDOM('<html lang="zh-Hant-TW"><body><div class="preview-pane"><div id="preview-md"><h2 id="intro">前言</h2><h2 id="chapter">第二章</h2></div></div></body></html>')
+    const preview = dom.window.document.querySelector('#preview-md')
+    const observers = []
+    class MockIntersectionObserver {
+        constructor(callback, options) {
+            this.callback = callback
+            this.options = options
+            this.targets = []
+            observers.push(this)
+        }
+        observe(target) { this.targets.push(target) }
+        disconnect() {}
+    }
+    dom.window.IntersectionObserver = MockIntersectionObserver
+    Object.defineProperties(preview, {
+        clientHeight: { value: 500 },
+        scrollHeight: { value: 1000 },
+    })
+
+    initReadingProgress(dom.window.document)
+    assert.equal(observers[0].options.root, preview)
+    assert.equal(observers[0].targets.length, 2)
+    assert.equal(dom.window.document.querySelectorAll('.reading-progress-marker').length, 2)
+
+    observers[0].callback([{
+        target: preview.querySelector('#chapter'),
+        isIntersecting: true,
+        boundingClientRect: { top: 90 },
+    }])
+    const track = dom.window.document.querySelector('.reading-progress-track')
+    assert.equal(dom.window.document.querySelector('.reading-progress-value').textContent, '0% · 2/2')
+    assert.match(track.getAttribute('aria-label'), /第 2 \/ 2 節：第二章/)
+    assert.equal(dom.window.document.querySelectorAll('.reading-progress-marker.is-active').length, 1)
+})
