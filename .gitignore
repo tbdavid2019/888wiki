@@ -171,6 +171,7 @@ dist
 .dev.vars
 
 wrangler.owner.toml
+local.md
 !wrangler.toml
 .DS_Store
 *.sync-conflict-*
