@@ -3,6 +3,7 @@
 ## [2026-09-29]
 
 - **🎨 統一編輯工具列與儲存狀態色彩 (Unified Warm Toolbar Colors Across Light and Dark Modes)**：工具列、底欄與發布狀態列改用紙白／暖炭灰表面、陶土色焦點與灰紫深色強調；版面、字型、語言選取改為共用柔和狀態色，避免控制群組以多組飽和色互相競爭。成功、危險與主要按鈕保留語意色，並移除工具列的硬編碼藍色／粉色 hover 與 focus 狀態。
+- **▢ 將「本機已存」膠囊改為方角矩形 (Square Save Status Capsule)**：儲存狀態與歷史選單仍保留合併膠囊的操作分隔，但外框改用共用工具列圓角，與相鄰方形按鈕保持一致。
 - **📱 修復手機預覽模式下「💡 小訣竅」排版錯位與橫向溢出問題 (Fix Mobile Preview Welcome Tip Alignment & Containment)**：
   - 徹底解決編輯器底部切換至「📱 手機」檢視時，預覽區小訣竅（`.preview-welcome`）寬度脫離手機 Mockup 邊界、文字橫向穿透兩側達 150px+ 之問題。
   - 為 `.preview-pane` 加上 `position: relative;`，並在 `body.preview-device-mobile:not(.share-view)` 下嚴格約束 `.preview-welcome` 寬度與最大寬度為 `min(390px, calc(100% - 32px))`、置中對齊（`margin: 0 auto;`）、圓角 34px 與上下內距，使其完美嵌於手機螢幕內部。

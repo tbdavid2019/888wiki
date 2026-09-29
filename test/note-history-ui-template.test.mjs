@@ -18,6 +18,11 @@ test('footer keeps recent shares and adds a separate history button only on edit
     assert.match(commonTemplate, /const showNoteHistory = noteHistoryEnabled === true && isEdit/)
 })
 
+test('local save capsule uses the same square toolbar radius as neighboring controls', () => {
+    assert.match(baseCss, /\.save-control-group\.save-capsule-group \{[\s\S]*border-radius: var\(--toolbar-radius, 4px\);/)
+    assert.doesNotMatch(baseCss, /\.save-control-group\.save-capsule-group \{[^}]*border-radius:\s*9999px;/)
+})
+
 test('note history and recent shares modals support full dark mode theme variables and styles', () => {
     assert.match(baseCss, /--modal-bg:\s*#1e293b;/)
     assert.match(baseCss, /--modal-border:\s*#334155;/)

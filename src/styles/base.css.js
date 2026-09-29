@@ -2946,7 +2946,7 @@ html[data-ui-theme="dark"] .share-menu-trigger.is-published {
     padding: 0;
     gap: 0;
     border: 1px solid var(--toolbar-border, #e6dfd8);
-    border-radius: 9999px;
+    border-radius: var(--toolbar-radius, 4px);
     background: var(--toolbar-bg, #faf9f5);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
     overflow: hidden;
