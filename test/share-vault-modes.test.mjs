@@ -228,13 +228,12 @@ test('templates/common.js: renders Seal access control modal, toolbar trigger, a
     assert.match(commonTemplateSource, /id="seal-expires-select"/)
     assert.match(commonTemplateSource, /id="seal-modal-pulse-btn"/)
     assert.match(commonTemplateSource, /id="seal-modal-pulse-copy-btn"/)
-    assert.match(commonTemplateSource, /id="vault-presets-toolbar-btn"/)
     assert.match(commonTemplateSource, /open-vault-presets-modal-btn/)
     assert.match(commonTemplateSource, /id="vault-presets-modal"/)
 
-    // Verify Bug 1: vault-presets-toolbar-btn is moved out of footer-control-group and placed after math-format-btn
-    assert.doesNotMatch(commonTemplateSource, /id="vault-presets-toolbar-btn"[\s\S]*?class="save-control-group"/)
-    assert.match(commonTemplateSource, /id="math-format-btn"[\s\S]*?id="vault-presets-toolbar-btn"/)
+    assert.doesNotMatch(commonTemplateSource, /<button[^>]*class="[^"]*toolbar-icon-button[^"]*seal-toolbar-btn/)
+    assert.doesNotMatch(commonTemplateSource, /<button[^>]*class="[^"]*toolbar-icon-button[^"]*opt-pw/)
+    assert.match(commonTemplateSource, /share-dropdown-menu[\s\S]*?SECURITY_CONTROLS_RENDER/)
 
     // Verify Bug 2: modal cards inside button do not contain invalid nested div block elements
     assert.match(commonTemplateSource, /<span class="preset-card-top">/)

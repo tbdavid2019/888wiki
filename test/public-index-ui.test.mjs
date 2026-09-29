@@ -146,9 +146,11 @@ test('footer exposes markdown import export and PDF tools without reusing existi
     assert.match(constantSource, /exportPdf: 'Print or export PDF'/)
 })
 
-test('edit footer uses icon locks and share link opens in a new tab', () => {
-    assert.match(commonTemplateSource, /class="toolbar-icon-button opt-pw/)
-    assert.match(commonTemplateSource, /class="toolbar-icon-button opt-pw-view/)
+test('security locks are consolidated in share options dropdown and share link opens in a new tab', () => {
+    assert.match(commonTemplateSource, /class="[^"]*opt-pw[^"]*"/)
+    assert.match(commonTemplateSource, /class="[^"]*opt-pw-view[^"]*"/)
+    assert.doesNotMatch(commonTemplateSource, /class="toolbar-icon-button opt-pw/)
+    assert.doesNotMatch(commonTemplateSource, /class="toolbar-icon-button opt-pw-view/)
     assert.match(commonTemplateSource, /id="share-open-link"/)
     assert.match(commonTemplateSource, /target="_blank"/)
     assert.match(baseTemplateSource, /const \$shareOpenLink = document\.querySelector\('#share-open-link'\);/)

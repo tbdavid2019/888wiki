@@ -1593,6 +1593,56 @@ body.share-view .whiteboard-editor-pane {
     max-width: 170px;
     flex-shrink: 0;
 }
+.security-group-card {
+    padding: 6px;
+    gap: 5px;
+}
+.security-group-card .security-item-row,
+.security-group-card .vault-preset-menu-row {
+    margin: 0;
+    padding: 0;
+}
+.security-menu-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    height: 34px;
+    font-weight: 500;
+    font-size: 12px;
+    padding: 0 10px;
+    border-radius: 6px;
+    border: 1px solid var(--modal-border, rgba(0, 0, 0, 0.08));
+    background: var(--input-bg, #ffffff);
+    color: var(--modal-text, #24292f);
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.security-menu-btn:hover {
+    background: var(--btn-hover-bg, rgba(0, 0, 0, 0.04));
+    border-color: var(--modal-accent, #0969da);
+}
+html[data-ui-theme="dark"] .security-menu-btn {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #e6edf3;
+}
+html[data-ui-theme="dark"] .security-menu-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--modal-accent, #38bdf8);
+}
+.security-menu-btn-left {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+.security-menu-btn-left svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
 .vault-preset-menu-row {
     margin-bottom: 8px;
 }
@@ -1978,6 +2028,23 @@ html[data-ui-theme="dark"] .vault-presets-tip {
 html[data-ui-theme="dark"] .seal-status-pill.is-sealed {
     background: rgba(16, 185, 129, 0.25);
     color: #34d399;
+}
+.security-status-pill {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--input-border, rgba(0, 0, 0, 0.08));
+    color: var(--modal-muted, #64748b);
+    line-height: 1.2;
+}
+.security-status-pill.is-active {
+    background: rgba(239, 68, 68, 0.12);
+    color: #dc2626;
+}
+html[data-ui-theme="dark"] .security-status-pill.is-active {
+    background: rgba(239, 68, 68, 0.22);
+    color: #f87171;
 }
 
 .seal-modal-header-bar {

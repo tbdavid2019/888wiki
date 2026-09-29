@@ -8,14 +8,53 @@ import { THEMES } from '../theme_data.js'
 
 const getLangText = lang => SUPPORTED_LANG[lang] || SUPPORTED_LANG['en-US']
 
+const SECURITY_CONTROLS_RENDER = ({ lang, pw, vpw, suffix = '' }) => {
+    const isZh = lang === 'zh-TW'
+    const t = getLangText(lang)
+    const pwStatus = pw ? (isZh ? '已設定 🔒' : 'Protected 🔒') : (isZh ? '未設定 ➔' : 'Unset ➔')
+    const vpwStatus = vpw ? (isZh ? '已設定 🔒' : 'Protected 🔒') : (isZh ? '未設定 ➔' : 'Unset ➔')
+    return `
+        <div class="dropdown-menu-label">${isZh ? '安全與存取保護' : 'Security & Access'}</div>
+        <div class="dropdown-group-card security-group-card">
+            <div class="dropdown-item-control security-item-row">
+                <button type="button" class="opt-button security-menu-btn opt-pw ${pw ? 'is-active' : ''}" data-type="edit" id="share-menu-edit-lock-btn${suffix}" title="${t.editLockTitle}">
+                    <span class="security-menu-btn-left">
+                        ${SVG_ICONS.editLock}
+                        <strong>${t.editLockTitle}</strong>
+                    </span>
+                    <span class="security-status-pill ${pw ? 'is-active' : ''}">${pwStatus}</span>
+                </button>
+            </div>
+            <div class="dropdown-item-control security-item-row">
+                <button type="button" class="opt-button security-menu-btn opt-pw-view ${vpw ? 'is-active' : ''}" data-type="view" id="share-menu-view-lock-btn${suffix}" title="${t.readLockTitle}">
+                    <span class="security-menu-btn-left">
+                        ${SVG_ICONS.readLock}
+                        <strong>${t.readLockTitle}</strong>
+                    </span>
+                    <span class="security-status-pill ${vpw ? 'is-active' : ''}">${vpwStatus}</span>
+                </button>
+            </div>
+            <div class="dropdown-item-control vault-preset-menu-row">
+                <button type="button" class="opt-button security-menu-btn open-vault-presets-modal-btn vault-presets-toolbar-btn seal-menu-trigger-btn" id="open-vault-presets-modal-btn${suffix}" title="${isZh ? 'Seal 存取控制' : 'Seal Access Control'}">
+                    <span class="security-menu-btn-left">
+                        ${SVG_ICONS.lock || SVG_ICONS.shieldCheck}
+                        <strong>${isZh ? 'Seal 存取控制' : 'Seal Access'}</strong>
+                    </span>
+                    <span class="seal-status-pill share-menu-seal-status" id="share-menu-seal-status${suffix}">${isZh ? '未設定 ➔' : 'Unsealed ➔'}</span>
+                </button>
+            </div>
+        </div>
+    `
+}
+
 const VAULT_PRESETS_RENDER = (lang) => `
     <div class="dropdown-item-control vault-preset-menu-row">
-        <button type="button" class="opt-button open-vault-presets-modal-btn seal-menu-trigger-btn" id="open-vault-presets-modal-btn" style="width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; height:34px; font-weight:500; font-size:12px; padding:0 10px;" title="${lang === 'zh-TW' ? 'Seal 存取控制' : 'Seal Access Control'}">
-            <span style="display:inline-flex; align-items:center; gap:6px;">
+        <button type="button" class="opt-button security-menu-btn open-vault-presets-modal-btn vault-presets-toolbar-btn seal-menu-trigger-btn" id="open-vault-presets-modal-btn" title="${lang === 'zh-TW' ? 'Seal 存取控制' : 'Seal Access Control'}">
+            <span class="security-menu-btn-left">
                 ${SVG_ICONS.lock || SVG_ICONS.shieldCheck}
                 <strong>${lang === 'zh-TW' ? 'Seal 存取控制' : 'Seal Access'}</strong>
             </span>
-            <span id="share-menu-seal-status" class="seal-status-pill">${lang === 'zh-TW' ? '未設定 ➔' : 'Unsealed ➔'}</span>
+            <span id="share-menu-seal-status" class="seal-status-pill share-menu-seal-status">${lang === 'zh-TW' ? '未設定 ➔' : 'Unsealed ➔'}</span>
         </button>
     </div>
 `
@@ -704,6 +743,7 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                                                 </span>
                                             </button>
                                         </div>
+                                        ${SECURITY_CONTROLS_RENDER({ lang, pw, vpw, suffix: '' })}
                                         <div class="dropdown-menu-label">${lang === 'zh-TW' ? '分享設定' : 'Share Settings'}</div>
                                         <div class="dropdown-group-card">
                                             <div class="dropdown-item-toggle">
@@ -721,7 +761,6 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                                                     title="${annotationsEnabled === true ? t.annotationsDisable : t.annotationsEnable}"
                                                 >${annotationsEnabled === true ? t.annotationsOn : t.annotationsOff}</button>
                                             </div>
-                                            ${VAULT_PRESETS_RENDER(lang)}
                                         </div>
                                         <div class="dropdown-group-card dropdown-group-danger">
                                             <button type="button" class="dropdown-item dropdown-danger-item unpublish-btn" title="${unpublishTitle}">
@@ -740,6 +779,7 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                                                 </span>
                                             </button>
                                         </div>
+                                        ${SECURITY_CONTROLS_RENDER({ lang, pw, vpw, suffix: '-draft' })}
                                         <div class="dropdown-menu-label">${lang === 'zh-TW' ? '發布預設設定' : 'Publish Default Settings'}</div>
                                         <div class="dropdown-group-card">
                                             <div class="dropdown-item-toggle">
@@ -757,7 +797,6 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                                                     title="${annotationsEnabled === true ? t.annotationsDisable : t.annotationsEnable}"
                                                 >${annotationsEnabled === true ? t.annotationsOn : t.annotationsOff}</button>
                                             </div>
-                                            ${VAULT_PRESETS_RENDER(lang)}
                                         </div>
                                     </div>
                                 </div>
@@ -836,19 +875,6 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                             ${SVG_ICONS.quote}
                             <span class="toolbar-button-label">${lang === 'zh-TW' ? '引用' : 'Cite'}</span>
                         </button>
-                        <button class="toolbar-icon-button opt-pw ${pw ? 'toolbar-active-button' : ''}" data-type="edit" data-tooltip="${t.editLockTitle}" title="${t.editLockTitle}" aria-label="${t.editLockTitle}">
-                            ${SVG_ICONS.editLock}
-                            <span class="toolbar-button-label">${t.editLockTitle}</span>
-                        </button>
-                        <button class="toolbar-icon-button opt-pw-view ${vpw ? 'toolbar-active-button' : ''}" data-type="view" data-tooltip="${t.readLockTitle}" title="${t.readLockTitle}" aria-label="${t.readLockTitle}">
-                            ${SVG_ICONS.readLock}
-                            <span class="toolbar-button-label">${t.readLockTitle}</span>
-                        </button>
-                        <button type="button" id="vault-presets-toolbar-btn" class="toolbar-icon-button vault-presets-toolbar-btn seal-toolbar-btn" data-tooltip="${lang === 'zh-TW' ? 'Seal 存取控制' : 'Seal Access Control'}" title="${lang === 'zh-TW' ? 'Seal 存取控制' : 'Seal Access Control'}" aria-label="${lang === 'zh-TW' ? 'Seal 存取控制' : 'Seal Access Control'}">
-                            <span class="share-button-icon">${SVG_ICONS.lock || SVG_ICONS.shieldCheck}</span>
-                            <span class="toolbar-button-label">Seal</span>
-                            <span class="seal-dot-indicator" id="seal-dot-indicator-block" style="display:none;"></span>
-                        </button>
                         ` : ''}
                         ${!isBlockEditor ? `
                         ${TOOLBAR_PRINT_BUTTON(lang)}
@@ -862,22 +888,9 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                             ${SVG_ICONS.quote}
                             <span class="toolbar-button-label">${lang === 'zh-TW' ? '引用' : 'Cite'}</span>
                         </button>
-                        <button class="toolbar-icon-button opt-pw ${pw ? 'toolbar-active-button' : ''}" data-type="edit" data-tooltip="${t.editLockTitle}" title="${t.editLockTitle}" aria-label="${t.editLockTitle}">
-                            ${SVG_ICONS.editLock}
-                            <span class="toolbar-button-label">${t.editLockTitle}</span>
-                        </button>
-                        <button class="toolbar-icon-button opt-pw-view ${vpw ? 'toolbar-active-button' : ''}" data-type="view" data-tooltip="${t.readLockTitle}" title="${t.readLockTitle}" aria-label="${t.readLockTitle}">
-                            ${SVG_ICONS.readLock}
-                            <span class="toolbar-button-label">${t.readLockTitle}</span>
-                        </button>
                         <button type="button" id="math-format-btn" class="toolbar-icon-button math-format-trigger" data-tooltip="${lang === 'zh-TW' ? '公式複製格式' : 'Formula copy format'}" title="${lang === 'zh-TW' ? '公式複製格式' : 'Formula copy format'}" aria-label="${lang === 'zh-TW' ? '公式複製格式' : 'Formula copy format'}">
                             <span class="math-icon-badge" aria-hidden="true">${SVG_ICONS.math}</span>
                             <span class="toolbar-button-label">${lang === 'zh-TW' ? '公式' : 'Math'}</span>
-                        </button>
-                        <button type="button" id="vault-presets-toolbar-btn" class="toolbar-icon-button vault-presets-toolbar-btn seal-toolbar-btn" data-tooltip="${lang === 'zh-TW' ? 'Seal 存取控制' : 'Seal Access Control'}" title="${lang === 'zh-TW' ? 'Seal 存取控制' : 'Seal Access Control'}" aria-label="${lang === 'zh-TW' ? 'Seal 存取控制' : 'Seal Access Control'}">
-                            <span class="share-button-icon">${SVG_ICONS.lock || SVG_ICONS.shieldCheck}</span>
-                            <span class="toolbar-button-label">Seal</span>
-                            <span class="seal-dot-indicator" id="seal-dot-indicator" style="display:none;"></span>
                         </button>
                         <div class="footer-view-settings-group" aria-label="${lang === 'zh-TW' ? '編輯器視圖設定' : 'Editor view settings'}">
                             <div class="footer-preview-group footer-control-group">

@@ -1362,6 +1362,8 @@ ${getMarkdownCss()}
         .filter(element => !element.hidden && !element.closest('[hidden]'))
     const openModal = (modal, { initialFocus = null, trigger = document.activeElement, onEscape = null } = {}) => {
         if (!modal) return
+        document.querySelectorAll('.dropdown-container.show').forEach(c => c.classList.remove('show'))
+        document.querySelectorAll('.floating-menu-open').forEach(m => m.classList.remove('floating-menu-open'))
         const previousState = modalFocusState.get(modal)
         if (previousState?.onKeyDown) modal.removeEventListener('keydown', previousState.onKeyDown)
         if (previousState?.onMaskClick) modal.removeEventListener('click', previousState.onMaskClick)
@@ -4797,15 +4799,17 @@ ${getMarkdownCss()}
 
         // Password buttons
         const bindPwHandler = (btnSelector, type) => {
-            const btn = document.querySelector(btnSelector);
-            if (btn) { btn.onclick = async function () {
-                const passwd = await openPasswordModal({ title: getI18n('enpw'), allowEmpty: true })
-                if (passwd == null) return;
-                fetchJson(window.location.pathname + '/pw', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ passwd: passwd.trim(), type }) })
-                    .then(res => { if (res.err !== 0) { return errHandle(res.msg) } window.showToast(passwd ? getI18n('pwss') : getI18n('pwrs')); location.reload() })
-                    .catch(err => errHandle(err))
-            }}
-        }
+            const btns = document.querySelectorAll(btnSelector);
+            btns.forEach(btn => {
+                btn.onclick = async function () {
+                    const passwd = await openPasswordModal({ title: getI18n('enpw'), allowEmpty: true });
+                    if (passwd == null) return;
+                    fetchJson(window.location.pathname + '/pw', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ passwd: passwd.trim(), type }) })
+                        .then(res => { if (res.err !== 0) { return errHandle(res.msg); } window.showToast(passwd ? getI18n('pwss') : getI18n('pwrs')); location.reload(); })
+                        .catch(err => errHandle(err));
+                };
+            });
+        };
         bindPwHandler('.opt-pw', 'edit');
         bindPwHandler('.opt-pw-view', 'view');
 
@@ -5250,29 +5254,29 @@ ${getMarkdownCss()}
             const saveBtn = modal ? modal.querySelector('#seal-save-btn') : document.getElementById('seal-save-btn');
             const dotIndicator = document.getElementById('seal-dot-indicator');
             const dotIndicatorBlock = document.getElementById('seal-dot-indicator-block');
-            const menuStatusPill = document.getElementById('share-menu-seal-status');
+            const menuStatusPills = document.querySelectorAll('.share-menu-seal-status, .seal-status-pill, #share-menu-seal-status, #share-menu-seal-status-draft');
 
             const currentMode = APP_STATE.sealMode || (APP_STATE.shareBurnAfterReading ? 'burn' : (APP_STATE.shareUnlockAt ? 'timelock' : (APP_STATE.sharePulseDueAt ? 'deadman' : (APP_STATE.shareExpiresIn && APP_STATE.shareExpiresIn !== 'none' ? 'expires' : (APP_STATE.shareMode !== 'standard' ? APP_STATE.shareMode : 'none'))))) || 'none';
             const isSealed = currentMode && currentMode !== 'none' && currentMode !== 'standard';
 
             if (dotIndicator) dotIndicator.style.display = isSealed ? 'block' : 'none';
             if (dotIndicatorBlock) dotIndicatorBlock.style.display = isSealed ? 'block' : 'none';
-            if (menuStatusPill) {
-                menuStatusPill.classList.toggle('is-sealed', isSealed);
+            menuStatusPills.forEach(pill => {
+                pill.classList.toggle('is-sealed', isSealed);
                 if (!isSealed) {
-                    menuStatusPill.textContent = isZh ? '未設定 ➔' : 'Unsealed ➔';
+                    pill.textContent = isZh ? '未設定 ➔' : 'Unsealed ➔';
                 } else if (currentMode === 'timelock') {
-                    menuStatusPill.textContent = isZh ? '定時解鎖 ➔' : 'Time Lock ➔';
+                    pill.textContent = isZh ? '定時解鎖 ➔' : 'Time Lock ➔';
                 } else if (currentMode === 'burn') {
-                    menuStatusPill.textContent = isZh ? '閱後即焚 ➔' : 'Burn ➔';
+                    pill.textContent = isZh ? '閱後即焚 ➔' : 'Burn ➔';
                 } else if (currentMode === 'deadman') {
-                    menuStatusPill.textContent = isZh ? '亡者開關 ➔' : 'Dead Man ➔';
+                    pill.textContent = isZh ? '亡者開關 ➔' : 'Dead Man ➔';
                 } else if (currentMode === 'expires') {
-                    menuStatusPill.textContent = isZh ? '保留期限 ➔' : 'Expiration ➔';
+                    pill.textContent = isZh ? '保留期限 ➔' : 'Expiration ➔';
                 } else {
-                    menuStatusPill.textContent = isZh ? '已封印 ➔' : 'Sealed ➔';
+                    pill.textContent = isZh ? '已封印 ➔' : 'Sealed ➔';
                 }
-            }
+            });
 
             if (!modal) return;
 
