@@ -35,21 +35,25 @@ test('publication status stays outside the scrolling article and adapts to mobil
     assert.match(baseCssSource, /\.editor-publication-status \{[\s\S]*white-space: nowrap;/)
 })
 
-test('dark UI theme gives the publication strip and footer a consistent high-contrast chrome palette', () => {
-    assert.match(baseCssSource, /html\[data-ui-theme="dark"\][\s\S]*--status-bg: #0c3b63;/)
+test('dark UI theme gives the publication strip and footer a consistent warm charcoal palette', () => {
+    assert.match(baseCssSource, /html\[data-ui-theme="dark"\][\s\S]*--footer-bg: #2d2826;/)
+    assert.match(baseCssSource, /html\[data-ui-theme="dark"\][\s\S]*--status-bg: #342e2c;/)
     assert.match(baseCssSource, /\.editor-publication-status \{[\s\S]*background: var\(--status-bg\);[\s\S]*color: var\(--status-text\);/)
     assert.match(baseCssSource, /\.publication-state\.is-published \{[\s\S]*background: var\(--status-success-bg\);[\s\S]*color: var\(--status-success-text\);/)
     assert.match(baseCssSource, /\.footer :is\(button, a, label\) \{[\s\S]*font-weight: 700;/)
 })
 
-test('dark UI theme distinguishes publish, layout, font, and language active states with a cohesive cool palette', () => {
-    assert.match(baseCssSource, /html\[data-ui-theme="dark"\][\s\S]*--toolbar-publish-bg: #0f6f78;/)
-    assert.match(baseCssSource, /html\[data-ui-theme="dark"\][\s\S]*--toolbar-layout-bg: #1d70b0;/)
-    assert.match(baseCssSource, /html\[data-ui-theme="dark"\][\s\S]*--toolbar-appearance-bg: #5366b6;/)
-    assert.match(baseCssSource, /html\[data-ui-theme="dark"\][\s\S]*--toolbar-language-bg: #7058a4;/)
+test('light and dark toolbars share restrained active states and reserve solid fills for primary actions', () => {
+    assert.match(baseCssSource, /:root \{[\s\S]*--toolbar-bg-active: color-mix\(in srgb, #ffb89a 26%, #fff9f5\);[\s\S]*--toolbar-active-bg: var\(--toolbar-bg-active\);[\s\S]*--toolbar-active-text: #a9442e;[\s\S]*--toolbar-active-border: #b65036;/)
+    assert.match(baseCssSource, /html\[data-ui-theme="dark"\][\s\S]*--toolbar-bg-active: color-mix\(in srgb, #9b7e93 28%, #2d2826\);[\s\S]*--toolbar-active-bg: var\(--toolbar-bg-active\);[\s\S]*--toolbar-active-text: #d4a5a5;[\s\S]*--toolbar-active-border: #9b7e93;/)
+    assert.match(baseCssSource, /@media \(prefers-color-scheme: dark\)[\s\S]*--toolbar-bg-active: color-mix\(in srgb, #9b7e93 28%, #2d2826\);[\s\S]*--toolbar-active-border: #9b7e93;/)
+    assert.match(baseCssSource, /\.footer-rail-switch \.btn-flip-back \{[\s\S]*background: var\(--rail-checked-bg, var\(--toolbar-active-bg\)\);[\s\S]*color: var\(--rail-checked-text, var\(--toolbar-active-text\)\);/)
+    assert.match(baseCssSource, /\.footer-rail-switch\.is-checked \{[\s\S]*border-color: var\(--toolbar-active-border\);/)
+    assert.match(baseCssSource, /\.segmented-toggle-btn\.active \{[\s\S]*background: var\(--toolbar-active-bg\);[\s\S]*color: var\(--toolbar-active-text\);[\s\S]*box-shadow: inset 0 -2px 0 var\(--toolbar-active-border\);/)
+    assert.match(baseCssSource, /\.toolbar-active-button \{[\s\S]*background: var\(--toolbar-primary-bg\);[\s\S]*color: var\(--toolbar-primary-text\);/)
     assert.match(baseCssSource, /\.share-menu-trigger\.is-published/)
-    assert.match(baseCssSource, /#share-font-selector \.footer-rail-switch \{[\s\S]*--rail-checked-bg: var\(--toolbar-appearance-bg\);/)
-    assert.match(baseCssSource, /#language-selector \.footer-rail-switch \{[\s\S]*--rail-checked-bg: var\(--toolbar-language-bg\);/)
+    assert.match(baseCssSource, /#share-font-selector \.footer-rail-switch \{[\s\S]*--rail-checked-bg: var\(--toolbar-active-bg\);/)
+    assert.match(baseCssSource, /#language-selector \.footer-rail-switch \{[\s\S]*--rail-checked-bg: var\(--toolbar-active-bg\);/)
 })
 
 test('publication status labels are localized', () => {

@@ -21,7 +21,7 @@ test('footer keeps recent shares and adds a separate history button only on edit
 test('note history and recent shares modals support full dark mode theme variables and styles', () => {
     assert.match(baseCss, /--modal-bg:\s*#1e293b;/)
     assert.match(baseCss, /--modal-border:\s*#334155;/)
-    assert.match(baseCss, /--toolbar-fg:\s*#ffffff;/)
+    assert.match(baseCss, /--toolbar-fg:\s*#e8ddd8;/)
     assert.match(baseCss, /\.share-history-content\s*\{[\s\S]*background:\s*var\(--modal-bg/)
     assert.match(baseCss, /\.note-history-content\s*\{[\s\S]*background:\s*var\(--modal-bg/)
     assert.match(baseCss, /\.sync-status-badge\s*\{[\s\S]*color:\s*var\(--toolbar-fg/)

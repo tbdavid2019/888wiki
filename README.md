@@ -40,7 +40,7 @@ Seal separates content passwords from release timing. Set a scheduled unlock, bu
 
 ## A Markdown workspace with room to shape the page
 
-Markdown is the starting point: write portable plain text, preview it live, and use math, diagrams, citations, footnotes, alerts, and extended Markdown syntax. Enjoy clean, standardized Lucide and Tabler vector iconography with pixel-perfect vertical and horizontal centering across all toolbars, menus, and modals. Receive inspiration from bilingual editor tips and Tagore's Stray Birds poetry upon opening a new note. Choose from 20 colorful light and dark themes, fonts, preview widths, and split layouts. The same Markdown can become a book or slide presentation.
+Markdown is the starting point: write portable plain text, preview it live, and use math, diagrams, citations, footnotes, alerts, and extended Markdown syntax. Enjoy clean, standardized Lucide and Tabler vector iconography with pixel-perfect vertical and horizontal centering across all toolbars, menus, and modals. Editor toolbars and save status use a consistent warm palette in light and dark UI modes, with restrained active states. Receive inspiration from bilingual editor tips and Tagore's Stray Birds poetry upon opening a new note. Choose from 20 colorful light and dark themes, fonts, preview widths, and split layouts. The same Markdown can become a book or slide presentation.
 
 ## Built for agents and automation
 
