@@ -8,8 +8,8 @@
     },
     {
       "id": "image-upload",
-      "zh-TW": "小訣竅：按工具列的圖片按鈕可以上傳圖片；啟用 R2 時會自動產生可用的 Markdown 圖片連結。",
-      "en-US": "Tip: Use the image button to upload a picture. With R2 enabled, the editor inserts a ready-to-use Markdown image URL."
+      "zh-TW": "小訣竅：按工具列的圖片按鈕可以上傳圖片；啟用 R2 時會自動產生可用的 Markdown 圖片連結，亦支援直接複製圖片貼上或拖曳。",
+      "en-US": "Tip: Use the image button to upload a picture. With R2 enabled, the editor inserts a ready-to-use Markdown image URL, also supporting direct copy-paste and drag-and-drop."
     },
     {
       "id": "asset-upload",
@@ -23,13 +23,13 @@
     },
     {
       "id": "undo-redo",
-      "zh-TW": "小訣竅：工具列的復原 / 重做會記住打字、Markdown 指令、圖片插入與貼上內容。",
-      "en-US": "Tip: Toolbar Undo / Redo tracks typing, Markdown commands, image insertion, and pasted content."
+      "zh-TW": "小訣竅：工具列的復原 / 重做會記住打字、Markdown 指令、圖片插入與貼上內容；亦可隨時使用 Cmd/Ctrl+Z 與 Cmd/Ctrl+Shift+Z (或 Cmd/Ctrl+Y) 快速復原與重做。",
+      "en-US": "Tip: Toolbar Undo / Redo tracks typing, Markdown commands, image insertion, and pasted content. You can also press Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z (or Cmd/Ctrl+Y) anytime."
     },
     {
       "id": "ai-format",
-      "zh-TW": "小訣竅：需要整理長文時，可以按上方的 ✦ AI 排版，讓內容保留原意並改善 Markdown 結構。",
-      "en-US": "Tip: For a rough draft, choose ✦ AI Format to improve the Markdown structure while preserving the meaning."
+      "zh-TW": "小訣竅：整理草稿或長文時，可點擊工具列的 ✦ AI 排版改善 Markdown 結構與語意；若需客製潤飾，亦可使用 AI 編輯並輸入專屬指令進行局部或全文改寫。",
+      "en-US": "Tip: When polishing drafts, click ✦ AI Format in the toolbar to structure Markdown cleanly while preserving meaning, or use AI Edit with custom instructions for targeted rewrites."
     },
     {
       "id": "copy-rich-content",
@@ -43,8 +43,8 @@
     },
     {
       "id": "fullscreen",
-      "zh-TW": "小訣竅：工具列的全螢幕按鈕適合專心寫作；再按一次即可回到一般編輯畫面。",
-      "en-US": "Tip: Use the toolbar Fullscreen button for focused writing, then choose it again to return to the normal editor."
+      "zh-TW": "小訣竅：工具列的全螢幕按鈕適合沉浸式寫作，自動隱藏無關面板；再按一次或按 Esc 即可回到一般編輯視圖。",
+      "en-US": "Tip: Use the toolbar Fullscreen button for distraction-free writing by hiding surrounding panels. Click it again or press Esc to return to the normal view."
     },
     {
       "id": "document-import",
@@ -63,8 +63,8 @@
     },
     {
       "id": "search-replace",
-      "zh-TW": "小訣竅：按 Cmd+F (搜尋) 或 Cmd+H (取代)，可在編輯器頂部開啟懸浮搜尋面板，支援區分大小寫、全字匹配、正規表達式與全部取代。",
-      "en-US": "Tip: Press Cmd+F (Find) or Cmd+H (Replace) to open the floating search bar, supporting case sensitivity, whole words, regex, and replace all."
+      "zh-TW": "小訣竅：按 Cmd/Ctrl+F (搜尋) 或 Cmd/Ctrl+H (取代)，可在編輯器頂部開啟懸浮搜尋面板，支援區分大小寫、全字匹配、正規表達式與全部取代。",
+      "en-US": "Tip: Press Cmd/Ctrl+F (Find) or Cmd/Ctrl+H (Replace) to open the floating search bar, supporting case sensitivity, whole words, regex, and replace all."
     },
     {
       "id": "highlight-color",
@@ -93,8 +93,8 @@
     },
     {
       "id": "vertical-slides",
-      "zh-TW": "小訣竅：簡報模式支援使用 -- 分隔垂直子投影片，按方向鍵上下即可深入探討子主題，大綱總覽 (O) 同步呈現 2D 矩陣縮圖。",
-      "en-US": "Tip: Presentation mode supports vertical sub-slides split by -- dividers. Use Up/Down arrows to explore subtopics, with full 2D grid matrix overview (O)."
+      "zh-TW": "小訣竅：簡報模式 (/present) 支援使用 --- 分隔水平投影片、-- 分隔垂直子投影片，按方向鍵上下深入主題，按 O 鍵可開啟 2D 矩陣總覽。",
+      "en-US": "Tip: Presentation mode (/present) supports horizontal slides with --- and vertical sub-slides with --. Navigate with arrow keys and press O for a 2D slide matrix overview."
     },
     {
       "id": "inline-footnotes",
@@ -128,8 +128,8 @@
     },
     {
       "id": "toolbar-audio-recording",
-      "zh-TW": "小訣竅：Markdown 編輯器頂部的麥克風支援 Local-First 離線錄音！錄音時會展開即時計時懸浮膠囊 (HUD)，支援隨時暫停/繼續、完成插入或取消，發布時才會上傳至 S3。",
-      "en-US": "Tip: Microphone recording includes a floating HUD with live timer, pause/resume, stop & insert, and cancel controls. Audio stays local in IndexedDB until published to S3."
+      "zh-TW": "小訣竅：Markdown 編輯器頂部的麥克風支援 Local-First 離線錄音！錄音時會展開即時計時懸浮膠囊 (HUD)，支援隨時暫停/繼續、完成插入或取消，發布時才會上傳至 888box。",
+      "en-US": "Tip: Microphone recording includes a floating HUD with live timer, pause/resume, stop & insert, and cancel controls. Audio stays local in IndexedDB until published to 888box."
     },
     {
       "id": "block-editor-voice-recording",
@@ -175,6 +175,56 @@
       "id": "vault-quick-presets",
       "zh-TW": "小訣竅：Seal 存取控制彈窗內建 10 款快速情境範本！涵蓋一次性密碼、加密遺產、吹哨揭弊、產品發布、定時教材等，點選自動代入最佳 Seal 釋出參數，絕不修改或覆蓋筆記現有內文。",
       "en-US": "Tip: The Seal Access Control modal includes 10 quick scenario presets (OTP, crypto inheritance, whistleblower, product launch, etc.). Clicking a preset auto-fills Seal parameters without modifying or overwriting your note text."
+    },
+    {
+      "id": "takumi-pdf-export",
+      "zh-TW": "小訣竅：在底欄匯出選單點擊「直接導出 PDF (.pdf)」，可透過輕量 Takumi 向量渲染引擎一鍵下載高解析度向量 PDF，完美保留中文排版、程式碼高亮、KaTeX 公式與 Mermaid 圖表！",
+      "en-US": "Tip: Choose 'Direct Export PDF (.pdf)' from the footer export menu to render crisp, high-resolution vector PDFs via the lightweight Takumi engine, faithfully preserving Chinese typography, syntax highlighting, KaTeX formulas, and Mermaid diagrams!"
+    },
+    {
+      "id": "url-to-markdown",
+      "zh-TW": "小訣竅：點擊「＋ 新增」選單中的「匯入網頁轉為 Markdown」，貼上任何外部文章或文件網址，系統會自動擷取乾淨正文並秒級轉化為結構清晰的 Markdown 筆記！",
+      "en-US": "Tip: Select 'Import webpage to Markdown' from the '+ New' menu, paste any article or documentation URL, and the system instantly extracts clean body text into structured Markdown!"
+    },
+    {
+      "id": "storage-capsule-autosave",
+      "zh-TW": "小訣竅：編輯器搭載複合儲存膠囊！支援 0ms 本機即時暫存、10 秒靜止自動雲端同步與版本防覆蓋衝突保護，無論意外關閉分頁或網路斷線，重新開啟筆記均可完整復原。",
+      "en-US": "Tip: Powered by the Composite Storage Capsule! Features 0ms instant local caching, 10-second idle cloud autosave, and conflict protection so your work is safely recovered even after accidental browser exits or network drops."
+    },
+    {
+      "id": "version-history-restore",
+      "zh-TW": "小訣竅：點擊底欄儲存膠囊旁的「歷史修訂版本」，即可瀏覽這篇筆記的所有歷史快照、比對文字差異，並能一鍵安全還原至任何先前的編輯版本。",
+      "en-US": "Tip: Click 'Revision History' beside the save capsule in the footer to browse all historical snapshots, inspect text diffs, and safely roll back to any past version with one click."
+    },
+    {
+      "id": "dual-lock-security",
+      "zh-TW": "小訣竅：系統提供編輯密碼 (pw) 與檢視密碼 (vpw) 雙重保護！編輯鎖保護筆記修改權限，檢視鎖更可保護閱讀隱私；若只設檢視鎖，該密碼即兼具編輯所有權。",
+      "en-US": "Tip: Granular dual-lock protection! Edit password (pw) protects modifications, while View password (vpw) restricts reading. If only a View lock is set, its password serves as the owner credential for both viewing and editing."
+    },
+    {
+      "id": "theme-personalization",
+      "zh-TW": "小訣竅：點擊底欄調色盤或進入筆記設定，即可在 GitHub、Notion、Dracula、Nord 等 20 款精選設計師主題間隨心切換，並支援亮色、暗色與跟隨系統模式。",
+      "en-US": "Tip: Click the palette icon or open note settings to switch between 20 curated themes (GitHub, Notion, Dracula, Nord, etc.) with seamless Light, Dark, or System appearance modes."
+    },
+    {
+      "id": "essential-shortcuts",
+      "zh-TW": "小訣竅：善用快捷鍵讓撰寫更流暢：Cmd/Ctrl+S 手動存檔、Cmd/Ctrl+B 粗體、Cmd/Ctrl+I 斜體、Cmd/Ctrl+K 插入連結、Cmd/Ctrl+F 搜尋、Cmd/Ctrl+H 取代。",
+      "en-US": "Tip: Boost your workflow with keyboard shortcuts: Cmd/Ctrl+S to save, Cmd/Ctrl+B for bold, Cmd/Ctrl+I for italic, Cmd/Ctrl+K for link, Cmd/Ctrl+F to find, and Cmd/Ctrl+H to replace."
+    },
+    {
+      "id": "pandoc-citations",
+      "zh-TW": "小訣竅：支援學術寫作常用的 Pandoc 引用語法！在文中輸入 [@Smith2020; @Doe2021]，文末搭配參考文獻區塊，即可自動對應標記並產生標準學術引用。",
+      "en-US": "Tip: Supports academic Pandoc citation syntax! Type [@Smith2020; @Doe2021] in your text with a bibliography block at the end to automatically generate structured academic citations."
+    },
+    {
+      "id": "block-editor-slash-commands",
+      "zh-TW": "小訣竅：在 Block 區塊編輯器的新行輸入「/」即可叫出 Slash 指令選單，快速插入標題、清單、表格、程式碼、公式、即時錄音與各類多媒體區塊！",
+      "en-US": "Tip: Type '/' on any empty line in the Block Editor to invoke the Slash command menu, quickly inserting headings, lists, tables, code fences, formulas, voice recordings, and multimedia blocks!"
+    },
+    {
+      "id": "share-annotations",
+      "zh-TW": "小訣竅：分享頁支援互動劃線註解功能！開啟「批註」設定後，讀者選取文章任何文字即可彈出註解按鈕，進行劃線重點標記與撰寫回饋討論。",
+      "en-US": "Tip: Share pages support interactive inline annotations! When Annotations are enabled in settings, readers can highlight any text passage to add highlights, comments, and feedback discussions."
     }
   ]
 }

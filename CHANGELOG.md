@@ -2,6 +2,30 @@
 
 ## [2026-09-29]
 
+- **📱 修復手機預覽模式下「💡 小訣竅」排版錯位與橫向溢出問題 (Fix Mobile Preview Welcome Tip Alignment & Containment)**：
+  - 徹底解決編輯器底部切換至「📱 手機」檢視時，預覽區小訣竅（`.preview-welcome`）寬度脫離手機 Mockup 邊界、文字橫向穿透兩側達 150px+ 之問題。
+  - 為 `.preview-pane` 加上 `position: relative;`，並在 `body.preview-device-mobile:not(.share-view)` 下嚴格約束 `.preview-welcome` 寬度與最大寬度為 `min(390px, calc(100% - 32px))`、置中對齊（`margin: 0 auto;`）、圓角 34px 與上下內距，使其完美嵌於手機螢幕內部。
+  - 補齊 `.editor-welcome__copy` 的 `overflow-wrap: break-word` 與 `word-break: break-word` 防護，並調整 640px 窄螢幕媒體查詢順序，確保任何解析度下小訣竅均能自動折行且垂直置中顯示。
+
+- **💡 編輯器啟動小訣竅全方位巡檢與核心功能擴充 (Editor Startup Tips Audit & Modern Capabilities Expansion)**：
+  - **既有 Tips 巡檢與修正**：
+    - 修正音訊錄製完成後的儲存端點敘述，由通用 S3 精準更正為專屬的「888box 附件服務」。
+    - 搜尋與取代快捷鍵全面擴充支援跨平台標示（`Cmd/Ctrl+F` 搜尋、`Cmd/Ctrl+H` 取代）。
+    - 復原／重做小訣竅補齊鍵盤快捷鍵說明（`Cmd/Ctrl+Z`、`Cmd/Ctrl+Shift+Z` / `Cmd/Ctrl+Y`）。
+    - 全螢幕寫作小訣竅增潤 `Esc` 退出指引；AI 排版小訣竅增潤自訂指令 AI 編輯改寫指引。
+  - **核心強大功能 Tips 補齊擴充（總數由 35 條擴充至 45 條）**：
+    - 🖨️ **Takumi 向量 PDF 導出**：介紹如何透過輕量 Takumi 向量渲染引擎一鍵下載高解析度向量 PDF（完美保留排版、KaTeX 公式、代碼高亮與 Mermaid）。
+    - 🌐 **網頁轉 Markdown 匯入**：介紹從「＋ 新增」選單直接貼上文章網址，秒級轉化為結構清晰 Markdown。
+    - 💾 **複合儲存膠囊與自動備份**：介紹 0ms 本機暫存、10 秒閒置雲端同步與版本防覆蓋衝突保護。
+    - ⏱️ **歷史修訂版本與一鍵還原**：介紹透過膠囊選單調閱所有 D1 快照與一鍵安全還原。
+    - 🔐 **雙向密碼鎖保護機制**：說明編輯密碼 (pw) 與檢視密碼 (vpw) 的獨立與相依存取控制模式。
+    - 🎨 **20 款主題與外觀切換**：介紹調色盤選單與深淺色模式的即時自訂。
+    - ⌨️ **常用高頻快捷鍵整理**：彙整存檔、格式化、連結、搜尋與取代的流暢寫作捷徑。
+    - 📚 **Pandoc 學術引用語法**：介紹 `[@citekey]` 與參考文獻區塊的標準文獻生成。
+    - ⚡ **Block 區塊編輯器 Slash 指令**：介紹輸入 `/` 快速插入標題、表格、代碼、公式、錄音與多媒體區塊。
+    - 💬 **分享頁劃線互動批註**：介紹選取文字即時彈出批註選單進行劃線討論。
+  - **同步更新**：同步執行 `node scripts/generate-agent-skill.mjs` 更新 generated 模組與 `.agent/skills/`。
+
 - **🗃️ 儲存與歷史控制群組收斂為「複合膠囊與浮動選單」(Consolidated Save & History Capsule with Popover Dropdown)**：
   - 將原先橫向平鋪的 5 個獨立元件（最近分享紀錄、版本歷史、本機存檔狀態徽章、手動儲存按鈕、手動/自動開關）收斂為一體成型的精簡複合膠囊按鈕（`.save-capsule-group`），節省底欄超過 60%（約 180px）水平空間，大幅降低視覺認知負擔並根除行動端工具列擁擠溢出。
   - **即時狀態直觀保留**：膠囊左側常駐顯示即時保存狀態徽章（`🟢 本機已存` / `☁️ 雲端已同步` / `🟡 同步中...` / `🔴 錯誤`），點擊維持 0 延遲立即同步寫入雲端。

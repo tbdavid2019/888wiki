@@ -51,6 +51,8 @@ export const getEditorCss = () => `
 
 .editor-welcome__section {
     width: min(100%, 44rem);
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .editor-welcome__section--tip {
@@ -71,6 +73,8 @@ export const getEditorCss = () => `
 .editor-welcome__copy {
     font-size: 15px;
     line-height: 1.82;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 .editor-welcome__copy p {
@@ -89,23 +93,6 @@ export const getEditorCss = () => `
 @keyframes welcomeCaret {
     0%, 100% { opacity: 1; }
     50% { opacity: 0; }
-}
-
-@media (max-width: 640px) {
-    .editor-welcome {
-        inset: 0 0 0 var(--editor-gutter-width, 22px);
-        padding: 28px 20px 72px;
-    }
-
-    .editor-welcome__section--tip {
-        margin-top: 20px;
-        padding-top: 18px;
-    }
-
-    .editor-welcome__label,
-    .editor-welcome__copy {
-        font-size: 14px;
-    }
 }
 
 .preview-welcome {
@@ -140,6 +127,27 @@ export const getEditorCss = () => `
 
 .preview-welcome .editor-welcome__copy p.is-typing::after {
     color: var(--theme-accent, #0969da);
+}
+
+@media (max-width: 640px) {
+    .editor-welcome {
+        inset: 0 0 0 var(--editor-gutter-width, 22px);
+        padding: 28px 20px 72px;
+    }
+
+    .preview-welcome {
+        padding: 24px 16px 48px;
+    }
+
+    .editor-welcome__section--tip {
+        margin-top: 20px;
+        padding-top: 18px;
+    }
+
+    .editor-welcome__label,
+    .editor-welcome__copy {
+        font-size: 14px;
+    }
 }
 
 .david-blocknote-audio-wrap {

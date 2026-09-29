@@ -45,3 +45,16 @@ test('new-note welcome survives reload until the author starts typing', () => {
     assert.match(baseTemplate, /sessionStorage\.removeItem\(NEW_ENTRY_WELCOME_STORAGE_KEY\)/)
     assert.match(baseTemplate, /targetEl\.appendChild\(section\);\s*targetEl\.hidden = false/)
 })
+
+test('mobile preview mode confines .preview-welcome strictly inside mockup frame without overflow', () => {
+    const baseCss = readFileSync(new URL('../src/styles/base.css.js', import.meta.url), 'utf8')
+    assert.match(baseCss, /\.preview-pane\s*\{[\s\S]*position:\s*relative;/)
+    assert.match(baseCss, /body\.preview-device-mobile:not\(\.share-view\)\s*\.preview-welcome\s*\{[\s\S]*width:\s*min\(390px,\s*calc\(100%\s*-\s*32px\)\);/)
+    assert.match(baseCss, /body\.preview-device-mobile:not\(\.share-view\)\s*\.preview-welcome\s*\{[\s\S]*max-width:\s*390px;/)
+    assert.match(baseCss, /body\.preview-device-mobile:not\(\.share-view\)\s*\.preview-welcome\s*\{[\s\S]*border-radius:\s*34px;/)
+    assert.match(baseCss, /body\.preview-device-mobile:not\(\.share-view\)\s*\.preview-welcome\s*\{[\s\S]*margin:\s*0\s+auto;/)
+    assert.match(baseCss, /body\.preview-device-mobile:not\(\.share-view\)\s*\.preview-welcome\s*\.editor-welcome__copy\s*\{[\s\S]*overflow-wrap:\s*break-word;/)
+    assert.match(editorCss, /\.editor-welcome__copy\s*\{[\s\S]*overflow-wrap:\s*break-word;/)
+    assert.match(editorCss, /@media\s*\(max-width:\s*640px\)[\s\S]*\.preview-welcome/)
+})
+
