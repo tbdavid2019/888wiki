@@ -195,5 +195,13 @@ test('renders slide-out TOC drawer and interactive outline controls on share vie
     assert.ok(closeBtn)
     closeBtn.dispatchEvent(new dom.window.Event('click'))
     assert.equal(widget.classList.contains('is-drawer-open'), false)
+
+    // Escape closes even when drawer is pinned
+    toggleBtn.dispatchEvent(new dom.window.Event('click'))
+    assert.equal(widget.classList.contains('is-pinned'), true)
+    assert.equal(widget.classList.contains('is-drawer-open'), true)
+    dom.window.document.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape' }))
+    assert.equal(widget.classList.contains('is-drawer-open'), false)
+    assert.equal(widget.classList.contains('is-pinned'), false)
 })
 

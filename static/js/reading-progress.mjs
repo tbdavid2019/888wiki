@@ -226,7 +226,9 @@ export const initReadingProgress = (root = document) => {
         })
 
         doc.addEventListener('keydown', e => {
-            if (e.key === 'Escape' && widget.classList.contains('is-drawer-open') && !widget.classList.contains('is-pinned')) {
+            if (e.key === 'Escape' && widget.classList.contains('is-drawer-open')) {
+                widget.classList.remove('is-pinned')
+                updatePinState()
                 closeDrawer(true)
             }
         })
