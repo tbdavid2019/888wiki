@@ -163,7 +163,7 @@ test('edit footer uses icon locks and share link opens in a new tab', () => {
 
 test('footer uses icon-first controls for history and docs', () => {
     assert.match(commonTemplateSource, /id="share-history-btn" class="toolbar-icon-button share-history-trigger"/)
-    assert.match(commonTemplateSource, /id="note-history-btn" class="toolbar-icon-button note-history-trigger"/)
+    assert.match(commonTemplateSource, /id="note-history-btn"[\s\S]*?note-history-trigger/)
     assert.match(commonTemplateSource, /class="sr-only">\$\{t\.recentSharesTitle\}<\/span>/)
     assert.match(commonTemplateSource, /class="sr-only">\$\{t\.historyTitle\}<\/span>/)
     assert.match(constantSource, /recentSharesTitle: 'Recent shares'/)

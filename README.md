@@ -35,7 +35,7 @@ Seal separates content passwords from release timing. Set a scheduled unlock, bu
 
 - **AI writing:** Format, rewrite, and translate drafts; transcribe recordings with Groq as the primary provider and Workers AI as fallback.
 - **Publish and present:** Share public or password-protected notes in a responsive reader with section-aware reading progress, one-tap dedicated print and vector PDF export, front-row import/export controls, mobile quick tools dropdown, restore D1 history, discuss selected passages, and present content as books or slides.
-- **Work offline:** Keep browser drafts in IndexedDB and sync pending changes when the connection returns.
+- **Work offline & Smart Sync:** Keep browser drafts in IndexedDB, monitor live sync status with a compact compound capsule, toggle idle autosave, and sync pending changes or restore D1 cloud history on demand.
 - **Keep control of the stack:** One-click deploy the Worker, KV/D1 note storage, and R2 image storage to your Cloudflare account. Core notes and images stay in your account; published audio and large-file attachments use the external 888box service.
 
 ## A Markdown workspace with room to shape the page

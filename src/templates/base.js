@@ -1971,7 +1971,7 @@ ${getMarkdownCss()}
         if (!APP_STATE.noteHistoryEnabled || !APP_STATE.isEdit) return;
 
         const modal = document.querySelector('.note-history-modal')
-        const openBtn = document.querySelector('#note-history-btn')
+        const openBtns = document.querySelectorAll('#note-history-btn, .note-history-trigger')
         const closeBtn = modal ? modal.querySelector('.note-history-close') : null
         const mask = modal ? modal.querySelector('.modal-mask') : null
         const list = modal ? modal.querySelector('[data-note-history-list]') : null
@@ -1982,7 +1982,7 @@ ${getMarkdownCss()}
         const copyBtn = modal ? modal.querySelector('[data-note-history-copy]') : null
         const restoreBtn = modal ? modal.querySelector('[data-note-history-restore]') : null
         const renderModeButtons = modal ? modal.querySelectorAll('[data-note-history-render-mode]') : []
-        if (!modal || !openBtn || !list || !bodyNode) return;
+        if (!modal || !openBtns.length || !list || !bodyNode) return;
 
         let versions = []
         let selectedVersion = null
@@ -2206,7 +2206,7 @@ ${getMarkdownCss()}
             })
         }
 
-        openBtn.addEventListener('click', open)
+        openBtns.forEach(btn => btn.addEventListener('click', open))
         if (closeBtn) closeBtn.addEventListener('click', close)
         if (mask) mask.addEventListener('click', close)
         modal.addEventListener('keydown', e => {

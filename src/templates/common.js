@@ -763,38 +763,67 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                                 </div>
                             </div>
                         </div>
-                        <div class="save-control-group" aria-label="${lang === 'zh-TW' ? '儲存設定' : 'Save settings'}">
-                            <button type="button" id="share-history-btn" class="toolbar-icon-button share-history-trigger" data-tooltip="${t.recentSharesTitle}" title="${lang === 'zh-TW' ? '最近分享紀錄' : 'Recent shares'}" aria-label="${lang === 'zh-TW' ? '最近分享紀錄' : 'Recent shares'}" aria-haspopup="dialog" aria-expanded="false">
-                                ${SVG_ICONS.shareHistory}
-                                <span class="sr-only">${t.recentSharesTitle}</span>
-                            </button>
-                            ${showNoteHistory ? `
-                                <button type="button" id="note-history-btn" class="toolbar-icon-button note-history-trigger" data-tooltip="${t.historyTitle}" aria-haspopup="dialog" aria-expanded="false" title="${t.historyTitle}" aria-label="${t.historyTitle}">
-                                    ${SVG_ICONS.history}
-                                    <span class="sr-only">${t.historyTitle}</span>
+                        <div class="dropdown-container save-dropdown" id="save-dropdown">
+                            <div class="save-control-group save-capsule-group" aria-label="${lang === 'zh-TW' ? '儲存設定' : 'Save settings'}">
+                                <button type="button" id="sync-status-badge" class="sync-status-badge" data-status="local" data-tooltip="${lang === 'zh-TW' ? '本機已即時保存 (0ms)。點擊立即同步至雲端' : 'Saved locally (0ms). Click to sync to cloud'}" title="${lang === 'zh-TW' ? '本機已即時保存 (0ms)。點擊立即同步至雲端' : 'Saved locally (0ms). Click to sync to cloud'}" aria-label="${lang === 'zh-TW' ? '同步狀態' : 'Sync status'}">
+                                    <span class="sync-status-dot"></span>
+                                    <span class="sync-status-text">${lang === 'zh-TW' ? '本機已存' : 'Saved locally'}</span>
                                 </button>
-                            ` : ''}
-                            <button type="button" id="sync-status-badge" class="sync-status-badge" data-status="local" data-tooltip="${lang === 'zh-TW' ? '本機已即時保存 (0ms)。點擊立即同步至雲端' : 'Saved locally (0ms). Click to sync to cloud'}" title="${lang === 'zh-TW' ? '本機已即時保存 (0ms)。點擊立即同步至雲端' : 'Saved locally (0ms). Click to sync to cloud'}" aria-label="${lang === 'zh-TW' ? '同步狀態' : 'Sync status'}">
-                                <span class="sync-status-dot"></span>
-                                <span class="sync-status-text">${lang === 'zh-TW' ? '本機已存' : 'Saved locally'}</span>
-                            </button>
-                            <button type="button" id="save-note-btn" class="toolbar-icon-button" data-tooltip="${lang === 'zh-TW' ? '儲存文章' : 'Save note'}" title="${lang === 'zh-TW' ? '儲存文章' : 'Save note'}" aria-label="${lang === 'zh-TW' ? '儲存文章' : 'Save note'}">
-                                ${SVG_ICONS.save}
-                                <span class="toolbar-button-label">${lang === 'zh-TW' ? '儲存' : 'Save'}</span>
-                            </button>
-                            ${RAIL_SWITCH({
-                                id: 'autosave-toggle', // id="autosave-toggle"
-                                className: 'autosave-rail-switch',
-                                checked: autosave !== false && share === true,
-                                disabled: share !== true,
-                                ariaLabel: lang === 'zh-TW' ? '啟用文章自動儲存' : 'Enable note autosave',
-                                checkedTitle: share ? (lang === 'zh-TW' ? '停止輸入 10 秒後自動儲存' : 'Save automatically after 10 seconds of inactivity') : (lang === 'zh-TW' ? '請先發布文章才能啟用 autosave' : 'Publish this note before enabling autosave'),
-                                uncheckedTitle: share ? (lang === 'zh-TW' ? '停止輸入 10 秒後自動儲存' : 'Save automatically after 10 seconds of inactivity') : (lang === 'zh-TW' ? '請先發布文章才能啟用 autosave' : 'Publish this note before enabling autosave'),
-                                checkedText: lang === 'zh-TW' ? '自動' : 'Auto',
-                                uncheckedText: lang === 'zh-TW' ? '手動' : 'Manual',
-                                checkedValue: 'true',
-                                uncheckedValue: 'false',
-                            })}
+                                <button type="button" id="save-menu-trigger-btn" class="toolbar-icon-button dropdown-trigger save-menu-trigger" data-tooltip="${lang === 'zh-TW' ? '儲存與歷史選項' : 'Save & history options'}" title="${lang === 'zh-TW' ? '儲存與歷史選項' : 'Save & history options'}" aria-label="${lang === 'zh-TW' ? '儲存與歷史選項' : 'Save & history options'}" aria-haspopup="menu" aria-expanded="false">
+                                    <span class="toolbar-button-caret" aria-hidden="true">▾</span>
+                                </button>
+                            </div>
+                            <div class="dropdown-menu save-dropdown-menu" role="menu">
+                                <div class="dropdown-menu-label">${lang === 'zh-TW' ? '儲存與同步' : 'Save & Sync'}</div>
+                                <div class="dropdown-group-card">
+                                    <button type="button" id="save-note-btn" class="dropdown-item dropdown-item-rich" data-tooltip="${lang === 'zh-TW' ? '儲存文章' : 'Save note'}" title="${lang === 'zh-TW' ? '儲存文章' : 'Save note'}" aria-label="${lang === 'zh-TW' ? '儲存文章' : 'Save note'}">
+                                        ${SVG_ICONS.save}
+                                        <span class="dropdown-item-copy">
+                                            <strong>${lang === 'zh-TW' ? '立即同步至雲端' : 'Sync to Cloud Now'}</strong>
+                                            <small>${lang === 'zh-TW' ? '儲存當前修改並寫入雲端' : 'Save current changes to cloud'}</small>
+                                        </span>
+                                        <span class="toolbar-button-label" style="display:none;">${lang === 'zh-TW' ? '儲存' : 'Save'}</span>
+                                        <kbd class="dropdown-shortcut">⌘S</kbd>
+                                    </button>
+                                    <div class="dropdown-item-toggle">
+                                        <span>${lang === 'zh-TW' ? '自動儲存 (10秒閒置)' : 'Autosave (10s idle)'}</span>
+                                        ${RAIL_SWITCH({
+                                            id: 'autosave-toggle', // id="autosave-toggle"
+                                            className: 'autosave-rail-switch',
+                                            checked: autosave !== false && share === true,
+                                            disabled: share !== true,
+                                            ariaLabel: lang === 'zh-TW' ? '啟用文章自動儲存' : 'Enable note autosave',
+                                            checkedTitle: share ? (lang === 'zh-TW' ? '停止輸入 10 秒後自動儲存' : 'Save automatically after 10 seconds of inactivity') : (lang === 'zh-TW' ? '請先發布文章才能啟用 autosave' : 'Publish this note before enabling autosave'),
+                                            uncheckedTitle: share ? (lang === 'zh-TW' ? '停止輸入 10 秒後自動儲存' : 'Save automatically after 10 seconds of inactivity') : (lang === 'zh-TW' ? '請先發布文章才能啟用 autosave' : 'Publish this note before enabling autosave'),
+                                            checkedText: lang === 'zh-TW' ? '自動' : 'Auto',
+                                            uncheckedText: lang === 'zh-TW' ? '手動' : 'Manual',
+                                            checkedValue: 'true',
+                                            uncheckedValue: 'false',
+                                        })}
+                                    </div>
+                                </div>
+                                <div class="dropdown-menu-label">${lang === 'zh-TW' ? '版本與紀錄' : 'History & Records'}</div>
+                                <div class="dropdown-group-card">
+                                    ${showNoteHistory ? `
+                                        <button type="button" id="note-history-btn" class="toolbar-icon-button note-history-trigger dropdown-item dropdown-item-rich" data-tooltip="${t.historyTitle}" aria-haspopup="dialog" aria-expanded="false" title="${t.historyTitle}" aria-label="${t.historyTitle}">
+                                            ${SVG_ICONS.history}
+                                            <span class="dropdown-item-copy">
+                                                <strong>${t.historyTitle}</strong>
+                                                <small>${lang === 'zh-TW' ? '檢視歷史修訂版本與還原' : 'View past revisions & restore'}</small>
+                                            </span>
+                                            <span class="sr-only">${t.historyTitle}</span>
+                                        </button>
+                                    ` : ''}
+                                    <button type="button" id="share-history-btn" class="toolbar-icon-button share-history-trigger dropdown-item dropdown-item-rich" data-tooltip="${t.recentSharesTitle}" title="${lang === 'zh-TW' ? '最近分享紀錄' : 'Recent shares'}" aria-label="${lang === 'zh-TW' ? '最近分享紀錄' : 'Recent shares'}" aria-haspopup="dialog" aria-expanded="false">
+                                        ${SVG_ICONS.shareHistory}
+                                        <span class="dropdown-item-copy">
+                                            <strong>${t.recentSharesTitle}</strong>
+                                            <small>${lang === 'zh-TW' ? '瀏覽本機建立過的所有發布連結' : 'Recent shares on this browser'}</small>
+                                        </span>
+                                        <span class="sr-only">${t.recentSharesTitle}</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         ${isBlockEditor ? `
                         ${TOOLBAR_PRINT_BUTTON(lang)}
