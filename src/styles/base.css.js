@@ -3042,9 +3042,22 @@ html[data-ui-theme="dark"] .share-menu-trigger.is-published {
     box-shadow: none;
     background: transparent;
     height: 100%;
-    padding: 0 8px 0 10px;
+    padding: 0 7px;
+    gap: 4px;
     transform: none !important;
     transition: background-color 0.15s ease;
+}
+.sync-status-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+.sync-status-icon .svg-icon {
+    width: 15px;
+    height: 15px;
 }
 .save-capsule-group .sync-status-badge:hover {
     background: color-mix(in srgb, var(--toolbar-bg, #faf9f5) 86%, var(--toolbar-accent, #cc785c));

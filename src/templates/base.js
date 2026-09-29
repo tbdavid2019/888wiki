@@ -2306,7 +2306,9 @@ ${getMarkdownCss()}
             if ($syncStatusBadge && $syncStatusText) {
                 $syncStatusText.textContent = message
                 $syncStatusBadge.dataset.status = isError ? 'error' : statusType
-                $syncStatusBadge.title = message + (APP_STATE.lang === 'zh-TW' ? ' (點擊立即同步至雲端)' : ' (Click to sync to cloud)')
+                const tooltipText = message + (APP_STATE.lang === 'zh-TW' ? ' (點擊立即同步至雲端)' : ' (Click to sync to cloud)')
+                $syncStatusBadge.title = tooltipText
+                $syncStatusBadge.dataset.tooltip = tooltipText
             }
         }
 

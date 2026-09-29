@@ -136,6 +136,7 @@ export const SVG_ICONS = {
     languages: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6"></path><path d="m4 14 6-6 2-3"></path><path d="M2 5h12"></path><path d="M7 2h1"></path><path d="m22 22-5-10-5 10"></path><path d="M14 18h6"></path></svg>`,
     install: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`,
     bot: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg>`,
+    cloud: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"></path></svg>`,
     mic: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>`,
     search: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>`,
     highlighter: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11-6 6v3h3l6-6"></path><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"></path></svg>`,
@@ -877,8 +878,9 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                         <div class="dropdown-container save-dropdown" id="save-dropdown">
                             <div class="save-control-group save-capsule-group" aria-label="${lang === 'zh-TW' ? '儲存設定' : 'Save settings'}">
                                 <button type="button" id="sync-status-badge" class="sync-status-badge" data-status="local" data-tooltip="${lang === 'zh-TW' ? '本機已即時保存 (0ms)。點擊立即同步至雲端' : 'Saved locally (0ms). Click to sync to cloud'}" title="${lang === 'zh-TW' ? '本機已即時保存 (0ms)。點擊立即同步至雲端' : 'Saved locally (0ms). Click to sync to cloud'}" aria-label="${lang === 'zh-TW' ? '同步狀態' : 'Sync status'}">
+                                    <span class="sync-status-icon">${SVG_ICONS.cloud}</span>
                                     <span class="sync-status-dot"></span>
-                                    <span class="sync-status-text">${lang === 'zh-TW' ? '本機已存' : 'Saved locally'}</span>
+                                    <span class="sync-status-text sr-only">${lang === 'zh-TW' ? '本機已存' : 'Saved locally'}</span>
                                 </button>
                                 <button type="button" id="save-menu-trigger-btn" class="toolbar-icon-button dropdown-trigger save-menu-trigger" data-tooltip="${lang === 'zh-TW' ? '儲存與歷史選項' : 'Save & history options'}" title="${lang === 'zh-TW' ? '儲存與歷史選項' : 'Save & history options'}" aria-label="${lang === 'zh-TW' ? '儲存與歷史選項' : 'Save & history options'}" aria-haspopup="menu" aria-expanded="false">
                                     <span class="toolbar-button-caret" aria-hidden="true">▾</span>
@@ -936,6 +938,21 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                                 </div>
                             </div>
                         </div>
+                        ${!isEdit || isBlockEditor || mode === 'md' ? `
+                            ${THEME_DROPDOWN_MENU(lang, theme, getThemeLabel)}
+                            <button type="button" id="ui-theme-toggle-btn" class="toolbar-icon-button ui-theme-toggle-btn" data-tooltip="${lang === 'zh-TW' ? '切換介面深淺模式' : 'Toggle UI theme'}" title="${lang === 'zh-TW' ? '切換介面深淺模式' : 'Toggle UI theme'}" aria-label="${lang === 'zh-TW' ? '切換介面深淺模式' : 'Toggle UI theme'}">
+                                <span class="ui-theme-icon-sun" aria-hidden="true">${SVG_ICONS.sun}</span>
+                                <span class="ui-theme-icon-moon" aria-hidden="true">${SVG_ICONS.moon}</span>
+                                <span class="toolbar-button-label">${lang === 'zh-TW' ? '深淺' : 'Theme'}</span>
+                            </button>
+                            ${WIDTH_DROPDOWN_MENU(lang, effectiveWidth)}
+                        ` : `
+                            <button type="button" id="ui-theme-toggle-btn" class="toolbar-icon-button ui-theme-toggle-btn" data-tooltip="${lang === 'zh-TW' ? '切換介面深淺模式' : 'Toggle UI theme'}" title="${lang === 'zh-TW' ? '切換介面深淺模式' : 'Toggle UI theme'}" aria-label="${lang === 'zh-TW' ? '切換介面深淺模式' : 'Toggle UI theme'}">
+                                <span class="ui-theme-icon-sun" aria-hidden="true">${SVG_ICONS.sun}</span>
+                                <span class="ui-theme-icon-moon" aria-hidden="true">${SVG_ICONS.moon}</span>
+                                <span class="toolbar-button-label">${lang === 'zh-TW' ? '深淺' : 'Theme'}</span>
+                            </button>
+                        `}
                         ${isBlockEditor ? `
                         ${TOOLBAR_PRINT_BUTTON(lang)}
                         <button type="button" id="import-md-btn" class="toolbar-icon-button" data-tooltip="${t.importFileBlock}" title="${t.importFileBlock}" aria-label="${t.importFileBlock}">
@@ -1089,15 +1106,15 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                             })}
                         </div>
                     </div>
-                    ${!isEdit || mode === 'md' ? `
-                        ${WIDTH_DROPDOWN_MENU(lang, effectiveWidth)}
+                    ${!isEdit ? `
                         ${THEME_DROPDOWN_MENU(lang, theme, getThemeLabel)}
+                        <button type="button" id="ui-theme-toggle-btn" class="toolbar-icon-button ui-theme-toggle-btn" data-tooltip="${lang === 'zh-TW' ? '切換介面深淺模式' : 'Toggle UI theme'}" title="${lang === 'zh-TW' ? '切換介面深淺模式' : 'Toggle UI theme'}" aria-label="${lang === 'zh-TW' ? '切換介面深淺模式' : 'Toggle UI theme'}">
+                            <span class="ui-theme-icon-sun" aria-hidden="true">${SVG_ICONS.sun}</span>
+                            <span class="ui-theme-icon-moon" aria-hidden="true">${SVG_ICONS.moon}</span>
+                            <span class="toolbar-button-label">${lang === 'zh-TW' ? '深淺' : 'Theme'}</span>
+                        </button>
+                        ${WIDTH_DROPDOWN_MENU(lang, effectiveWidth)}
                     ` : ''}
-                    <button type="button" id="ui-theme-toggle-btn" class="toolbar-icon-button ui-theme-toggle-btn" data-tooltip="${lang === 'zh-TW' ? '切換介面深淺模式' : 'Toggle UI theme'}" title="${lang === 'zh-TW' ? '切換介面深淺模式' : 'Toggle UI theme'}" aria-label="${lang === 'zh-TW' ? '切換介面深淺模式' : 'Toggle UI theme'}">
-                        <span class="ui-theme-icon-sun" aria-hidden="true">${SVG_ICONS.sun}</span>
-                        <span class="ui-theme-icon-moon" aria-hidden="true">${SVG_ICONS.moon}</span>
-                        <span class="toolbar-button-label">${lang === 'zh-TW' ? '深淺' : 'Theme'}</span>
-                    </button>
                     ${sharePath ? `
                         <div id="share-analytics-hook">
                             ${safeViewCount === null ? '' : `

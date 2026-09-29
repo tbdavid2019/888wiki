@@ -272,4 +272,33 @@ test('footer dev-info dropdown consolidates GitHub, Agent Skill, API docs, and P
     assert.match(baseCssSource, /\.footer-section-info\s*\{\s*display:\s*none\s*!important;/)
 })
 
+test('save capsule uses compact cloud icon badge and positions theme/dark-mode/width beside publish & save', () => {
+    const editDoc = renderFooter({ isEdit: true, mode: 'md' })
+    const syncBadge = editDoc.querySelector('#sync-status-badge')
+    assert.ok(syncBadge, '#sync-status-badge must exist')
+    assert.ok(syncBadge.querySelector('.sync-status-icon'), '.sync-status-icon must exist')
+    assert.ok(syncBadge.querySelector('.sync-status-dot'), '.sync-status-dot must exist')
+    assert.ok(syncBadge.querySelector('.sync-status-text.sr-only'), '.sync-status-text must be visually hidden with sr-only')
+
+    // Verify ordering: Publish & Save are followed by Theme, Dark/Light, and Width
+    const editSection = editDoc.querySelector('.footer-section-edit')
+    assert.ok(editSection, '.footer-section-edit must exist')
+    const shareDropdown = editSection.querySelector('#share-dropdown')
+    const saveDropdown = editSection.querySelector('#save-dropdown')
+    const themeDropdown = editSection.querySelector('#theme-dropdown')
+    const uiThemeBtn = editSection.querySelector('#ui-theme-toggle-btn')
+    const widthDropdown = editSection.querySelector('#width-dropdown')
+
+    assert.ok(shareDropdown, '#share-dropdown must be in edit section')
+    assert.ok(saveDropdown, '#save-dropdown must be in edit section')
+    assert.ok(themeDropdown, '#theme-dropdown must be in edit section next to save')
+    assert.ok(uiThemeBtn, '#ui-theme-toggle-btn must be in edit section next to save')
+    assert.ok(widthDropdown, '#width-dropdown must be in edit section next to save')
+
+    // Document tools follow the visual controls
+    const printBtn = editSection.querySelector('#toolbar-print-btn')
+    assert.ok(printBtn, '#toolbar-print-btn must exist in edit section')
+})
+
+
 
