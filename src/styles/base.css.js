@@ -2370,7 +2370,8 @@ html[data-ui-theme="dark"] .seal-countdown-sentence {
 .new-note-dropdown .dropdown-menu,
 .export-dropdown .dropdown-menu,
 .copy-dropdown .dropdown-menu,
-.save-dropdown .dropdown-menu {
+.save-dropdown .dropdown-menu,
+.dev-info-dropdown .dropdown-menu {
     min-width: 250px;
     max-height: min(620px, calc(100dvh - 24px));
     overflow-y: auto;
@@ -2381,7 +2382,8 @@ html[data-ui-theme="dark"] .seal-countdown-sentence {
 .new-note-menu-trigger,
 .export-menu-trigger,
 .copy-menu-trigger,
-.save-menu-trigger {
+.save-menu-trigger,
+.dev-info-menu-trigger {
     width: auto;
     min-width: var(--toolbar-height);
     padding: 0 6px;
@@ -2391,6 +2393,8 @@ html[data-ui-theme="dark"] .seal-countdown-sentence {
 .new-note-menu-trigger .toolbar-button-caret,
 .export-menu-trigger .toolbar-button-caret,
 .copy-menu-trigger .toolbar-button-caret,
+.save-menu-trigger .toolbar-button-caret,
+.dev-info-menu-trigger .toolbar-button-caret,
 .toolbar-button-caret {
     display: inline-flex;
     align-items: center;
@@ -2569,6 +2573,14 @@ html[data-ui-theme="dark"] .share-menu-trigger.is-published {
 .more-dropdown-menu {
     min-width: 250px;
     max-width: 320px;
+}
+
+/* Dev & Agent info dropdown */
+.dev-info-dropdown .dropdown-menu {
+    min-width: 260px;
+    max-width: 320px;
+    left: auto;
+    right: 0;
 }
 
 /* Shared state indicator: green dot on published state */
@@ -5299,11 +5311,14 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
 
     .footer-section-create,
     .footer-section-edit,
-    .footer-section-appearance,
-    .footer-section-info {
+    .footer-section-appearance {
         flex: 0 0 auto !important;
         width: auto !important;
         display: flex !important;
+    }
+
+    .footer-section-info {
+        display: none !important;
     }
 
     .more-dropdown {
@@ -5323,8 +5338,7 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
     }
 
     .footer-section-edit .footer-section-body,
-    .footer-section-appearance .footer-section-body,
-    .footer-section-info .footer-section-body {
+    .footer-section-appearance .footer-section-body {
         display: flex !important;
         flex-wrap: nowrap !important;
         gap: 8px !important;

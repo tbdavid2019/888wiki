@@ -135,6 +135,7 @@ export const SVG_ICONS = {
     width: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="12" x2="3" y2="12"></line><path d="m18 15 3-3-3-3"></path><path d="m6 9-3 3 3 3"></path></svg>`,
     languages: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6"></path><path d="m4 14 6-6 2-3"></path><path d="M2 5h12"></path><path d="M7 2h1"></path><path d="m22 22-5-10-5 10"></path><path d="M14 18h6"></path></svg>`,
     install: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`,
+    bot: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg>`,
     mic: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>`,
     search: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>`,
     highlighter: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11-6 6v3h3l6-6"></path><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"></path></svg>`,
@@ -500,7 +501,7 @@ export const MORE_DROPDOWN_MENU = (lang, { isEdit = false } = {}) => {
                 </button>
                 ` : ''}
                 <div class="dropdown-divider"></div>
-                <div class="dropdown-menu-label">${isZh ? '說明與指南' : 'Help & Documentation'}</div>
+                <div class="dropdown-menu-label">${isZh ? '說明與開發者' : 'Help & Developers'}</div>
                 <a class="dropdown-item dropdown-item-rich" href="/docs" target="_blank" rel="noreferrer" role="menuitem">
                     ${SVG_ICONS.book}
                     <span class="dropdown-item-copy">
@@ -508,6 +509,77 @@ export const MORE_DROPDOWN_MENU = (lang, { isEdit = false } = {}) => {
                         <small>${isZh ? '查閱快捷鍵、語法與進階技巧' : 'Shortcuts, syntax, and tips'}</small>
                     </span>
                 </a>
+                <a class="dropdown-item dropdown-item-rich" href="/docs/api" target="_blank" rel="noreferrer" role="menuitem">
+                    ${SVG_ICONS.apiDocs}
+                    <span class="dropdown-item-copy">
+                        <strong>${isZh ? 'REST API / OpenAPI 文件' : 'REST API & OpenAPI Docs'}</strong>
+                        <small>${isZh ? '開放端點規格與 Swagger 文件' : 'Endpoint specs & Swagger docs'}</small>
+                    </span>
+                </a>
+                <a class="dropdown-item dropdown-item-rich" href="/.well-known/agent-skills/david888-wiki-publisher/SKILL.md" target="_blank" rel="noreferrer" role="menuitem">
+                    ${SVG_ICONS.sparkles}
+                    <span class="dropdown-item-copy">
+                        <strong>Agent Skill (SKILL.md)</strong>
+                        <small>${isZh ? 'AI 代理技能與發布工具規格' : 'AI Agent skill specification'}</small>
+                    </span>
+                </a>
+                <a class="dropdown-item dropdown-item-rich" href="https://github.com/tbdavid2019/888wiki" target="_blank" rel="noreferrer" role="menuitem">
+                    ${SVG_ICONS.github}
+                    <span class="dropdown-item-copy">
+                        <strong>GitHub 專案原始碼</strong>
+                        <small>${isZh ? '開源社群與更新紀錄' : 'Open-source repository'}</small>
+                    </span>
+                </a>
+            </div>
+        </div>
+    `
+}
+
+export const DEV_INFO_DROPDOWN_MENU = (lang, t = getLangText(lang)) => {
+    const isZh = lang === 'zh-TW'
+    const tooltipText = isZh ? '開發者與 Agent 資訊' : 'Developer & Agent info'
+    return `
+        <div class="dropdown-container dev-info-dropdown" id="dev-info-dropdown">
+            <button type="button" id="dev-info-menu-btn" class="toolbar-icon-button dropdown-trigger dev-info-menu-trigger" data-tooltip="${tooltipText}" title="${tooltipText}" aria-label="${tooltipText}" aria-haspopup="menu" aria-expanded="false">
+                ${SVG_ICONS.bot}
+                <span class="toolbar-button-label">${isZh ? '開發' : 'Dev'}</span>
+                <span class="toolbar-button-caret" aria-hidden="true">▾</span>
+            </button>
+            <div class="dropdown-menu dev-info-dropdown-menu" role="menu">
+                <div class="dropdown-menu-label">${isZh ? '開發與 Agent' : 'Developer & Agent'}</div>
+                <div class="dropdown-group-card">
+                    <a class="dropdown-item dropdown-item-rich" target="_blank" href="https://github.com/tbdavid2019/888wiki" rel="noreferrer" role="menuitem">
+                        ${SVG_ICONS.github}
+                        <span class="dropdown-item-copy">
+                            <strong>GitHub</strong>
+                            <small>${isZh ? '開源專案原始碼與貢獻' : 'Open-source repository'}</small>
+                        </span>
+                    </a>
+                    <a class="dropdown-item dropdown-item-rich" target="_blank" href="/.well-known/agent-skills/david888-wiki-publisher/SKILL.md" rel="noreferrer" role="menuitem">
+                        ${SVG_ICONS.sparkles}
+                        <span class="dropdown-item-copy">
+                            <strong>${t?.skillTitle || 'Agent Skill'}</strong>
+                            <small>${isZh ? 'AI 代理技能與發布工具規格' : 'AI Agent skill specification'}</small>
+                        </span>
+                    </a>
+                    <a class="dropdown-item dropdown-item-rich" target="_blank" href="/docs/api" rel="noreferrer" role="menuitem">
+                        ${SVG_ICONS.apiDocs}
+                        <span class="dropdown-item-copy">
+                            <strong>${t?.apiDocTitle || 'REST API / OpenAPI'}</strong>
+                            <small>${isZh ? '端點規格與 Swagger 文件' : 'Endpoint specs & Swagger UI'}</small>
+                        </span>
+                    </a>
+                </div>
+                <div class="dropdown-menu-label">${isZh ? '應用程式' : 'Application'}</div>
+                <div class="dropdown-group-card">
+                    <button type="button" id="pwa-install-manual-btn" class="dropdown-item dropdown-item-rich pwa-install-manual-btn" onclick="window.__handlePwaInstall ? window.__handlePwaInstall(this) : (window.showToast ? window.showToast('${isZh ? 'App 安裝中...' : 'Installing App...'}') : alert('App'))" role="menuitem">
+                        ${SVG_ICONS.install}
+                        <span class="dropdown-item-copy">
+                            <strong>${isZh ? '安裝 PWA 應用' : 'Install PWA App'}</strong>
+                            <small>${isZh ? '離線可用之獨立應用' : 'Offline-ready standalone application'}</small>
+                        </span>
+                    </button>
+                </div>
             </div>
         </div>
     `
@@ -1041,22 +1113,7 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
 
             <div class="footer-section footer-section-info">
                 <div class="footer-section-body">
-                    <a class="toolbar-icon-link" data-tooltip="GitHub" title="GitHub" target="_blank" href="https://github.com/tbdavid2019/888wiki" rel="noreferrer">
-                        ${SVG_ICONS.github}
-                        <span class="toolbar-button-label">GitHub</span>
-                    </a>
-                    <button type="button" id="pwa-install-manual-btn" class="toolbar-icon-button pwa-install-manual-btn" onclick="window.__handlePwaInstall ? window.__handlePwaInstall(this) : (window.showToast ? window.showToast('App 安裝中...') : alert('App'))" data-tooltip="${lang === 'zh-TW' ? '安裝 App' : 'Install App'}" title="${lang === 'zh-TW' ? '安裝 App' : 'Install App'}" aria-label="${lang === 'zh-TW' ? '安裝 App' : 'Install App'}">
-                        ${SVG_ICONS.install}
-                        <span class="toolbar-button-label">${lang === 'zh-TW' ? '安裝' : 'App'}</span>
-                    </button>
-                    <a class="toolbar-icon-link" data-tooltip="${t.skillTitle}" title="${t.skillTitle}" aria-label="${t.skillTitle}" target="_blank" href="/.well-known/agent-skills/david888-wiki-publisher/SKILL.md" rel="noreferrer">
-                        ${SVG_ICONS.sparkles}
-                        <span class="toolbar-button-label">Skill</span>
-                    </a>
-                    <a class="toolbar-icon-link" data-tooltip="${t.apiDocTitle}" title="${t.apiDocTitle}" aria-label="${t.apiDocTitle}" target="_blank" href="/docs/api" rel="noreferrer">
-                        ${SVG_ICONS.apiDocs}
-                        <span class="toolbar-button-label">API</span>
-                    </a>
+                    ${DEV_INFO_DROPDOWN_MENU(lang, t)}
                 </div>
             </div>
         </div>

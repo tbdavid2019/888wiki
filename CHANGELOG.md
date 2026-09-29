@@ -2,6 +2,15 @@
 
 ## [2026-09-29]
 
+- **🤖 開發者與 Agent 資訊整合為單一圖標下拉選單並於行動端自動隱藏 (Consolidated Dev & Agent Info Dropdown with Mobile Auto-Hide)**：
+  - **行動端 RWD 徹底精簡**：在小螢幕／行動端（`<= 960px`）將底欄最右側資訊區（`.footer-section-info`）預設隱藏（`display: none !important;`），為核心文字閱讀與筆記撰寫留出最寬裕之操作視野，避免人類在手機操作時產生視覺干擾與誤觸。
+  - **行動端替代路徑**：在行動版「更多 (...)」浮動選單（`MORE_DROPDOWN_MENU`）的「說明與開發者」區塊中，同步補齊 API 文件、Agent Skill 規格以及 GitHub 專案連結，確保行動使用者有需求時仍能隨時查閱。
+  - **桌面版收攏為單一入口**：在桌面版（`> 960px`）將原先橫向平鋪佔據超過 200px 的 4 個獨立按鈕（GitHub、PWA 安裝、Agent Skill、API 文件）收斂為單一精美圖標按鈕（`#dev-info-menu-btn`，配備 Lucide Bot 圖標與下拉指示箭頭），節省底欄右側 75% 水平空間。
+  - **浮動命令選單結構**：點擊開啟專屬的「開發與 Agent」選單（`.dev-info-dropdown-menu`），結構化分組展示：
+    - **開發與 Agent**：GitHub 開源專案原始碼、Agent Skill (`SKILL.md`) AI 代理技能規範、REST API / OpenAPI Swagger 互動文件。
+    - **應用程式**：安裝 PWA 獨立應用按鈕（`#pwa-install-manual-btn`），並與現行 PWA 安裝攔截器完全連動。
+  - 完美相容 20 款排版主題、深淺色切換與現有自動化測試合約（507/507 全部通過）。
+
 - **🔒 安全與存取保護整合至「發布與分享」選單 (Consolidated Security & Access Protection into Share Dropdown Menu)**：
   - **底欄徹底精簡**：移除底部工具列中分散且重複的「編輯鎖（`opt-pw`）」、「閱讀鎖（`opt-pw-view`）」與「Seal 存取控制（`vault-presets-toolbar-btn`）」按鈕，節省底欄超過 120px 水平空間，視覺排版更加俐落簡約，避免行動端窄螢幕橫向擁擠溢出。
   - **統一安全設定卡片（Security & Access Card）**：在「發布與分享」浮動下拉選單（`share-dropdown-menu`）中新增獨立專屬的「安全與存取保護」區塊（已發布與未發布狀態皆具備）：

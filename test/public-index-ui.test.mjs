@@ -101,7 +101,7 @@ test('language strings cover public index actions', () => {
 test('footer skill link points to the built-in well-known skill endpoint', () => {
     assert.match(commonTemplateSource, /href="\/\.well-known\/agent-skills\/david888-wiki-publisher\/SKILL\.md"/)
     assert.match(commonTemplateSource, /href="\/docs\/api"/)
-    assert.match(commonTemplateSource, /class="toolbar-icon-link"/)
+    assert.match(commonTemplateSource, /id="dev-info-menu-btn"/)
     assert.doesNotMatch(commonTemplateSource, /github\.com\/tbdavid2019\/cf-notepad\/blob\/main\/skills\/SKILL\.md/)
 })
 

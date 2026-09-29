@@ -239,5 +239,37 @@ test('SVG_ICONS: import has upload icon (arrow up) and export has download icon 
     assert.ok(SVG_ICONS.printer, 'printer icon must exist')
     assert.match(SVG_ICONS.import, /17 8 12 3 7 8/, 'import icon must point up (upload)')
     assert.match(SVG_ICONS.export, /7 10 12 15 17 10/, 'export icon must point down (download)')
+    assert.ok(SVG_ICONS.bot, 'bot icon must exist')
 })
+
+test('footer dev-info dropdown consolidates GitHub, Agent Skill, API docs, and PWA install buttons', () => {
+    const editDoc = renderFooter({ isEdit: true })
+    const devInfoDropdown = editDoc.querySelector('#dev-info-dropdown')
+    assert.ok(devInfoDropdown, '#dev-info-dropdown container must exist')
+    assert.ok(devInfoDropdown.classList.contains('dropdown-container'))
+
+    const trigger = devInfoDropdown.querySelector('#dev-info-menu-btn')
+    assert.ok(trigger, '#dev-info-menu-btn must exist inside #dev-info-dropdown')
+    assert.ok(trigger.classList.contains('dropdown-trigger'))
+    assert.match(trigger.dataset.tooltip || '', /開發|Agent/)
+
+    const menu = devInfoDropdown.querySelector('.dev-info-dropdown-menu')
+    assert.ok(menu, '.dev-info-dropdown-menu must exist')
+    assert.ok(menu.querySelector('a[href="https://github.com/tbdavid2019/888wiki"]'), 'GitHub link must exist')
+    assert.ok(menu.querySelector('a[href="/.well-known/agent-skills/david888-wiki-publisher/SKILL.md"]'), 'Agent skill link must exist')
+    assert.ok(menu.querySelector('a[href="/docs/api"]'), 'API docs link must exist')
+    assert.ok(menu.querySelector('#pwa-install-manual-btn'), '#pwa-install-manual-btn must exist in dev-info menu')
+
+    // Mobile more dropdown also exposes doc & dev links for mobile users
+    const moreMenu = editDoc.querySelector('.more-dropdown-menu')
+    assert.ok(moreMenu.querySelector('a[href="/docs"]'), 'Docs guide link must exist in more menu')
+    assert.ok(moreMenu.querySelector('a[href="/docs/api"]'), 'API docs link must exist in more menu')
+    assert.ok(moreMenu.querySelector('a[href="/.well-known/agent-skills/david888-wiki-publisher/SKILL.md"]'), 'Agent skill link must exist in more menu')
+    assert.ok(moreMenu.querySelector('a[href="https://github.com/tbdavid2019/888wiki"]'), 'GitHub link must exist in more menu')
+
+    // Base CSS responsive hide & styling assertions
+    assert.match(baseCssSource, /\.dev-info-dropdown\s*\.dropdown-menu/)
+    assert.match(baseCssSource, /\.footer-section-info\s*\{\s*display:\s*none\s*!important;/)
+})
+
 
