@@ -119,3 +119,21 @@ test('all modal dialogs and openers are properly wired in HTML base template', (
         }
     }
 })
+
+test('setupNoteHistory properly binds triggers and does not reference undefined openBtn', () => {
+    const template = HTML({
+        lang: 'zh-TW',
+        title: 'Note History Wiring Test',
+        body: '',
+        path: 'note-history-test',
+        isEdit: true,
+        ext: { noteHistoryEnabled: true, share: true },
+    })
+
+    assert.doesNotMatch(template, /\bopenBtn\b/, 'Must not contain undeclared openBtn variable in script')
+    assert.match(template, /const open = \(e\) =>/)
+    assert.match(template, /openBtns\.forEach\(btn => btn\.setAttribute\('aria-expanded', 'true'\)\)/)
+    assert.match(template, /openBtns\.forEach\(btn => btn\.setAttribute\('aria-expanded', 'false'\)\)/)
+    assert.match(template, /class="note-history-trigger"[^>]*title="[^"]*"[^>]*>.*?id="publication-version-count"/)
+})
+

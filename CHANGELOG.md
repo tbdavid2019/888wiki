@@ -1,5 +1,15 @@
 # Changelog
 
+## [2026-09-30]
+
+- **🐛 修復歷史版本視窗無法開啟之問題與狀態列版本捷徑 (Fix Note Version History Modal Opening & Add Status Bar Trigger)**：
+  - **修復未宣告變數拋錯**：修復 `src/templates/base.js` 中 `setupNoteHistory` 函式內部使用未宣告之 `openBtn` 變數導致執行階段拋出 `ReferenceError: openBtn is not defined` 的嚴重問題，使點擊「儲存與同步」選單中的「版本紀錄」按鈕能正常彈出歷史修訂版本與還原視窗。
+  - **完善 Trigger 與無障礙狀態**：重構 `open(e)` 與 `close()` 正確使用事件 trigger 與 `openBtns.forEach` 同步設定 `aria-expanded` 屬性，並為非按鈕觸發元素補充鍵盤 `Enter` / `Space` 可存取性支援。
+  - **發布狀態列版本指標捷徑**：將預覽視窗底部的發布狀態列「保留版本 N」指標（`.publication-metrics`）同步賦予 `.note-history-trigger` 支援與 hover 視覺提示，點擊狀態列版本計數亦可直接開啟歷史修訂視窗。
+  - **修復預覽標題污染**：修復歷史版本預覽時調用 `triggerRender` 意外覆蓋瀏覽器頁面標題（Document Title）的問題，改為直接渲染 Markdown 內容，僅在使用者確認點擊「還原」時才同步更新全域標題。
+  - **正則轉義與範本安全強化**：修復 `src/templates/base.js` 中 `HTML` 函式未給予預設 `lang = 'zh-TW'` 可能造成 `emptyPH` 屬性未定義錯誤，並將 `apiBase()` 正則表達式進行反斜線安全轉義（`replace(/\\/+$/, '')`）。
+  - **自動化測試合約保證**：在 `test/unified-modal-system.test.mjs` 中新增針對 `setupNoteHistory` 觸發事件綁定、全域變數安全與無 `openBtn` 未定義變數之自動化驗證。
+
 ## [2026-09-29]
 
 - **📖 訪客閱讀頁面升級：左側大綱刻度導軌（大標題 `-`、子標題 `·`）與懸停抽屜式目錄 TOC (Outline Progress Rail & Slide-out TOC Drawer)**：

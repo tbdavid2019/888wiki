@@ -91,7 +91,7 @@ const PUBLISH_NUDGE_MODAL = lang => {
     `
 }
 
-const EDITOR_PUBLICATION_STATUS = ({ lang, ext = {}, shareId = '' }) => {
+const EDITOR_PUBLICATION_STATUS = ({ lang, ext = {}, shareId = '', isEdit = true }) => {
     const t = getLangText(lang)
     const published = ext.share === true && Boolean(shareId)
     const safeVersionCount = Number.isSafeInteger(ext.versionCount) && ext.versionCount >= 0 ? ext.versionCount : null
@@ -117,7 +117,7 @@ const EDITOR_PUBLICATION_STATUS = ({ lang, ext = {}, shareId = '' }) => {
             </div>
         </div>
         <div class="publication-metrics" ${published ? '' : 'hidden'}>
-            <span title="${escapeHtml(t.publicationVersions)}">${escapeHtml(t.publicationVersions)} <strong id="publication-version-count">${safeVersionCount ?? '—'}</strong></span>
+            <span ${ext.noteHistoryEnabled === true ? 'class="note-history-trigger" role="button" tabindex="0" style="cursor:pointer;"' : ''} title="${escapeHtml(t.publicationVersions)}">${escapeHtml(t.publicationVersions)} <strong id="publication-version-count">${safeVersionCount ?? '—'}</strong></span>
             <span title="${escapeHtml(t.publicationViews)}">${escapeHtml(t.publicationViews)} <strong id="publication-view-count">${safeViewCount ?? '—'}</strong></span>
             <span title="${escapeHtml(t.publicationUpdated)}">${escapeHtml(t.publicationUpdated)} <time id="publication-updated-at" datetime="${escapeHtml(ext.updateAt || '')}">—</time></span>
         </div>
@@ -125,7 +125,7 @@ const EDITOR_PUBLICATION_STATUS = ({ lang, ext = {}, shareId = '' }) => {
     </aside>`
 }
 
-export const HTML = ({ lang, title, content = '', ext = {}, tips, isEdit, showPwPrompt, path, shareId }) => {
+export const HTML = ({ lang = 'zh-TW', title, content = '', ext = {}, tips, isEdit, showPwPrompt, path, shareId }) => {
     const gaMeasurementId = ext.gaMeasurementId ? String(ext.gaMeasurementId).trim() : ''
     const initialShareFont = ext.shareFont === 'maple' ? 'maple' : 'jetbrains'
     const isEmbed = ext.embed === true
@@ -1993,7 +1993,7 @@ ${getMarkdownCss()}
         let loaded = false
         let loading = false
 
-        const apiBase = () => '/api' + window.location.pathname + '/history'
+        const apiBase = () => '/api' + window.location.pathname.replace(/\\/+$/, '') + '/history'
         const getCurrentContent = () => textarea ? textarea.value || '' : ''
         const setActionsDisabled = () => {
             const disabled = !selectedVersion
@@ -2022,8 +2022,14 @@ ${getMarkdownCss()}
                 : 'note-history-body'
 
             const content = selectedVersion.content || ''
-            if (renderMode === 'preview' && window.renderMarkdown) {
-                triggerRender(bodyNode, content)
+            if (renderMode === 'preview') {
+                if (window.renderMarkdown) {
+                    window.renderMarkdown(bodyNode, content)
+                } else if (window.DOMPurify) {
+                    renderPlain(bodyNode, content)
+                } else {
+                    bodyNode.textContent = content
+                }
             } else {
                 bodyNode.textContent = content
             }
@@ -2146,14 +2152,15 @@ ${getMarkdownCss()}
             }
         }
 
-        const open = () => {
-            openModal(modal, { initialFocus: closeBtn || refreshBtn || openBtn, trigger: openBtn })
-            openBtn.setAttribute('aria-expanded', 'true')
+        const open = (e) => {
+            const trigger = (e && e.currentTarget) || openBtns[0]
+            openModal(modal, { initialFocus: closeBtn || refreshBtn || trigger, trigger })
+            openBtns.forEach(btn => btn.setAttribute('aria-expanded', 'true'))
             refreshHistory()
         }
         const close = () => {
             closeModal(modal)
-            openBtn.setAttribute('aria-expanded', 'false')
+            openBtns.forEach(btn => btn.setAttribute('aria-expanded', 'false'))
         }
 
         renderModeButtons.forEach(button => {
@@ -2208,7 +2215,17 @@ ${getMarkdownCss()}
             })
         }
 
-        openBtns.forEach(btn => btn.addEventListener('click', open))
+        openBtns.forEach(btn => {
+            btn.addEventListener('click', open)
+            btn.addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    if (btn.tagName !== 'BUTTON') {
+                        e.preventDefault()
+                        open(e)
+                    }
+                }
+            })
+        })
         if (closeBtn) closeBtn.addEventListener('click', close)
         if (mask) mask.addEventListener('click', close)
         modal.addEventListener('keydown', e => {

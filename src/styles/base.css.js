@@ -4122,6 +4122,13 @@ html[data-ui-theme="dark"] .note-history-body.markdown-body blockquote,
     color: var(--status-strong);
     font-weight: 700;
 }
+.publication-metrics .note-history-trigger {
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+.publication-metrics .note-history-trigger:hover strong {
+    text-decoration: underline;
+}
 .publication-pending-hint {
     min-width: 0;
     overflow: hidden;
