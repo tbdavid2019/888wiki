@@ -671,7 +671,7 @@ export const initDictationController = (root = document, { lang = 'zh-TW', toolb
         })
     }
 
-    const DONE_SVG = '<svg class="hud-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+    const STOP_SVG = '<svg class="hud-svg" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>'
     const CANCEL_SVG = '<svg class="hud-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>'
 
     if (dictateButton) {
@@ -700,11 +700,11 @@ export const initDictationController = (root = document, { lang = 'zh-TW', toolb
                 <span class="dictation-hud-status">${isZh ? '⚡ 連線中...' : '⚡ Connecting...'}</span>
             </div>
             <div class="dictation-hud-actions">
-                <button type="button" class="dictation-hud-pill-btn hud-btn-stop" data-dictation-action="stop" title="${isZh ? '完成聽打 (Done)' : 'Done'}" aria-label="${isZh ? '完成' : 'Done'}">
-                    ${DONE_SVG}
-                    <span>${isZh ? '完成' : 'Done'}</span>
+                <button type="button" class="dictation-hud-pill-btn hud-btn-stop" data-dictation-action="stop" title="${isZh ? '結束聽打 (隨說隨打，點擊停止或按 Esc)' : 'Stop dictation (Click to stop or Esc)'}" aria-label="${isZh ? '結束聽打' : 'Stop dictation'}">
+                    ${STOP_SVG}
+                    <span>${isZh ? '結束' : 'Stop'}</span>
                 </button>
-                <button type="button" class="recording-hud-icon-btn hud-btn-cancel" data-dictation-action="cancel" title="${isZh ? '取消並撤銷輸入 (Cancel)' : 'Cancel'}" aria-label="${isZh ? '取消' : 'Cancel'}">
+                <button type="button" class="recording-hud-icon-btn hud-btn-cancel" data-dictation-action="cancel" title="${isZh ? '放棄並撤銷剛剛說入的文字' : 'Discard dictation'}" aria-label="${isZh ? '取消' : 'Cancel'}">
                     ${CANCEL_SVG}
                 </button>
             </div>
@@ -753,8 +753,8 @@ export const initDictationController = (root = document, { lang = 'zh-TW', toolb
             const statusEl = hud.querySelector('.dictation-hud-status')
             if (statusEl) {
                 statusEl.textContent = connecting
-                    ? (isZh ? '⚡ 連線中...' : '⚡ Connecting...')
-                    : (isZh ? '⚡ 正在聆聽打字...' : '⚡ Listening & typing...')
+                    ? (isZh ? '⚡ 正在連線語音伺服器...' : '⚡ Connecting...')
+                    : (isZh ? '⚡ 聆聽中 · 隨說隨打' : '⚡ Listening · live typing...')
             }
         } else {
             removeDictationHud()
@@ -779,7 +779,7 @@ export const initDictationController = (root = document, { lang = 'zh-TW', toolb
         if (dictationHud) {
             const statusEl = dictationHud.querySelector('.dictation-hud-status')
             if (statusEl) {
-                statusEl.textContent = isZh ? '⚡ 聽打中...' : '⚡ Dictating...'
+                statusEl.textContent = isZh ? '⚡ 即時輸入中...' : '⚡ Live typing...'
             }
         }
     }
