@@ -10,6 +10,7 @@
 
 The **+ New** menu moves content from wherever it starts into a note:
 
+- **Live voice dictation:** Stream speech directly into the editor cursor position with sub-200ms latency and append-only non-flickering typing powered by Confucius4-R2T2 ASR (`asr.5gao.ai`). Features smart background liveness detection that auto-reveals the tool when online and quietly hides it when offline (`Cmd/Ctrl + Shift + D`).
 - **Live recording:** Save a local recording and player in IndexedDB, transcribe it when online, then upload it to the 888box attachment service when you publish or sync.
 - **Import audio (Transcript):** Get a faithful transcript with timestamps.
 - **Import audio (Smart format):** Turn speech into organized sections with AI.

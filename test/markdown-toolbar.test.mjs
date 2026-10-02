@@ -10,6 +10,10 @@ import {
     createEditorHistory,
     createUploadedAssetMarkdown,
     getImageAltText,
+    resampleAndConvertToInt16,
+    checkAsrHealth,
+    ASR_HEALTH_URL,
+    ASR_WS_URL,
 } from '../static/js/markdown-toolbar.mjs'
 
 const baseTemplate = readFileSync(new URL('../src/templates/base.js', import.meta.url), 'utf8')
@@ -263,4 +267,70 @@ test('base template and editor css include mirror DOM and wrapped line number st
     assert.match(editorCss, /\.editor-line-number\s*\{/)
     assert.match(toolbarSource, /ResizeObserver/)
     assert.match(toolbarSource, /window\.updateEditorLineNumbers/)
+})
+
+test('resampleAndConvertToInt16 correctly downsamples audio and converts Float32 to Int16 PCM', () => {
+    // 1:1 sampling rate (16000 -> 16000)
+    const floatBuffer = new Float32Array([0, 0.5, -0.5, 1.0, -1.0, 2.0, -2.0])
+    const pcm = resampleAndConvertToInt16(floatBuffer, 16000, 16000)
+    assert.equal(pcm instanceof Int16Array, true)
+    assert.equal(pcm.length, floatBuffer.length)
+    assert.equal(pcm[0], 0)
+    assert.equal(pcm[3], 32767) // clamped 1.0
+    assert.equal(pcm[4], -32768) // clamped -1.0
+    assert.equal(pcm[5], 32767) // clamped overshoot
+    assert.equal(pcm[6], -32768) // clamped undershoot
+
+    // Downsampling 48000 -> 16000 (ratio 3)
+    const highSampleBuffer = new Float32Array(48)
+    for (let i = 0; i < 48; i++) highSampleBuffer[i] = 0.25
+    const downsampled = resampleAndConvertToInt16(highSampleBuffer, 48000, 16000)
+    assert.equal(downsampled.length, 16)
+    assert.ok(Math.abs(downsampled[0] - Math.round(0.25 * 32767)) <= 1)
+})
+
+test('checkAsrHealth probes ASR service status and handles success and failures', async () => {
+    assert.equal(ASR_HEALTH_URL, 'https://asr.5gao.ai/health')
+    assert.equal(ASR_WS_URL, 'wss://asr.5gao.ai/asr_stream_api_v1')
+
+    // Mock fetch for healthy service
+    const origFetch = globalThis.fetch
+    try {
+        globalThis.fetch = async () => ({
+            ok: true,
+            json: async () => ({ status: 'healthy', service: 'Confucius4-R2T2', model_loaded: true })
+        })
+        const online = await checkAsrHealth({ timeout: 1000 })
+        assert.equal(online, true)
+
+        // Model not loaded
+        globalThis.fetch = async () => ({
+            ok: true,
+            json: async () => ({ status: 'healthy', model_loaded: false })
+        })
+        const notReady = await checkAsrHealth({ timeout: 1000 })
+        assert.equal(notReady, false)
+
+        // HTTP error or network failure
+        globalThis.fetch = async () => { throw new Error('Network error') }
+        const offline = await checkAsrHealth({ timeout: 1000 })
+        assert.equal(offline, false)
+    } finally {
+        globalThis.fetch = origFetch
+    }
+})
+
+test('common template and editor css include live dictation command, hidden default, and HUD styles', () => {
+    assert.match(commonTemplate, /command: 'dictate'/)
+    assert.match(commonTemplate, /dictate: `<svg class="svg-icon"/)
+    assert.match(commonTemplate, /style="display: none;"/)
+    assert.match(commonTemplate, /is-dictate-btn/)
+    assert.match(editorCss, /\.markdown-toolbar-button\.is-dictating/)
+    assert.match(editorCss, /\.editor-dictation-hud/)
+    assert.match(editorCss, /\.dictation-hud-waves/)
+    assert.match(toolbarSource, /initDictationController/)
+    assert.match(toolbarSource, /YOUDAO_ONETIME_ASR_STREAM_EOS/)
+    assert.match(toolbarSource, /cf-notepad-start-dictate/)
+    assert.match(toolbarSource, /cf-notepad-stop-dictate/)
+    assert.match(toolbarSource, /cf-notepad-toggle-dictate/)
 })

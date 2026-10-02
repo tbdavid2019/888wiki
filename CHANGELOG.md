@@ -2,6 +2,23 @@
 
 ## [2026-10-02]
 
+- **⚡ 全新推出「即時語音聽打 (Live Voice Typing / Dictation)」與動態伺服器在線偵測 (Live Voice Dictation & Smart Liveness Detection)**：
+  - **核心技術整合 (Confucius4-R2T2 ASR Engine)**：
+    - 整合由 NetEase Youdao Confucius4-R2T2 (Qwen3-ASR-1.7B) + FireRedVAD + vLLM CUDA 加速之即時語音辨識服務（`https://asr.5gao.ai`）。
+    - 透過純前端 Web Audio API 捕捉麥克風音訊，即時下採樣重轉為 16,000Hz 16-bit PCM (s16le)，以每 160ms（5120 bytes / 2560 samples）之高效區塊透過 WebSocket（`wss://asr.5gao.ai/asr_stream_api_v1`）串流至 GPU 辨識引擎。
+    - 採用 **LSP (Longest Stable Prefix) 解碼**，具備 Append-Only 嚴格追加特性，增量文字即時流暢噴入 Markdown 編輯器游標處，絕無反覆重算或字詞跳動閃爍。
+    - 原生輸出繁體中文（`output_script: 'traditional'`），無需前端額外進行繁簡轉換；VAD 切句中斷自動處理。
+  - **動態伺服器在線偵測與優雅隱藏 (Smart Liveness Probe & Zero-Flicker Visibility)**：
+    - **預設隱藏**：Markdown 工具列聽打按鈕在 HTML 中預設帶有 `style="display: none;"`，徹底杜絕伺服器離線時按鈕閃現又消失之版面跳動（CLS）。
+    - **輕量探針**：頁面載入時於背景發起探針請求 `https://asr.5gao.ai/health`（`status === 'healthy' && model_loaded === true`），支援 2.5 秒超時防呆；確認 GPU 模型已載入就緒後才優雅浮現按鈕。
+    - **保活心跳與多狀態連動**：具備 60 秒定時背景心跳檢查，並深度整合 `visibilitychange`（使用者切換回分頁自動喚醒偵測）與瀏覽器 `online` / `offline` 網路事件。若伺服器離線自動安靜隱藏，伺服器恢復連線即時自動現身。
+  - **精緻電光青動態膠囊 (Live Dictation HUD & UX)**：
+    - 點擊按鈕或按下快速鍵 `Cmd/Ctrl + Shift + D` 即可進入即時聽打模式，螢幕上方展開半透明毛玻璃電光青（Electric Cyan）動態懸浮膠囊（`.editor-dictation-hud`）。
+    - 包含即時聲波跳動動畫、連線與聆聽打字狀態指示燈、以及「完成 (Done)」與「取消 (Cancel)」控制鍵；若點擊取消會自動撤銷該次聽打新增之文字。按下 `Escape` 鍵亦可瞬間停止聽打。
+    - 與既有「會議錄音」模式（錄檔 ➔ 儲存 IndexedDB / 888box ➔ 插入播放器與整段逐字稿）完美互補，「即時聽打」不產生任何音檔、不插入播放器，純粹作為高效打字輸入工具。
+  - **自動化測試合約驗證**：
+    - 於 `test/markdown-toolbar.test.mjs` 中新增音訊線性下採樣（`resampleAndConvertToInt16`）、ASR 健康探針（`checkAsrHealth`）、模板標記與樣式相容性之完整測試合約，全量測試 517 項零錯誤通過。
+
 - **🐛 修復 Block 模式下圈選文字導致畫面一片白閃退崩潰之嚴重問題 (Fix BlockNote Formatting Toolbar White Screen Crash on Text Selection)**：
   - **根本原因診斷 (Root Cause)**：在 Block 編輯模式下，繁體中文字典物件 `ZH_TW_DICTIONARY` 僅定義了部分區塊標籤，缺乏 BlockNote 格式化工具列各按鈕（如 `BasicTextStyleButton` 粗體、斜體、行內程式碼等）內部依賴的 `generic: { ctrl_shortcut: 'Ctrl' }` 鍵盤快速鍵定義，且 `code` 區塊缺少 `secondary_tooltip`。當使用者在已發布或編輯狀態下隨意圈選任意文字時，BlockNote 即時掛載 `FormattingToolbar` 浮動工具列，`BasicTextStyleButton` 執行 `formatKeyboardShortcut(item.secondary_tooltip, dict.generic.ctrl_shortcut)` 時拋出未捕捉之 `Uncaught TypeError: Cannot read properties of undefined (reading 'ctrl_shortcut')`，引發 React 根組件樹完全卸載，導致畫面瞬間跳轉為整片白畫面。
   - **多層安全字典深度合併 (Deep Merge Dictionary)**：

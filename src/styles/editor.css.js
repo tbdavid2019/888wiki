@@ -578,6 +578,13 @@ export const getEditorCss = () => `
     animation: toolbar-recording-pulse 1.2s ease-in-out infinite;
 }
 
+.markdown-toolbar-button.is-dictating {
+    color: #06b6d4 !important;
+    border-color: rgba(6, 182, 212, 0.5) !important;
+    background: rgba(6, 182, 212, 0.12) !important;
+    animation: toolbar-recording-pulse 1.2s ease-in-out infinite;
+}
+
 .markdown-toolbar-button[data-command="recordPause"].is-paused {
     color: #f59e0b !important;
     border-color: rgba(245, 158, 11, 0.5) !important;
@@ -587,6 +594,109 @@ export const getEditorCss = () => `
 @keyframes toolbar-recording-pulse {
     0%, 100% { opacity: 1; transform: scale(1); }
     50% { opacity: 0.55; transform: scale(0.96); }
+}
+
+/* --- Floating Live Dictation HUD (Cyan / Electric Blue Glow) --- */
+.editor-dictation-hud {
+    position: fixed;
+    top: 22px;
+    left: 50%;
+    transform: translateX(-50%) translateY(0);
+    z-index: 10000;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px 4px 14px;
+    background: color-mix(in srgb, var(--editor-surface, #1e1e2e) 88%, #000000);
+    color: var(--editor-text, #f8f8f2);
+    border: 1px solid rgba(6, 182, 212, 0.45);
+    border-radius: 9999px;
+    box-shadow: 0 12px 36px -4px rgba(0, 0, 0, 0.45), 0 0 20px rgba(6, 182, 212, 0.25);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 13px;
+    user-select: none;
+    pointer-events: auto;
+    animation: recording-hud-appear 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+}
+
+.editor-dictation-hud.is-leaving {
+    animation: recording-hud-leave 0.2s ease forwards;
+    pointer-events: none;
+}
+
+.dictation-hud-live-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dictation-hud-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #06b6d4;
+    box-shadow: 0 0 10px #06b6d4;
+    animation: recording-dot-pulse 1.2s ease-in-out infinite;
+}
+
+.dictation-hud-waves {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    height: 12px;
+}
+
+.dictation-hud-waves span {
+    display: inline-block;
+    width: 2px;
+    height: 12px;
+    background: #06b6d4;
+    border-radius: 2px;
+    animation: recording-wave-anim 0.8s ease-in-out infinite alternate;
+}
+
+.dictation-hud-waves span:nth-child(1) { height: 4px; animation-delay: 0.05s; }
+.dictation-hud-waves span:nth-child(2) { height: 12px; animation-delay: 0.2s; }
+.dictation-hud-waves span:nth-child(3) { height: 7px; animation-delay: 0.1s; }
+.dictation-hud-waves span:nth-child(4) { height: 10px; animation-delay: 0.3s; }
+.dictation-hud-waves span:nth-child(5) { height: 5px; animation-delay: 0.15s; }
+
+.dictation-hud-status {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.92);
+    letter-spacing: 0.3px;
+}
+
+.dictation-hud-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: 4px;
+    padding-left: 8px;
+    border-left: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.dictation-hud-pill-btn.hud-btn-stop {
+    height: 28px;
+    padding: 0 12px 0 10px;
+    gap: 5px;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, #06b6d4, #0284c7);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 600;
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 2px 10px rgba(6, 182, 212, 0.4);
+}
+
+.dictation-hud-pill-btn.hud-btn-stop:hover {
+    background: linear-gradient(135deg, #22d3ee, #0284c7);
+    box-shadow: 0 3px 14px rgba(6, 182, 212, 0.6);
+    transform: scale(1.02);
 }
 
 /* --- Floating Recording HUD (Dynamic Island Glassmorphism) --- */

@@ -156,6 +156,7 @@ export const SVG_ICONS = {
     key: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"></path><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"></circle></svg>`,
     math: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><path d="M9 17c2 0 2.8-1 2.8-2.8V10c0-2 1-3.3 3.2-3"></path><path d="M9 11.2h5.7"></path></svg>`,
     pulse: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.48 12H2"></path></svg>`,
+    dictate: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line><path d="M8 22h8"></path><path d="m18 8 3-1"></path><path d="m18 12 3 1"></path></svg>`,
     plus: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>`,
     chevronDown: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>`,
     chevronRight: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-9-6"></path></svg>`
@@ -165,6 +166,7 @@ const EDITOR_TOOLBAR_COMMANDS = [
     { command: 'undo', glyph: SVG_ICONS.undo, zh: '復原', en: 'Undo' },
     { command: 'redo', glyph: SVG_ICONS.redo, zh: '重做', en: 'Redo' },
     { command: 'record', glyph: SVG_ICONS.mic, zh: '開始錄音', en: 'Start recording' },
+    { command: 'dictate', glyph: SVG_ICONS.dictate, zh: '即時聽打 (Live Voice Typing)', en: 'Live voice dictation', hidden: true },
     { separator: true },
     { command: 'heading1', glyph: 'H1', zh: '一級標題', en: 'Heading 1' },
     { command: 'heading2', glyph: 'H2', zh: '二級標題', en: 'Heading 2' },
@@ -210,7 +212,7 @@ export const EDITOR_TOOLBAR = lang => {
         <span class="markdown-toolbar-separator" role="separator" aria-hidden="true"></span>
         ${EDITOR_TOOLBAR_COMMANDS.map(item => item.separator
             ? '<span class="markdown-toolbar-separator" role="separator" aria-hidden="true"></span>'
-            : `<button type="button" class="markdown-toolbar-button" data-command="${item.command}" data-tooltip="${isZh ? item.zh : item.en}" title="${isZh ? item.zh : item.en}" aria-label="${isZh ? item.zh : item.en}"><span class="markdown-toolbar-glyph ${item.glyphClass || ''}" aria-hidden="true">${item.glyph}</span></button>`
+            : `<button type="button" class="markdown-toolbar-button ${item.command === 'dictate' ? 'is-dictate-btn' : ''}" data-command="${item.command}" data-tooltip="${isZh ? item.zh : item.en}" title="${isZh ? item.zh : item.en}" aria-label="${isZh ? item.zh : item.en}" ${item.hidden ? 'style="display: none;"' : ''}><span class="markdown-toolbar-glyph ${item.glyphClass || ''}" aria-hidden="true">${item.glyph}</span></button>`
         ).join('')}
     </div>
     <input id="markdown-toolbar-image-input" class="visually-hidden-file-input" type="file" accept="image/*" aria-label="${isZh ? '選擇要上傳的圖片' : 'Choose an image to upload'}">

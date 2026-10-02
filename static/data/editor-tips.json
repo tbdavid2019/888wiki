@@ -132,6 +132,11 @@
       "en-US": "Tip: Microphone recording includes a floating HUD with live timer, pause/resume, stop & insert, and cancel controls. Audio stays local in IndexedDB until published to 888box."
     },
     {
+      "id": "live-voice-dictation",
+      "zh-TW": "小訣竅：Markdown 工具列支援「即時聽打」！當 ASR 語音伺服器在線時會自動現身，按下快捷鍵 Cmd/Ctrl + Shift + D 即可邊說邊在游標處打字，低於 200ms 極速流暢出字且絕不跳字。",
+      "en-US": "Tip: Markdown toolbar supports 'Live Voice Dictation'! When the streaming ASR service is online, it auto-appears. Press Cmd/Ctrl + Shift + D to type as you speak directly at the cursor with sub-200ms latency."
+    },
+    {
       "id": "block-editor-voice-recording",
       "zh-TW": "小訣竅：Block 區塊編輯器支援「即時錄音」！輸入斜線指令「/record」或在底欄「＋ 新增」選單點擊「即時錄音」，錄製完成後會自動插入音訊區塊並透過 Whisper AI 轉錄為文字區塊。",
       "en-US": "Tip: Block Editor supports Live Voice Recording! Type slash command '/record' or select 'Live voice recording' from the '+ New' footer menu to record audio and transcribe it into block notes with Whisper AI."

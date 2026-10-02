@@ -606,11 +606,420 @@ export const initRecordingController = (root = document, { lang = 'zh-TW', toolb
     }
 }
 
+export const ASR_HEALTH_URL = 'https://asr.5gao.ai/health'
+export const ASR_WS_URL = 'wss://asr.5gao.ai/asr_stream_api_v1'
+export const ASR_SECRET_KEY = 'test0102'
+
+export const resampleAndConvertToInt16 = (audioBuffer, inputSampleRate, targetSampleRate = 16000) => {
+    const ratio = inputSampleRate / targetSampleRate
+    const newLength = Math.round(audioBuffer.length / ratio)
+    const result = new Int16Array(newLength)
+    for (let i = 0; i < newLength; i++) {
+        const origIndex = i * ratio
+        const indexFloor = Math.floor(origIndex)
+        const indexCeil = Math.min(audioBuffer.length - 1, indexFloor + 1)
+        const fraction = origIndex - indexFloor
+        const sample = (audioBuffer[indexFloor] * (1 - fraction) + audioBuffer[indexCeil] * fraction)
+        const clamped = Math.max(-1, Math.min(1, sample))
+        result[i] = clamped < 0 ? clamped * 0x8000 : clamped * 0x7FFF
+    }
+    return result
+}
+
+export const checkAsrHealth = async ({ timeout = 2500, url = ASR_HEALTH_URL } = {}) => {
+    if (typeof fetch === 'undefined') return false
+    try {
+        const controller = typeof AbortController !== 'undefined' ? new AbortController() : null
+        const timer = controller ? setTimeout(() => controller.abort(), timeout) : null
+        const res = await fetch(url, {
+            method: 'GET',
+            signal: controller?.signal,
+            cache: 'no-cache',
+            mode: 'cors'
+        })
+        if (timer) clearTimeout(timer)
+        if (!res.ok) return false
+        const data = await res.json()
+        return Boolean(data && data.status === 'healthy' && data.model_loaded === true)
+    } catch {
+        return false
+    }
+}
+
+export const initDictationController = (root = document, { lang = 'zh-TW', toolbar = null, textarea = null } = {}) => {
+    const dictateButton = toolbar?.querySelector('[data-command="dictate"]')
+    let ws = null
+    let mediaStream = null
+    let audioCtx = null
+    let audioProcessor = null
+    let isDictating = false
+    let startingDictation = false
+    let dictationHud = null
+    let dictationStartPos = 0
+    let dictationInsertedText = ''
+    const isZh = lang === 'zh-TW'
+
+    const DONE_SVG = '<svg class="hud-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+    const CANCEL_SVG = '<svg class="hud-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>'
+
+    if (dictateButton) {
+        dictateButton.style.display = 'none'
+    }
+
+    const ensureDictationHud = () => {
+        if (dictationHud && document.body.contains(dictationHud)) return dictationHud
+        const existing = document.getElementById('editor-dictation-hud')
+        if (existing) {
+            dictationHud = existing
+            return dictationHud
+        }
+        const hud = document.createElement('div')
+        hud.className = 'editor-dictation-hud'
+        hud.id = 'editor-dictation-hud'
+        hud.setAttribute('role', 'region')
+        hud.setAttribute('aria-label', isZh ? '即時聽打控制列' : 'Voice dictation controls')
+
+        hud.innerHTML = `
+            <div class="dictation-hud-live-pill">
+                <span class="dictation-hud-dot"></span>
+                <div class="dictation-hud-waves" aria-hidden="true">
+                    <span></span><span></span><span></span><span></span><span></span>
+                </div>
+                <span class="dictation-hud-status">${isZh ? '⚡ 連線中...' : '⚡ Connecting...'}</span>
+            </div>
+            <div class="dictation-hud-actions">
+                <button type="button" class="dictation-hud-pill-btn hud-btn-stop" data-dictation-action="stop" title="${isZh ? '完成聽打 (Done)' : 'Done'}" aria-label="${isZh ? '完成' : 'Done'}">
+                    ${DONE_SVG}
+                    <span>${isZh ? '完成' : 'Done'}</span>
+                </button>
+                <button type="button" class="recording-hud-icon-btn hud-btn-cancel" data-dictation-action="cancel" title="${isZh ? '取消並撤銷輸入 (Cancel)' : 'Cancel'}" aria-label="${isZh ? '取消' : 'Cancel'}">
+                    ${CANCEL_SVG}
+                </button>
+            </div>
+        `
+
+        hud.querySelector('[data-dictation-action="stop"]')?.addEventListener('click', e => {
+            e.preventDefault()
+            e.stopPropagation()
+            stopDictating()
+        })
+        hud.querySelector('[data-dictation-action="cancel"]')?.addEventListener('click', e => {
+            e.preventDefault()
+            e.stopPropagation()
+            cancelDictating()
+        })
+
+        document.body.appendChild(hud)
+        dictationHud = hud
+        return dictationHud
+    }
+
+    const removeDictationHud = () => {
+        const hud = dictationHud || document.getElementById('editor-dictation-hud')
+        if (!hud) return
+        hud.classList.add('is-leaving')
+        setTimeout(() => {
+            if (hud.parentElement) hud.parentElement.removeChild(hud)
+            if (dictationHud === hud) dictationHud = null
+        }, 220)
+    }
+
+    const setDictatingUi = (active, connecting = false) => {
+        if (dictateButton) {
+            dictateButton.classList.toggle('is-dictating', active)
+            dictateButton.setAttribute('aria-pressed', active ? 'true' : 'false')
+            const label = active
+                ? (isZh ? '停止即時聽打' : 'Stop live voice dictation')
+                : (isZh ? '即時聽打 (Live Voice Typing)' : 'Live voice dictation')
+            dictateButton.setAttribute('aria-label', label)
+            dictateButton.setAttribute('title', label)
+            dictateButton.dataset.tooltip = label
+        }
+
+        if (active) {
+            const hud = ensureDictationHud()
+            const statusEl = hud.querySelector('.dictation-hud-status')
+            if (statusEl) {
+                statusEl.textContent = connecting
+                    ? (isZh ? '⚡ 連線中...' : '⚡ Connecting...')
+                    : (isZh ? '⚡ 正在聆聽打字...' : '⚡ Listening & typing...')
+            }
+        } else {
+            removeDictationHud()
+        }
+    }
+
+    const onIncomingText = (newText, isReset) => {
+        if (!newText) return
+        const currentTextarea = textarea || root.querySelector('#contents')
+        if (!currentTextarea) return
+
+        const val = currentTextarea.value || ''
+        const insertPos = dictationStartPos + dictationInsertedText.length
+        const safePos = Math.max(0, Math.min(insertPos, val.length))
+
+        currentTextarea.value = val.slice(0, safePos) + newText + val.slice(safePos)
+        dictationInsertedText += newText
+        const nextPos = safePos + newText.length
+        currentTextarea.setSelectionRange(nextPos, nextPos)
+        currentTextarea.dispatchEvent(new Event('input', { bubbles: true }))
+
+        if (dictationHud) {
+            const statusEl = dictationHud.querySelector('.dictation-hud-status')
+            if (statusEl) {
+                statusEl.textContent = isZh ? '⚡ 聽打中...' : '⚡ Dictating...'
+            }
+        }
+    }
+
+    const stopDictating = ({ canceled = false } = {}) => {
+        if (!isDictating && !ws) {
+            setDictatingUi(false)
+            return
+        }
+        isDictating = false
+        startingDictation = false
+
+        if (ws) {
+            if (ws.readyState === WebSocket.OPEN) {
+                try { ws.send('YOUDAO_ONETIME_ASR_STREAM_EOS') } catch (e) {}
+                setTimeout(() => {
+                    try { ws.close() } catch (e) {}
+                    ws = null
+                }, 300)
+            } else {
+                try { ws.close() } catch (e) {}
+                ws = null
+            }
+        }
+
+        if (mediaStream) {
+            mediaStream.getTracks().forEach(t => t.stop())
+            mediaStream = null
+        }
+        if (audioProcessor) {
+            try { audioProcessor.disconnect() } catch (e) {}
+            audioProcessor = null
+        }
+        if (audioCtx && audioCtx.state !== 'closed') {
+            try { audioCtx.close() } catch (e) {}
+            audioCtx = null
+        }
+
+        setDictatingUi(false)
+        if (!canceled && dictationInsertedText.trim()) {
+            window.showToast?.(isZh ? '⚡ 聽打完成' : '⚡ Voice dictation completed')
+        }
+        dictationInsertedText = ''
+    }
+
+    const cancelDictating = () => {
+        if (dictationInsertedText.length > 0) {
+            const currentTextarea = textarea || root.querySelector('#contents')
+            if (currentTextarea) {
+                const val = currentTextarea.value || ''
+                const start = dictationStartPos
+                const end = start + dictationInsertedText.length
+                if (val.slice(start, end) === dictationInsertedText) {
+                    currentTextarea.value = val.slice(0, start) + val.slice(end)
+                    currentTextarea.setSelectionRange(start, start)
+                    currentTextarea.dispatchEvent(new Event('input', { bubbles: true }))
+                }
+            }
+        }
+        stopDictating({ canceled: true })
+        window.showToast?.(isZh ? '🗑️ 已取消聽打' : '🗑️ Voice dictation canceled')
+    }
+
+    const startDictating = async () => {
+        if (isDictating) {
+            stopDictating()
+            return
+        }
+        if (startingDictation) return
+        startingDictation = true
+
+        const currentTextarea = textarea || root.querySelector('#contents')
+        dictationStartPos = typeof currentTextarea?.selectionStart === 'number'
+            ? currentTextarea.selectionStart
+            : (currentTextarea?.value?.length || 0)
+        dictationInsertedText = ''
+
+        if (!navigator.mediaDevices?.getUserMedia || (typeof AudioContext === 'undefined' && typeof webkitAudioContext === 'undefined')) {
+            window.showToast?.(isZh ? '此瀏覽器不支援麥克風收音或 Web Audio。' : 'This browser does not support microphone input or Web Audio.')
+            startingDictation = false
+            return
+        }
+
+        setDictatingUi(true, true)
+
+        try {
+            ws = new WebSocket(ASR_WS_URL)
+            ws.binaryType = 'arraybuffer'
+
+            await new Promise((resolve, reject) => {
+                const connTimer = setTimeout(() => {
+                    reject(new Error(isZh ? '聽打伺服器連線逾時' : 'Connection timeout'))
+                }, 5000)
+
+                ws.onopen = () => {
+                    clearTimeout(connTimer)
+                    const reqId = 'rec_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)
+                    const header = {
+                        channels: 1,
+                        sample_rate: 16000,
+                        requestId: reqId,
+                        language: 'zhen',
+                        output_script: 'traditional',
+                        use_vad: true,
+                        secret_key: ASR_SECRET_KEY,
+                        mode: 'slow',
+                        system_prompt: ''
+                    }
+                    ws.send(JSON.stringify(header))
+                    resolve()
+                }
+
+                ws.onerror = err => {
+                    clearTimeout(connTimer)
+                    reject(err || new Error('WebSocket connection error'))
+                }
+            })
+
+            mediaStream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    channelCount: 1,
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                }
+            })
+
+            const AudioCtxClass = window.AudioContext || window.webkitAudioContext
+            audioCtx = new AudioCtxClass()
+            const source = audioCtx.createMediaStreamSource(mediaStream)
+            const TARGET_CHUNK_SAMPLES = 2560
+            const inputSampleRate = audioCtx.sampleRate
+
+            audioProcessor = audioCtx.createScriptProcessor(4096, 1, 1)
+            let pcmBufferAccumulator = []
+
+            audioProcessor.onaudioprocess = e => {
+                if (!isDictating || !ws || ws.readyState !== WebSocket.OPEN) return
+                const channelData = e.inputBuffer.getChannelData(0)
+                const int16Data = resampleAndConvertToInt16(channelData, inputSampleRate, 16000)
+                for (let i = 0; i < int16Data.length; i++) {
+                    pcmBufferAccumulator.push(int16Data[i])
+                }
+                while (pcmBufferAccumulator.length >= TARGET_CHUNK_SAMPLES) {
+                    const chunk = new Int16Array(pcmBufferAccumulator.slice(0, TARGET_CHUNK_SAMPLES))
+                    pcmBufferAccumulator = pcmBufferAccumulator.slice(TARGET_CHUNK_SAMPLES)
+                    ws.send(chunk.buffer)
+                }
+            }
+
+            source.connect(audioProcessor)
+            audioProcessor.connect(audioCtx.destination)
+
+            ws.onmessage = event => {
+                try {
+                    const data = JSON.parse(event.data)
+                    if (data.status === 'connected') return
+                    if (data.status === 'success' && data.msg) {
+                        const text = data.msg.text || ''
+                        const reset = Boolean(data.msg.reset)
+                        if (text) onIncomingText(text, reset)
+                    } else if (data.status === 'error') {
+                        window.showToast?.((isZh ? '辨識錯誤: ' : 'Error: ') + (data.msg || 'Unknown'))
+                    }
+                } catch {}
+            }
+
+            ws.onerror = () => {
+                window.showToast?.(isZh ? '⚠️ 聽打連線發生異常' : '⚠️ Voice dictation connection error')
+                stopDictating()
+            }
+
+            ws.onclose = () => {
+                if (isDictating) {
+                    stopDictating()
+                }
+            }
+
+            isDictating = true
+            startingDictation = false
+            setDictatingUi(true, false)
+        } catch (err) {
+            startingDictation = false
+            stopDictating({ canceled: true })
+            window.showToast?.(err?.message || (isZh ? '無法啟動即時聽打。' : 'Unable to start voice dictation.'))
+        }
+    }
+
+    const toggleDictating = () => {
+        if (isDictating) {
+            stopDictating()
+        } else {
+            startDictating()
+        }
+    }
+
+    const updateVisibility = async () => {
+        const online = await checkAsrHealth()
+        if (dictateButton) {
+            dictateButton.style.display = online ? '' : 'none'
+        }
+        if (!online && isDictating) {
+            stopDictating()
+            window.showToast?.(isZh ? '⚠️ 聽打伺服器已離線' : '⚠️ Voice dictation service is offline')
+        }
+        return online
+    }
+
+    updateVisibility()
+
+    const healthInterval = setInterval(updateVisibility, 60000)
+
+    const onVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+            updateVisibility()
+        }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('online', updateVisibility)
+    window.addEventListener('offline', updateVisibility)
+
+    if (!window.__dictationControllerListenersAttached) {
+        window.__dictationControllerListenersAttached = true
+        window.addEventListener('cf-notepad-start-dictate', () => startDictating())
+        window.addEventListener('cf-notepad-stop-dictate', () => stopDictating())
+        window.addEventListener('cf-notepad-toggle-dictate', () => toggleDictating())
+        window.addEventListener('keydown', event => {
+            if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === 'd') {
+                event.preventDefault()
+                toggleDictating()
+            } else if (event.key === 'Escape' && isDictating) {
+                event.preventDefault()
+                stopDictating()
+            }
+        })
+    }
+
+    return {
+        startDictating,
+        stopDictating,
+        toggleDictating,
+        cancelDictating,
+        checkAsrHealth,
+        updateVisibility,
+        isDictating: () => isDictating,
+    }
+}
+
 export const initMarkdownToolbar = (root = document) => {
     const toolbar = root.querySelector('[data-markdown-toolbar]')
     const textarea = root.querySelector('#contents')
     const lang = toolbar?.dataset.language || document.documentElement.lang || 'zh-TW'
-    initRecordingController(root, { lang, toolbar, textarea })
 
     const imageInput = root.querySelector('#markdown-toolbar-image-input')
     const assetInput = root.querySelector('#markdown-toolbar-asset-input')
@@ -863,6 +1272,7 @@ export const initMarkdownToolbar = (root = document) => {
     const PLAY_SVG = `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`
 
     const { startRecording, stopRecording } = initRecordingController(root, { lang, toolbar, textarea })
+    const { startDictating, stopDictating, toggleDictating } = initDictationController(root, { lang, toolbar, textarea })
 
     toolbar.querySelectorAll('button[data-command]').forEach(button => {
         button.addEventListener('mousedown', event => event.preventDefault())
@@ -878,6 +1288,10 @@ export const initMarkdownToolbar = (root = document) => {
             }
             if (command === 'record') {
                 startRecording()
+                return
+            }
+            if (command === 'dictate') {
+                toggleDictating()
                 return
             }
             if (command === 'image' && imageInput) {
