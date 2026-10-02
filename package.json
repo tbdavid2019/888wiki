@@ -81,7 +81,7 @@
     "dev": "wrangler dev",
     "predeploy": "npm run prepare:skill-doc && npm run build:block-editor && npm run build:canvas-editor && npm run build:whiteboard-editor && npm run build:ocr",
     "deploy": "npm run db:init && wrangler deploy",
-    "db:init": "wrangler d1 execute NOTE_HISTORY_DB --remote --file=./schema/note_history.sql && wrangler d1 execute NOTE_HISTORY_DB --remote --file=./schema/note_stats.sql && wrangler d1 execute NOTE_HISTORY_DB --remote --file=./schema/note_annotations.sql",
+    "db:init": "wrangler d1 execute NOTE_HISTORY_DB --remote -y --file=./schema/note_history.sql && wrangler d1 execute NOTE_HISTORY_DB --remote -y --file=./schema/note_stats.sql && wrangler d1 execute NOTE_HISTORY_DB --remote -y --file=./schema/note_annotations.sql",
     "prepublish": "npm run prepare:skill-doc",
     "publish": "wrangler deploy",
     "pretest": "npm run prepare:skill-doc && npm run build:block-editor && npm run build:canvas-editor && npm run build:whiteboard-editor && npm run build:ocr",
