@@ -654,10 +654,22 @@ export const initDictationController = (root = document, { lang = 'zh-TW', toolb
     let audioProcessor = null
     let isDictating = false
     let startingDictation = false
+    let isAsrOnline = false
     let dictationHud = null
     let dictationStartPos = 0
     let dictationInsertedText = ''
     const isZh = lang === 'zh-TW'
+
+    const generateUUID = () => {
+        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+            return crypto.randomUUID()
+        }
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+            const r = Math.random() * 16 | 0
+            const v = c === 'x' ? r : (r & 0x3 | 0x8)
+            return v.toString(16)
+        })
+    }
 
     const DONE_SVG = '<svg class="hud-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'
     const CANCEL_SVG = '<svg class="hud-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>'
@@ -781,15 +793,27 @@ export const initDictationController = (root = document, { lang = 'zh-TW', toolb
         startingDictation = false
 
         if (ws) {
-            if (ws.readyState === WebSocket.OPEN) {
-                try { ws.send('YOUDAO_ONETIME_ASR_STREAM_EOS') } catch (e) {}
+            const socketToClose = ws
+            ws = null
+            socketToClose.onopen = null
+            socketToClose.onmessage = null
+            socketToClose.onerror = null
+            socketToClose.onclose = null
+
+            if (socketToClose.readyState === WebSocket.OPEN) {
+                try { socketToClose.send('YOUDAO_ONETIME_ASR_STREAM_EOS') } catch (e) {}
                 setTimeout(() => {
-                    try { ws.close() } catch (e) {}
-                    ws = null
+                    try { socketToClose.close() } catch (e) {}
+                }, 200)
+            } else if (socketToClose.readyState === WebSocket.CONNECTING) {
+                socketToClose.onopen = () => {
+                    try { socketToClose.close() } catch (e) {}
+                }
+                setTimeout(() => {
+                    try { socketToClose.close() } catch (e) {}
                 }, 300)
             } else {
-                try { ws.close() } catch (e) {}
-                ws = null
+                try { socketToClose.close() } catch (e) {}
             }
         }
 
@@ -839,6 +863,18 @@ export const initDictationController = (root = document, { lang = 'zh-TW', toolb
         if (startingDictation) return
         startingDictation = true
 
+        if (!isAsrOnline) {
+            const online = await checkAsrHealth({ timeout: 1500 })
+            if (!online) {
+                if (dictateButton) dictateButton.style.display = 'none'
+                startingDictation = false
+                window.showToast?.(isZh ? '⚠️ 聽打伺服器目前離線或未就緒（asr.5gao.ai 尚未回應）' : '⚠️ Voice dictation service is currently offline.')
+                return
+            }
+            isAsrOnline = true
+            if (dictateButton) dictateButton.style.display = ''
+        }
+
         const currentTextarea = textarea || root.querySelector('#contents')
         dictationStartPos = typeof currentTextarea?.selectionStart === 'number'
             ? currentTextarea.selectionStart
@@ -858,13 +894,18 @@ export const initDictationController = (root = document, { lang = 'zh-TW', toolb
             ws.binaryType = 'arraybuffer'
 
             await new Promise((resolve, reject) => {
+                let isResolved = false
                 const connTimer = setTimeout(() => {
-                    reject(new Error(isZh ? '聽打伺服器連線逾時' : 'Connection timeout'))
+                    if (isResolved) return
+                    isResolved = true
+                    reject(new Error(isZh ? '聽打伺服器連線逾時（asr.5gao.ai 無回應）' : 'Connection timeout'))
                 }, 5000)
 
                 ws.onopen = () => {
+                    if (isResolved) return
+                    isResolved = true
                     clearTimeout(connTimer)
-                    const reqId = 'rec_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)
+                    const reqId = generateUUID()
                     const header = {
                         channels: 1,
                         sample_rate: 16000,
@@ -876,13 +917,27 @@ export const initDictationController = (root = document, { lang = 'zh-TW', toolb
                         mode: 'slow',
                         system_prompt: ''
                     }
-                    ws.send(JSON.stringify(header))
+                    try {
+                        ws.send(JSON.stringify(header))
+                    } catch (e) {
+                        reject(e)
+                        return
+                    }
                     resolve()
                 }
 
                 ws.onerror = err => {
+                    if (isResolved) return
+                    isResolved = true
                     clearTimeout(connTimer)
                     reject(err || new Error('WebSocket connection error'))
+                }
+
+                ws.onclose = () => {
+                    if (isResolved) return
+                    isResolved = true
+                    clearTimeout(connTimer)
+                    reject(new Error(isZh ? '聽打伺服器連線中斷' : 'WebSocket connection closed'))
                 }
             })
 
@@ -965,20 +1020,23 @@ export const initDictationController = (root = document, { lang = 'zh-TW', toolb
     }
 
     const updateVisibility = async () => {
-        const online = await checkAsrHealth()
+        isAsrOnline = await checkAsrHealth()
         if (dictateButton) {
-            dictateButton.style.display = online ? '' : 'none'
+            dictateButton.style.display = isAsrOnline ? '' : 'none'
         }
-        if (!online && isDictating) {
+        if (!isAsrOnline && isDictating) {
             stopDictating()
             window.showToast?.(isZh ? '⚠️ 聽打伺服器已離線' : '⚠️ Voice dictation service is offline')
         }
-        return online
+        return isAsrOnline
     }
 
     updateVisibility()
 
     const healthInterval = setInterval(updateVisibility, 60000)
+    if (typeof healthInterval?.unref === 'function') {
+        healthInterval.unref()
+    }
 
     const onVisibilityChange = () => {
         if (document.visibilityState === 'visible') {
@@ -1362,7 +1420,6 @@ export const initMarkdownToolbar = (root = document) => {
     })
 
     updateHistoryButtons()
-    setRecordingUi('idle')
     return true
 }
 

@@ -2,6 +2,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
+import { JSDOM } from 'jsdom'
+
 import {
     applyMarkdownCommand,
     getEditorCursorStatus,
@@ -12,6 +14,7 @@ import {
     getImageAltText,
     resampleAndConvertToInt16,
     checkAsrHealth,
+    initMarkdownToolbar,
     ASR_HEALTH_URL,
     ASR_WS_URL,
 } from '../static/js/markdown-toolbar.mjs'
@@ -333,4 +336,30 @@ test('common template and editor css include live dictation command, hidden defa
     assert.match(toolbarSource, /cf-notepad-start-dictate/)
     assert.match(toolbarSource, /cf-notepad-stop-dictate/)
     assert.match(toolbarSource, /cf-notepad-toggle-dictate/)
+})
+
+test('initMarkdownToolbar initializes properly in DOM without throwing ReferenceError', () => {
+    const dom = new JSDOM(`<!DOCTYPE html><html><body>
+      <div data-markdown-toolbar data-language="zh-TW">
+        <button data-command="record"></button>
+        <button data-command="dictate" style="display: none;"></button>
+        <button data-command="undo"></button>
+        <button data-command="redo"></button>
+      </div>
+      <textarea id="contents"></textarea>
+    </body></html>`)
+    const origWindow = globalThis.window
+    const origDocument = globalThis.document
+    const origFetch = globalThis.fetch
+    try {
+        globalThis.window = dom.window
+        globalThis.document = dom.window.document
+        globalThis.fetch = async () => ({ ok: false })
+        const initialized = initMarkdownToolbar(dom.window.document)
+        assert.equal(initialized, true)
+    } finally {
+        globalThis.window = origWindow
+        globalThis.document = origDocument
+        globalThis.fetch = origFetch
+    }
 })

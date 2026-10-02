@@ -18,6 +18,12 @@
     - 與既有「會議錄音」模式（錄檔 ➔ 儲存 IndexedDB / 888box ➔ 插入播放器與整段逐字稿）完美互補，「即時聽打」不產生任何音檔、不插入播放器，純粹作為高效打字輸入工具。
   - **自動化測試合約驗證**：
     - 於 `test/markdown-toolbar.test.mjs` 中新增音訊線性下採樣（`resampleAndConvertToInt16`）、ASR 健康探針（`checkAsrHealth`）、模板標記與樣式相容性之完整測試合約，全量測試 517 項零錯誤通過。
+  - **🛠️ 聽打客戶端穩定性與運行時加固 (Dictation Client Hardening & Bug Fixes)**：
+    - **移除未定義之 `setRecordingUi` 呼叫**：修復工具列初始化結尾調用未定義之 `setRecordingUi('idle')` 引發 `ReferenceError` 的問題，避免控制台拋錯與初始化流程中斷。
+    - **UUID v4 握手標識符 (Handshake Request ID)**：聽打 WebSocket 握手時產生標準 UUID v4（`crypto.randomUUID()` 及亂數種子 fallback），完全相容 Confucius4-R2T2 後端對 `requestId` 的格式要求。
+    - **離線主動防呆提示**：若 ASR 服務處於離線狀態（探針逾時或未就緒），觸發快速鍵 `Cmd+Shift+D` 時會第一時間彈出「⚠️ 聽打伺服器目前離線或未就緒」提示並優雅返回，不再發起無效的 WebSocket 連線。
+    - **優雅清理 WebSocket 連線**：於連線中止或取消時安全移除監聽器，避免非預期關閉產生無效控制台告警；背景心跳計時器加上 `unref` 支援測試環境安全退出。
+    - **DOM 初始化測試合約**：在 `test/markdown-toolbar.test.mjs` 中增補真實 DOM 初始化測試合約，防止未來任何全域未定義變數或腳本拋錯回歸。
 
 - **🐛 修復 Block 模式下圈選文字導致畫面一片白閃退崩潰之嚴重問題 (Fix BlockNote Formatting Toolbar White Screen Crash on Text Selection)**：
   - **根本原因診斷 (Root Cause)**：在 Block 編輯模式下，繁體中文字典物件 `ZH_TW_DICTIONARY` 僅定義了部分區塊標籤，缺乏 BlockNote 格式化工具列各按鈕（如 `BasicTextStyleButton` 粗體、斜體、行內程式碼等）內部依賴的 `generic: { ctrl_shortcut: 'Ctrl' }` 鍵盤快速鍵定義，且 `code` 區塊缺少 `secondary_tooltip`。當使用者在已發布或編輯狀態下隨意圈選任意文字時，BlockNote 即時掛載 `FormattingToolbar` 浮動工具列，`BasicTextStyleButton` 執行 `formatKeyboardShortcut(item.secondary_tooltip, dict.generic.ctrl_shortcut)` 時拋出未捕捉之 `Uncaught TypeError: Cannot read properties of undefined (reading 'ctrl_shortcut')`，引發 React 根組件樹完全卸載，導致畫面瞬間跳轉為整片白畫面。
