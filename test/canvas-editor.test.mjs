@@ -319,3 +319,11 @@ test('canvas editor uses FlowNode anatomy, isolated stylesheet, and scoped typog
     assert.match(editorCssSource, /\.canvas-editor-pane/)
     assert.match(editorCssSource, /\.canvas-editor/)
 })
+
+test('canvas editor provides CanvasErrorBoundary protection against runtime crashes', () => {
+    const canvasV2IndexSource = readFileSync(new URL('../static/js/canvas-v2/index.jsx', import.meta.url), 'utf8')
+    assert.match(canvasV2IndexSource, /CanvasErrorBoundary/)
+    assert.match(canvasV2IndexSource, /getDerivedStateFromError/)
+    assert.match(canvasV2IndexSource, /canvas-error-fallback/)
+})
+

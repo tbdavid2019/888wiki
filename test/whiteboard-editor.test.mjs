@@ -162,3 +162,11 @@ test('index.js registers whiteboard routes and export handlers', () => {
     assert.match(indexSource, /validateWhiteboardDocument/)
     assert.match(indexSource, /whiteboardToMarkdown/)
 })
+
+test('whiteboard editor provides WhiteboardErrorBoundary protection against runtime crashes', () => {
+    const whiteboardSource = readFileSync(new URL('../static/js/whiteboard-editor.jsx', import.meta.url), 'utf8')
+    assert.match(whiteboardSource, /WhiteboardErrorBoundary/)
+    assert.match(whiteboardSource, /getDerivedStateFromError/)
+    assert.match(whiteboardSource, /whiteboard-error-fallback/)
+})
+

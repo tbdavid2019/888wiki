@@ -15,6 +15,15 @@
     - 在 `scripts/build-block-editor.mjs` 中啟用 `charset: 'utf8'`，優化 bundle 檔案體積並直接支援繁體中文字符。
     - 在 `test/block-editor-ui.test.mjs` 中新增專屬測試合約，檢驗 `generic.ctrl_shortcut`、`secondary_tooltip` 及所有樣式按鈕格式化流程之健壯性。
 
+- **🛡️ Canvas 畫布與 Whiteboard 白板全介面巡檢與 React 錯誤邊界加固 (Canvas & Whiteboard Audit & ErrorBoundary Hardening)**：
+  - **全介面機制巡檢**：
+    - **Canvas (無限畫布)**：採用 `@xyflow/react` 與純 DOM / Markdown 節點渲染，未依賴外部 i18n 字典物件，文字選取採瀏覽器原生行為，不會觸發浮動格式化工具列，經檢查並無字典缺鍵問題。
+    - **Whiteboard (手繪白板)**：採用 `@excalidraw/excalidraw` 向量畫布渲染，文字編輯由 Excalidraw 內建 Canvas 引擎全權處理，亦無 BlockNote 格式化字典相依。
+  - **補齊 React 錯誤邊界防護 (CanvasErrorBoundary & WhiteboardErrorBoundary)**：
+    - 針對 Canvas 畫布（`static/js/canvas-v2/index.jsx`）與 Whiteboard 白板（`static/js/whiteboard-editor.jsx`）全面加裝專屬 `ErrorBoundary`。
+    - 若遭遇極端格式異常、第三方擴充干擾或渲染非預期錯誤，組件將第一時間由邊界安全攔截並呈現友善降級與重試介面，全面杜絕整頁翻白。
+    - 重新編譯 `canvas-editor.bundle.mjs` 與 `whiteboard-editor.bundle.mjs`，並於 `test/canvas-editor.test.mjs` 與 `test/whiteboard-editor.test.mjs` 增補自動化驗證測試合約。
+
 ## [2026-09-30]
 
 - **🐛 修復歷史版本視窗無法開啟之問題與狀態列版本捷徑 (Fix Note Version History Modal Opening & Add Status Bar Trigger)**：

@@ -123,10 +123,62 @@ export function WhiteboardApp({ contentsEl, isEdit }) {
     )
 }
 
+export class WhiteboardErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props)
+        this.state = { hasError: false, error: null }
+    }
+
+    static getDerivedStateFromError(error) {
+        return { hasError: true, error }
+    }
+
+    componentDidCatch(error, errorInfo) {
+        console.error('[whiteboard] runtime error caught by boundary:', error, errorInfo)
+    }
+
+    render() {
+        if (this.state.hasError) {
+            const isZh = typeof document !== 'undefined' && document.documentElement?.getAttribute('lang')?.startsWith('zh')
+            return (
+                <div className="whiteboard-error-fallback" style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-color, #333)', height: '100%', minHeight: '300px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>⚠️</div>
+                    <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px' }}>
+                        {isZh ? '白板編輯器遇到暫時性錯誤' : 'Whiteboard encountered a temporary error'}
+                    </h3>
+                    <p style={{ color: 'var(--text-muted, #888)', fontSize: '14px', maxWidth: '480px', margin: '0 auto 16px', wordBreak: 'break-word' }}>
+                        {this.state.error?.message || (isZh ? '請點擊下方按鈕重新載入或重整網頁。' : 'Please click below to retry or refresh the page.')}
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => this.setState({ hasError: false, error: null })}
+                        style={{
+                            padding: '8px 18px',
+                            borderRadius: '8px',
+                            border: '1px solid var(--border-color, #ccc)',
+                            background: 'var(--bg-secondary, #eee)',
+                            color: 'inherit',
+                            fontWeight: 500,
+                            cursor: 'pointer',
+                        }}
+                    >
+                        {isZh ? '重試載入' : 'Retry'}
+                    </button>
+                </div>
+            )
+        }
+        return this.props.children
+    }
+}
+
 export function mountWhiteboardEditor(rootEl, contentsEl, options = {}) {
     const isEdit = options.isEdit === true
     const reactRoot = createRoot(rootEl)
-    reactRoot.render(<WhiteboardApp contentsEl={contentsEl} isEdit={isEdit} />)
+    reactRoot.render(
+        <WhiteboardErrorBoundary>
+            <WhiteboardApp contentsEl={contentsEl} isEdit={isEdit} />
+        </WhiteboardErrorBoundary>
+    )
     return reactRoot
 }
 
