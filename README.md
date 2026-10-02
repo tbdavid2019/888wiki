@@ -10,7 +10,7 @@
 
 The **+ New** menu moves content from wherever it starts into a note:
 
-- **Live voice dictation:** Stream speech directly into the editor cursor position with sub-200ms latency and append-only non-flickering typing powered by Confucius4-R2T2 ASR (`asr.5gao.ai`). Features smart background liveness detection that auto-reveals the tool when online and quietly hides it when offline (`Cmd/Ctrl + Shift + D`).
+- **Live voice dictation:** Stream speech directly into the editor cursor position with sub-200ms latency and append-only non-flickering typing powered by Confucius4-R2T2 ASR (`asr.5gao.ai`). Fully supported in both Markdown and Block editors (via toolbar button, Slash command `/dictate`, or `Cmd/Ctrl + Shift + D`). Features smart background liveness detection that auto-reveals the tool when online and quietly hides it when offline.
 - **Live recording:** Save a local recording and player in IndexedDB, transcribe it when online, then upload it to the 888box attachment service when you publish or sync.
 - **Import audio (Transcript):** Get a faithful transcript with timestamps.
 - **Import audio (Smart format):** Turn speech into organized sections with AI.
@@ -23,8 +23,8 @@ The same import choices can create Markdown notes or convert content into editab
 
 | Mode | Best for | What you get |
 | --- | --- | --- |
-| **Markdown** | Articles, research, and technical notes | Live preview, math, diagrams, citations, imports, search and replace, and flexible layouts. |
-| **Block** | Structured pages and mixed media | Rich editable blocks, slash commands, floating formatting toolbar, drag-to-reorder, editable embeds, and direct exports. |
+| **Markdown** | Articles, research, and technical notes | Live preview, live voice dictation, math, diagrams, citations, imports, search and replace, and flexible layouts. |
+| **Block** | Structured pages and mixed media | Rich editable blocks, live voice dictation (`/dictate`), slash commands, floating formatting toolbar, drag-to-reorder, editable embeds, and direct exports. |
 | **Canvas** | Maps, plans, and connected ideas | Eight kinds of thought cards, labeled relationships, media cards, undo/redo, and `.canvas` / PNG / SVG export. |
 | **Whiteboard** | Sketches and visual explanations | Excalidraw drawing tools, read-only sharing, and PNG / SVG export. |
 

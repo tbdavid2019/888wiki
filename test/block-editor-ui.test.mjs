@@ -108,6 +108,32 @@ test('BlockNote editor supports real-time voice recording and audio embed blocks
     assert.match(page, /id="dropdown-record-audio-btn"/)
 })
 
+test('BlockNote editor supports live voice dictation with dynamic ASR liveness and dropdown entry', () => {
+    const source = readFileSync(new URL('../static/js/blocknote-editor.jsx', import.meta.url), 'utf8')
+    assert.match(source, /checkAsrHealth/)
+    assert.match(source, /initDictationController/)
+    assert.match(source, /isAsrOnline/)
+    assert.match(source, /即時聽打/)
+    assert.match(source, /Live Voice Dictation/)
+    assert.match(source, /cf-notepad-start-dictate/)
+    assert.match(source, /insertInlineContent/)
+
+    const bundle = readFileSync(new URL('../static/js/block-editor.bundle.mjs', import.meta.url), 'utf8')
+    assert.match(bundle, /即時聽打/)
+    assert.match(bundle, /cf-notepad-start-dictate/)
+
+    const page = HTML({
+        lang: 'zh-TW',
+        title: 'Block note edit',
+        content: '{"version":1,"blocks":[]}',
+        isEdit: true,
+        ext: { editorFormat: 'block', blockHtml: '<p></p>' },
+        path: 'block-note-edit',
+    })
+    assert.match(page, /is-dictate-dropdown-item/)
+    assert.match(page, /style="display: none;"/)
+})
+
 test('BlockNote editor provides complete dictionary with generic.ctrl_shortcut and ErrorBoundary protection', async () => {
     const source = readFileSync(new URL('../static/js/blocknote-editor.jsx', import.meta.url), 'utf8')
     assert.match(source, /import\s+\{\s*en,\s*zhTW\s*\}\s+from\s+'@blocknote\/core\/locales'/)

@@ -3263,6 +3263,11 @@ ${getMarkdownCss()}
                 window.dispatchEvent(new CustomEvent('cf-notepad-start-record'))
             })
         }
+        document.querySelectorAll('.is-dictate-dropdown-item, #dropdown-dictate-audio-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                window.dispatchEvent(new CustomEvent('cf-notepad-start-dictate'))
+            })
+        })
         if ($dropdownImportAudioBtn && $importAudioInput) {
             $dropdownImportAudioBtn.addEventListener('click', () => {
                 $importAudioInput.click()

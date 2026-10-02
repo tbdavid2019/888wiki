@@ -230,6 +230,11 @@
       "id": "share-annotations",
       "zh-TW": "小訣竅：分享頁支援互動劃線註解功能！開啟「批註」設定後，讀者選取文章任何文字即可彈出註解按鈕，進行劃線重點標記與撰寫回饋討論。",
       "en-US": "Tip: Share pages support interactive inline annotations! When Annotations are enabled in settings, readers can highlight any text passage to add highlights, comments, and feedback discussions."
+    },
+    {
+      "id": "live-voice-dictation",
+      "zh-TW": "小訣竅：支援 Confucius4-R2T2 高速即時語音聽打！在 Markdown 工具列點擊聽打按鈕、或在 Block 編輯器輸入「/dictate」及按下「Cmd/Ctrl + Shift + D」，即可隨說隨打直接輸入文字至游標處；伺服器在線時自動啟動，離線時自動安靜隱藏。",
+      "en-US": "Tip: High-speed live voice typing powered by Confucius4-R2T2 ASR! Click the dictation button, type '/dictate' in the Block Editor, or press 'Cmd/Ctrl + Shift + D' to stream speech directly into your notes in real time. Features smart zero-flicker liveness detection."
     }
   ]
 }

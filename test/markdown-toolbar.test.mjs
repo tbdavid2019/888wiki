@@ -24,6 +24,7 @@ const commonTemplate = readFileSync(new URL('../src/templates/common.js', import
 const editorCss = readFileSync(new URL('../src/styles/editor.css.js', import.meta.url), 'utf8')
 const markdownCss = readFileSync(new URL('../src/styles/markdown.css.js', import.meta.url), 'utf8')
 const toolbarSource = readFileSync(new URL('../static/js/markdown-toolbar.mjs', import.meta.url), 'utf8')
+const dictationSource = readFileSync(new URL('../static/js/dictation-service.mjs', import.meta.url), 'utf8')
 
 const apply = (text, command, start = text.length, end = start, lang) =>
     applyMarkdownCommand(text, start, end, command, lang)
@@ -332,10 +333,10 @@ test('common template and editor css include live dictation command, hidden defa
     assert.match(editorCss, /\.editor-dictation-hud/)
     assert.match(editorCss, /\.dictation-hud-waves/)
     assert.match(toolbarSource, /initDictationController/)
-    assert.match(toolbarSource, /YOUDAO_ONETIME_ASR_STREAM_EOS/)
-    assert.match(toolbarSource, /cf-notepad-start-dictate/)
-    assert.match(toolbarSource, /cf-notepad-stop-dictate/)
-    assert.match(toolbarSource, /cf-notepad-toggle-dictate/)
+    assert.match(dictationSource, /YOUDAO_ONETIME_ASR_STREAM_EOS/)
+    assert.match(dictationSource, /cf-notepad-start-dictate/)
+    assert.match(dictationSource, /cf-notepad-stop-dictate/)
+    assert.match(dictationSource, /cf-notepad-toggle-dictate/)
 })
 
 test('initMarkdownToolbar initializes properly in DOM without throwing ReferenceError', () => {

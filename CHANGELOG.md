@@ -2,6 +2,22 @@
 
 ## [2026-10-02]
 
+- **⚡ Block 區塊編輯器深度整合「即時語音聽打 (BlockNote Live Voice Dictation)」與動態指令選單**：
+  - **模組化共享聽打架構 (Dictation Service Extraction)**：
+    - 將 ASR 連線控制、Web Audio 16kHz PCM 重採樣、GPU WebSocket 串流與動態 HUD 提取為獨立共享模組 `static/js/dictation-service.mjs`。
+    - 支援自定義 `onStart`、`onText`、`onCancel` 回呼與全域事件委派，同時服務傳統 Markdown 文字框與 BlockNote 區塊編輯器。
+  - **BlockNote 斜線指令選單整合 (Slash Menu `/dictate`)**：
+    - 於 Block 編輯模式的 `/` 斜線選單「`DAVID888 語音與嵌入`」群組中新增「⚡ 即時聽打」項目（支援多別名：`/dictate`、`/typing`、`/asr`、`/聽打`、`/語音輸入`）。
+    - **動態伺服器在線偵測**：當 `https://asr.5gao.ai` 處於離線狀態時，斜線指令選單自動將「⚡ 即時聽打」項目完全移除；當伺服器恢復連線（經由背景心跳、頁面可見性喚醒或網路事件探針），該指令項目自動重新浮現。
+  - **即時串流追加與快照撤銷 (Streaming Append & Snapshot Rollback)**：
+    - 聽打語音經辨識後，文字透過 `editor.insertInlineContent(text)` 隨說隨打、即時流暢噴入目前游標區塊，並自動觸發 `save()` 與輸入變更偵測，無需任何二次確認按鈕。
+    - 支援聽打前快照（Document Snapshot），若點擊懸浮膠囊的「取消」按鈕，系統會立即還原編輯前狀態並安全清除該次聽打文字。
+  - **下拉選單與快速鍵連動**：
+    - 頁首「新增」與工具列下拉選單中同步新增「即時聽打」按鈕（`.is-dictate-dropdown-item`），伺服器離線時自動隱藏，在線時自動顯示。
+    - 快速鍵 `Cmd/Ctrl + Shift + D` 與 `Escape` 於 Block 模式下無縫生效。
+  - **自動化測試合約驗證**：
+    - 於 `test/block-editor-ui.test.mjs` 中新增 BlockNote 即時聽打指令、ASR 存活狀態連動、下拉選單樣式與 bundle 打包之自動化測試合約。
+
 - **⚡ 全新推出「即時語音聽打 (Live Voice Typing / Dictation)」與動態伺服器在線偵測 (Live Voice Dictation & Smart Liveness Detection)**：
   - **核心技術整合 (Confucius4-R2T2 ASR Engine)**：
     - 整合由 NetEase Youdao Confucius4-R2T2 (Qwen3-ASR-1.7B) + FireRedVAD + vLLM CUDA 加速之即時語音辨識服務（`https://asr.5gao.ai`）。

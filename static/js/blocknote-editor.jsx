@@ -3,10 +3,11 @@ import { createRoot } from 'react-dom/client'
 import { BlockNoteSchema } from '@blocknote/core'
 import { en, zhTW } from '@blocknote/core/locales'
 import { filterSuggestionItems, insertOrUpdateBlockForSlashMenu } from '@blocknote/core/extensions'
-import { BlockNoteView } from '@blocknote/mantine'
 import { SuggestionMenuController, createReactBlockSpec, getDefaultReactSlashMenuItems, useCreateBlockNote } from '@blocknote/react'
+import { BlockNoteView } from '@blocknote/mantine'
 import '@blocknote/mantine/style.css'
 import { blockNoteToTiptapDocument, tiptapToBlockNoteDocument } from '../../src/blocknote_document.mjs'
+import { checkAsrHealth, initDictationController } from './dictation-service.mjs'
 
 const root = document.querySelector('#block-editor')
 const source = document.querySelector('#contents')
@@ -561,6 +562,83 @@ function BlockNoteEditorApp() {
         tables: { headers: true, splitCells: true, cellBackgroundColor: true, cellTextColor: true },
     })
 
+    const save = () => {
+        source.value = JSON.stringify(blockNoteToTiptapDocument(editor.document))
+        source.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+
+    const [isAsrOnline, setIsAsrOnline] = useState(false)
+
+    useEffect(() => {
+        let unmounted = false
+        const probe = async () => {
+            const online = await checkAsrHealth({ timeout: 2000 })
+            if (!unmounted) setIsAsrOnline(online)
+        }
+        probe()
+        const timer = setInterval(probe, 60000)
+        const onVisibility = () => {
+            if (document.visibilityState === 'visible') probe()
+        }
+        document.addEventListener('visibilitychange', onVisibility)
+        window.addEventListener('online', probe)
+        window.addEventListener('offline', () => {
+            if (!unmounted) setIsAsrOnline(false)
+        })
+        return () => {
+            unmounted = true
+            clearInterval(timer)
+            document.removeEventListener('visibilitychange', onVisibility)
+            window.removeEventListener('online', probe)
+            window.removeEventListener('offline', () => setIsAsrOnline(false))
+        }
+    }, [])
+
+    useEffect(() => {
+        let docSnapshot = null
+        const controller = initDictationController(document, {
+            lang: isZh ? 'zh-TW' : 'en-US',
+            onStart: () => {
+                docSnapshot = JSON.stringify(editor.document)
+                if (typeof editor.focus === 'function') {
+                    try { editor.focus() } catch {}
+                }
+                const cursor = editor.getTextCursorPosition?.()
+                if (!cursor?.block) {
+                    const lastBlock = editor.document.at(-1)
+                    if (lastBlock) {
+                        try { editor.setTextCursorPosition(lastBlock, 'end') } catch {}
+                    }
+                }
+            },
+            onText: (text) => {
+                if (!text) return
+                try {
+                    editor.insertInlineContent(text)
+                    save()
+                } catch (err) {
+                    console.error('BlockNote dictation insert error:', err)
+                }
+            },
+            onCancel: () => {
+                if (docSnapshot) {
+                    try {
+                        const parsed = JSON.parse(docSnapshot)
+                        editor.replaceBlocks(editor.document, parsed)
+                        save()
+                    } catch (err) {
+                        console.error('BlockNote dictation restore error:', err)
+                    }
+                    docSnapshot = null
+                }
+            },
+        })
+
+        return () => {
+            controller?.destroy?.()
+        }
+    }, [editor, isZh])
+
     useEffect(() => {
         if (editor) {
             editor.dictionary = dictionary
@@ -691,6 +769,16 @@ function BlockNoteEditorApp() {
     const items = useMemo(() => {
         const embedKinds = getEmbedKinds(isZh)
         return [
+            ...(isAsrOnline ? [{
+                title: isZh ? '即時聽打' : 'Live Voice Dictation',
+                subtext: isZh ? '透過 ASR 即時語音串流，隨說隨打直接輸入文字至目前區塊' : 'Real-time ASR voice typing directly into current block',
+                aliases: isZh ? ['dictate', 'typing', 'asr', '聽打', '語音輸入', '即時聽打'] : ['dictate', 'typing', 'asr', 'voice typing', 'voice input'],
+                group: isZh ? 'DAVID888 語音與嵌入' : 'DAVID888 Voice & Embeds',
+                icon: <span className="david-blocknote-menu-icon">⚡</span>,
+                onItemClick: () => {
+                    window.dispatchEvent(new CustomEvent('cf-notepad-start-dictate'))
+                },
+            }] : []),
             {
                 title: isZh ? '即時錄音' : 'Live Voice Recording',
                 subtext: isZh ? '啟動麥克風即時錄音並由 Whisper AI 自動轉錄為區塊內容' : 'Record voice with microphone and transcribe to blocks with Whisper AI',
@@ -715,12 +803,7 @@ function BlockNoteEditorApp() {
                 },
             })),
         ]
-    }, [editor, isZh])
-
-    const save = () => {
-        source.value = JSON.stringify(blockNoteToTiptapDocument(editor.document))
-        source.dispatchEvent(new Event('input', { bubbles: true }))
-    }
+    }, [editor, isZh, isAsrOnline])
 
     return (
         <BlockNoteErrorBoundary isZh={isZh}>
