@@ -227,7 +227,7 @@ export const HTML = ({ lang = 'zh-TW', title, content = '', ext = {}, tips, isEd
     <meta name="twitter:description" content="${escapeHtml(pageDescription)}" />
     <link rel="stylesheet" href="https://ka-f.webawesome.com/webawesome@${WEB_AWESOME_VERSION}/styles/webawesome.css" />
     ${annotationsUiEnabled ? '<link rel="stylesheet" href="/css/share-annotations.css" />' : ''}
-    ${isEdit && isBlockDocument ? '<link rel="stylesheet" href="/js/block-editor.bundle.css" />' : ''}
+    ${isEdit && isBlockDocument ? '<link rel="stylesheet" href="/js/block-editor.bundle.css?v=2.0" />' : ''}
     ${isCanvasDocument ? '<link rel="stylesheet" href="/js/canvas-editor.bundle.css?v=3.9" />' : ''}
     ${isWhiteboardDocument ? '<link rel="stylesheet" href="/js/whiteboard-editor.bundle.css?v=1.2" />' : ''}
     <script type="module" src="https://ka-f.webawesome.com/webawesome@${WEB_AWESOME_VERSION}/webawesome.loader.js"></script>
@@ -6046,7 +6046,7 @@ ${getMarkdownCss()}
     <script type="module" src="/js/offline-store.mjs"></script>
     ${isEdit && !isBlockDocument && !isCanvasDocument && !isWhiteboardDocument ? '<script type="module" src="/js/markdown-toolbar.mjs"></script>' : ''}
     ${isEdit && !isWhiteboardDocument ? '<script type="module" src="/js/ocr-client.mjs"></script>' : ''}
-    ${isEdit && isBlockDocument ? '<script type="module" src="/js/block-editor.bundle.mjs"></script>' : ''}
+    ${isEdit && isBlockDocument ? '<script type="module" src="/js/block-editor.bundle.mjs?v=2.0"></script>' : ''}
     ${isBlockDocument && !isEdit ? '<script type="module" src="/js/block-view.mjs"></script>' : ''}
     ${isCanvasDocument ? '<script type="module" src="/js/canvas-editor.bundle.mjs?v=3.9"></script>' : ''}
     ${isWhiteboardDocument ? '<script type="module" src="/js/whiteboard-editor.bundle.mjs?v=1.2"></script>' : ''}

@@ -1,5 +1,20 @@
 # Changelog
 
+## [2026-10-02]
+
+- **🐛 修復 Block 模式下圈選文字導致畫面一片白閃退崩潰之嚴重問題 (Fix BlockNote Formatting Toolbar White Screen Crash on Text Selection)**：
+  - **根本原因診斷 (Root Cause)**：在 Block 編輯模式下，繁體中文字典物件 `ZH_TW_DICTIONARY` 僅定義了部分區塊標籤，缺乏 BlockNote 格式化工具列各按鈕（如 `BasicTextStyleButton` 粗體、斜體、行內程式碼等）內部依賴的 `generic: { ctrl_shortcut: 'Ctrl' }` 鍵盤快速鍵定義，且 `code` 區塊缺少 `secondary_tooltip`。當使用者在已發布或編輯狀態下隨意圈選任意文字時，BlockNote 即時掛載 `FormattingToolbar` 浮動工具列，`BasicTextStyleButton` 執行 `formatKeyboardShortcut(item.secondary_tooltip, dict.generic.ctrl_shortcut)` 時拋出未捕捉之 `Uncaught TypeError: Cannot read properties of undefined (reading 'ctrl_shortcut')`，引發 React 根組件樹完全卸載，導致畫面瞬間跳轉為整片白畫面。
+  - **多層安全字典深度合併 (Deep Merge Dictionary)**：
+    - 正式自 `@blocknote/core/locales` 引入官方 `en` 與 `zhTW` 完整語系定義。
+    - 實作遞迴 `deepMergeDictionary`，採用 `en ➔ zhTW ➔ ZH_TW_DICTIONARY` 三層合併策略，確保所有 BlockNote 官方內建鍵值（`generic.ctrl_shortcut`、`formatting_toolbar`、`file_blocks`、`comments`、`suggestion_changes`、`exporter` 等）百分之百完整具備。
+    - 補齊 `ZH_TW_DICTIONARY` 中 `generic: { ctrl_shortcut: 'Ctrl' }` 及 `formatting_toolbar.code.secondary_tooltip: ''`，徹底杜絕鍵盤快速鍵轉義函式拋錯。
+    - 在編輯器運行階段透過 `useEffect` 同步維護 `editor.dictionary = dictionary`，確保動態切換語系時字典保持一致與完整。
+  - **React 錯誤邊界防護 (BlockNoteErrorBoundary)**：
+    - 新增 `BlockNoteErrorBoundary` 組件包裹 `BlockNoteView`，若未來遭遇任何子組件非預期例外，將安全攔截錯誤並呈現優雅的「區塊編輯器遇到暫時性錯誤」降級介面與「重試載入」按鈕，絕不再讓整頁變成白畫面。
+  - **ESBuild UTF-8 編碼與自動化測試合約**：
+    - 在 `scripts/build-block-editor.mjs` 中啟用 `charset: 'utf8'`，優化 bundle 檔案體積並直接支援繁體中文字符。
+    - 在 `test/block-editor-ui.test.mjs` 中新增專屬測試合約，檢驗 `generic.ctrl_shortcut`、`secondary_tooltip` 及所有樣式按鈕格式化流程之健壯性。
+
 ## [2026-09-30]
 
 - **🐛 修復歷史版本視窗無法開啟之問題與狀態列版本捷徑 (Fix Note Version History Modal Opening & Add Status Bar Trigger)**：

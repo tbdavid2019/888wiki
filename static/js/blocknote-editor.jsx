@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BlockNoteSchema } from '@blocknote/core'
+import { en, zhTW } from '@blocknote/core/locales'
 import { filterSuggestionItems, insertOrUpdateBlockForSlashMenu } from '@blocknote/core/extensions'
 import { BlockNoteView } from '@blocknote/mantine'
 import { SuggestionMenuController, createReactBlockSpec, getDefaultReactSlashMenuItems, useCreateBlockNote } from '@blocknote/react'
@@ -65,6 +66,9 @@ function useBlockNoteLang() {
 }
 
 const ZH_TW_DICTIONARY = {
+    generic: {
+        ctrl_shortcut: 'Ctrl',
+    },
     slash_menu: {
         heading: {
             title: '一級標題 (Heading 1)',
@@ -261,7 +265,7 @@ const ZH_TW_DICTIONARY = {
         italic: { tooltip: '斜體', secondary_tooltip: 'Mod+I' },
         underline: { tooltip: '底線', secondary_tooltip: 'Mod+U' },
         strike: { tooltip: '刪除線', secondary_tooltip: 'Mod+Shift+S' },
-        code: { tooltip: '行內程式碼' },
+        code: { tooltip: '行內程式碼', secondary_tooltip: '' },
         colors: { tooltip: '文字與背景顏色' },
         link: { tooltip: '插入超連結', secondary_tooltip: 'Mod+K' },
         nest: { tooltip: '向內縮排 (降級)', secondary_tooltip: 'Tab' },
@@ -284,6 +288,28 @@ const ZH_TW_DICTIONARY = {
         embed: { title: '嵌入網址', url_placeholder: '輸入網址...' },
     },
 }
+
+function deepMergeDictionary(target, override) {
+    if (!override) return target
+    const result = { ...target }
+    for (const key of Object.keys(override)) {
+        if (
+            override[key] &&
+            typeof override[key] === 'object' &&
+            !Array.isArray(override[key])
+        ) {
+            result[key] = deepMergeDictionary(target?.[key] || {}, override[key])
+        } else if (override[key] !== undefined) {
+            result[key] = override[key]
+        }
+    }
+    return result
+}
+
+const RESOLVED_ZH_TW_DICTIONARY = deepMergeDictionary(
+    deepMergeDictionary(en, zhTW),
+    ZH_TW_DICTIONARY,
+)
 
 const getEmbedKinds = isZh => ({
     youtube: { title: 'YouTube', detail: isZh ? '嵌入 YouTube 影片' : 'Embed YouTube video', icon: '▶' },
@@ -471,6 +497,53 @@ function EmbedDialog({ state, editor, onClose, isZh = true }) {
     </div>
 }
 
+class BlockNoteErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props)
+        this.state = { hasError: false, error: null }
+    }
+
+    static getDerivedStateFromError(error) {
+        return { hasError: true, error }
+    }
+
+    componentDidCatch(error, errorInfo) {
+        console.error('BlockNote editor runtime error caught:', error, errorInfo)
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="david-blocknote-error-fallback" style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-color, #333)' }}>
+                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>⚠️</div>
+                    <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px' }}>
+                        {this.props.isZh ? '區塊編輯器遇到暫時性錯誤' : 'Block Editor encountered a temporary error'}
+                    </h3>
+                    <p style={{ color: 'var(--text-muted, #888)', fontSize: '14px', maxWidth: '480px', margin: '0 auto 16px', wordBreak: 'break-word' }}>
+                        {this.state.error?.message || (this.props.isZh ? '請點擊下方按鈕重新載入或重整網頁。' : 'Please click below to retry or refresh the page.')}
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => this.setState({ hasError: false, error: null })}
+                        style={{
+                            padding: '8px 18px',
+                            borderRadius: '8px',
+                            border: '1px solid var(--border-color, #ccc)',
+                            background: 'var(--bg-secondary, #eee)',
+                            color: 'inherit',
+                            fontWeight: 500,
+                            cursor: 'pointer',
+                        }}
+                    >
+                        {this.props.isZh ? '重試載入' : 'Retry'}
+                    </button>
+                </div>
+            )
+        }
+        return this.props.children
+    }
+}
+
 function BlockNoteEditorApp() {
     const initialContent = useMemo(() => {
         try { return tiptapToBlockNoteDocument(JSON.parse(source.value || '{}')) } catch { return [{ type: 'paragraph' }] }
@@ -479,7 +552,7 @@ function BlockNoteEditorApp() {
     const blockNoteTheme = useBlockNoteTheme()
     const blockNoteLang = useBlockNoteLang()
     const isZh = blockNoteLang === 'zh-TW'
-    const dictionary = useMemo(() => isZh ? ZH_TW_DICTIONARY : undefined, [isZh])
+    const dictionary = useMemo(() => isZh ? RESOLVED_ZH_TW_DICTIONARY : en, [isZh])
     const editor = useCreateBlockNote({
         schema,
         initialContent,
@@ -487,6 +560,12 @@ function BlockNoteEditorApp() {
         dictionary,
         tables: { headers: true, splitCells: true, cellBackgroundColor: true, cellTextColor: true },
     })
+
+    useEffect(() => {
+        if (editor) {
+            editor.dictionary = dictionary
+        }
+    }, [editor, dictionary])
 
     useEffect(() => {
         const open = event => {
@@ -643,12 +722,16 @@ function BlockNoteEditorApp() {
         source.dispatchEvent(new Event('input', { bubbles: true }))
     }
 
-    return <div className="david-blocknote-app" data-blocknote-theme={blockNoteTheme}>
-        <BlockNoteView editor={editor} theme={blockNoteTheme} slashMenu={false} onChange={save} className="david-blocknote-view">
-            <SuggestionMenuController triggerCharacter="/" getItems={async query => filterSuggestionItems(items, query)} />
-        </BlockNoteView>
-        {dialog && <EmbedDialog state={dialog} editor={editor} onClose={() => setDialog(null)} isZh={isZh} />}
-    </div>
+    return (
+        <BlockNoteErrorBoundary isZh={isZh}>
+            <div className="david-blocknote-app" data-blocknote-theme={blockNoteTheme}>
+                <BlockNoteView editor={editor} theme={blockNoteTheme} slashMenu={false} onChange={save} className="david-blocknote-view">
+                    <SuggestionMenuController triggerCharacter="/" getItems={async query => filterSuggestionItems(items, query)} />
+                </BlockNoteView>
+                {dialog && <EmbedDialog state={dialog} editor={editor} onClose={() => setDialog(null)} isZh={isZh} />}
+            </div>
+        </BlockNoteErrorBoundary>
+    )
 }
 
 const reactRoot = createRoot(root)

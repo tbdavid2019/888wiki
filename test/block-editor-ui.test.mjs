@@ -107,3 +107,48 @@ test('BlockNote editor supports real-time voice recording and audio embed blocks
     })
     assert.match(page, /id="dropdown-record-audio-btn"/)
 })
+
+test('BlockNote editor provides complete dictionary with generic.ctrl_shortcut and ErrorBoundary protection', async () => {
+    const source = readFileSync(new URL('../static/js/blocknote-editor.jsx', import.meta.url), 'utf8')
+    assert.match(source, /import\s+\{\s*en,\s*zhTW\s*\}\s+from\s+'@blocknote\/core\/locales'/)
+    assert.match(source, /ctrl_shortcut:\s*'Ctrl'/)
+    assert.match(source, /BlockNoteErrorBoundary/)
+    assert.match(source, /deepMergeDictionary/)
+    assert.match(source, /RESOLVED_ZH_TW_DICTIONARY/)
+
+    const bundle = readFileSync(new URL('../static/js/block-editor.bundle.mjs', import.meta.url), 'utf8')
+    assert.match(bundle, /ctrl_shortcut/)
+
+    const { formatKeyboardShortcut } = await import('@blocknote/core')
+    const { en, zhTW } = await import('@blocknote/core/locales')
+
+    function deepMergeDictionary(target, override) {
+        if (!override) return target
+        const result = { ...target }
+        for (const key of Object.keys(override)) {
+            if (override[key] && typeof override[key] === 'object' && !Array.isArray(override[key])) {
+                result[key] = deepMergeDictionary(target?.[key] || {}, override[key])
+            } else if (override[key] !== undefined) {
+                result[key] = override[key]
+            }
+        }
+        return result
+    }
+
+    const resolvedZh = deepMergeDictionary(deepMergeDictionary(en, zhTW), {
+        generic: { ctrl_shortcut: 'Ctrl' },
+        formatting_toolbar: {
+            bold: { tooltip: '粗體', secondary_tooltip: 'Mod+B' },
+            code: { tooltip: '行內程式碼', secondary_tooltip: '' },
+        },
+    })
+
+    assert.equal(resolvedZh.generic.ctrl_shortcut, 'Ctrl')
+    for (const style of ['bold', 'italic', 'underline', 'strike', 'code']) {
+        const item = resolvedZh.formatting_toolbar[style]
+        assert.ok(item && typeof item.tooltip === 'string')
+        assert.doesNotThrow(() => {
+            formatKeyboardShortcut(item.secondary_tooltip, resolvedZh.generic.ctrl_shortcut)
+        })
+    }
+})

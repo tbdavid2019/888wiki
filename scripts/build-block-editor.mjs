@@ -8,6 +8,7 @@ await build({
     outfile: 'static/js/block-editor.bundle.mjs',
     sourcemap: false,
     minify: true,
+    charset: 'utf8',
     legalComments: 'none',
     conditions: ['style'],
 })
