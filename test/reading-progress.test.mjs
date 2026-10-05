@@ -22,7 +22,7 @@ test('calculates reading progress from a scroll container', () => {
 })
 
 test('loads a reading progress widget for rendered Markdown pages', () => {
-    assert.match(baseTemplate, /src="\/js\/reading-progress\.mjs"/)
+    assert.match(baseTemplate, /src="\/js\/reading-progress\.mjs(\?v=[^"]+)?"/)
     assert.match(baseCss, /\.reading-progress/)
     assert.match(baseCss, /\.reading-progress-track/)
 })
@@ -224,5 +224,23 @@ test('provides left safety gutter and fluid push on TOC pin in share view', () =
     // Desktop full-height sidebar when pinned (no top/bottom gaps)
     assert.match(baseCss, /body\.share-view\.is-toc-pinned \.reading-progress\s*\{[^}]*transform:\s*none !important;/)
     assert.match(baseCss, /body\.share-view\.is-toc-pinned \.reading-toc-drawer\s*\{[^}]*position:\s*fixed;[^}]*top:\s*0;[^}]*bottom:\s*48px;[^}]*width:\s*280px;/)
+})
+
+test('styles progress track with tactile groove and high-contrast section markers for light, dark, and auto modes', () => {
+    // Light mode track with distinct tactile background and border via theme variables
+    assert.match(baseCss, /body\.share-view \.reading-progress-track\s*\{[^}]*background:\s*var\(--progress-track-bg,\s*#ebe4db\);/)
+    assert.match(baseCss, /body\.share-view \.reading-progress-track\s*\{[^}]*border:\s*1px solid var\(--progress-track-border,\s*#d4cbc0\);/)
+
+    // Dark mode track
+    assert.match(baseCss, /\[data-ui-theme="dark"\] body\.share-view \.reading-progress-track\s*\{[^}]*background:\s*#231e1c;/)
+
+    // Automatic dark mode for share view progress controls
+    assert.match(baseCss, /@media\s*\(prefers-color-scheme:\s*dark\)[\s\S]*html\[data-ui-theme="auto"\] body\.share-view \.reading-progress-track/)
+
+    // Section markers: major notch and minor dot with explicit contrast colors
+    assert.match(baseCss, /\.reading-progress-marker\s*\{[^}]*background:\s*var\(--progress-marker-color,\s*#504239\);/)
+    assert.match(baseCss, /\[data-ui-theme="dark"\] \.reading-progress-marker\s*\{[^}]*background:\s*#dfd4cc;/)
+    assert.match(baseCss, /\.reading-progress-marker\.is-heading-major\s*\{[^}]*width:\s*10px;\s*height:\s*2\.5px;/)
+    assert.match(baseCss, /\.reading-progress-marker\.is-heading-minor\s*\{[^}]*width:\s*5px;\s*height:\s*5px;/)
 })
 

@@ -6056,7 +6056,7 @@ ${getMarkdownCss()}
     ${isCanvasDocument ? '<script type="module" src="/js/canvas-editor.bundle.mjs?v=3.9"></script>' : ''}
     ${isWhiteboardDocument ? '<script type="module" src="/js/whiteboard-editor.bundle.mjs?v=1.2"></script>' : ''}
     <script type="module" src="/js/pwa-install.mjs"></script>
-    <script type="module" src="/js/reading-progress.mjs"></script>
+    <script type="module" src="/js/reading-progress.mjs?v=2.1"></script>
     <script type="module" src="/js/floating-controls.mjs"></script>
     ${isEmbed ? '' : '<script type="module" src="/js/editor-preference.mjs"></script>'}
     ${annotationsUiEnabled ? '<script type="module" src="/js/share-annotations.mjs"></script>' : ''}
