@@ -310,14 +310,11 @@ export const initReadingProgress = (root = document) => {
                 item.dataset.level = String(level)
                 item.dataset.index = String(index)
 
-                const bullet = doc.createElement('span')
-                bullet.className = `reading-toc-item-bullet ${isMajor ? 'is-dash' : 'is-dot'}`
-
                 const label = doc.createElement('span')
                 label.className = 'reading-toc-item-text'
                 label.textContent = headingText(heading)
 
-                item.append(bullet, label)
+                item.append(label)
 
                 item.addEventListener('click', e => {
                     e.preventDefault()
