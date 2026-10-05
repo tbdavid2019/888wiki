@@ -1,5 +1,21 @@
 # Changelog
 
+## [2026-10-05]
+
+- **📖 閱讀進度條貼邊瘦身、正文安全走廊與章節目錄「釘選推擠 (Push on Pin)」排版重構 (Slim Docked Progress Bar, Safety Gutter & Push-on-Pin TOC Layout)**：
+  - **進度條瘦身貼邊 (Slim & Docked Edge Progress Indicator)**：
+    - 將 Share View（訪客閱讀檢視）下的閱讀進度指示條緊靠螢幕左側邊界（`left: 4px`），縮減軌道寬度至 12px、指示滑塊至 8px，大幅降低視覺壓迫感。
+    - **數值標籤垂直緊湊收斂**：將百分比與章節計數改以結構化標籤（`reading-progress-percent` 與 `reading-progress-fraction`）縱向緊密排列，文字寬度由原本 65px 大幅收斂至 28px，不再橫向突兀伸出。
+  - **正文「安全走廊 (Safety Gutter)」**：
+    - 在 Share View 下為桌機/平板版面（`≥ 769px`）提供專屬的左側安全外距（`padding-left: max(56px, ...)`），為左側進度條保留清晰的 28px 專用緩衝區。
+    - 徹底終結清單序號（`1.`、`2.`、`3.`）、引用框與段落開頭遭進度條踩字覆蓋的排版缺陷。
+  - **目錄「釘選推擠 (Push on Pin)」動態雙欄體驗 (Dynamic Responsive Sidebar on Pin)**：
+    - **平時（未釘選）**：保持全寬/置中大氣視野，零浪費任何橫向空間，滑鼠懸浮維持快速預覽。
+    - **釘選時（Pin 📌）**：點擊釘選時即時在 `document.body` 切換 `.is-toc-pinned`，桌機環境（`≥ 1024px`）下正文外層容器 `.layer_3` 自動藉由平滑貝茲過渡（`transition: padding-left 0.28s cubic-bezier(0.16, 1, 0.3, 1)`）推開 298px 專屬側欄位，目錄抽屜化身為固定側欄，正文完全露出一字不遮。
+    - **取消釘選或 Esc**：正文與頂部橫幅絲般順滑回彈，完美兼顧各類短 memo、寬表格、畫布與深度技術長文的閱讀場景。
+  - **自動化測試全量驗證**：
+    - 於 `test/reading-progress.test.mjs` 中新增釘選狀態事件連動、`is-toc-pinned` 樣式規則、安全走廊與進度數值排版之全量自動化測試合約，520 項測試 100% 通過。
+
 ## [2026-10-02]
 
 - **⚡ Block 區塊編輯器深度整合「即時語音聽打 (BlockNote Live Voice Dictation)」與動態指令選單**：

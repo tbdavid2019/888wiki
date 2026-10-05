@@ -178,12 +178,14 @@ test('renders slide-out TOC drawer and interactive outline controls on share vie
     toggleBtn.dispatchEvent(new dom.window.Event('click'))
     assert.equal(widget.classList.contains('is-drawer-open'), true)
     assert.equal(widget.classList.contains('is-pinned'), true)
+    assert.equal(dom.window.document.body.classList.contains('is-toc-pinned'), true)
 
     // Pin button toggles pin state
     const pinBtn = drawer.querySelector('.reading-toc-pin-btn')
     assert.ok(pinBtn)
     pinBtn.dispatchEvent(new dom.window.Event('click'))
     assert.equal(widget.classList.contains('is-pinned'), false)
+    assert.equal(dom.window.document.body.classList.contains('is-toc-pinned'), false)
 
     // Clicking a TOC item scrolls to heading
     tocItems[1].dispatchEvent(new dom.window.Event('click'))
@@ -200,8 +202,23 @@ test('renders slide-out TOC drawer and interactive outline controls on share vie
     toggleBtn.dispatchEvent(new dom.window.Event('click'))
     assert.equal(widget.classList.contains('is-pinned'), true)
     assert.equal(widget.classList.contains('is-drawer-open'), true)
+    assert.equal(dom.window.document.body.classList.contains('is-toc-pinned'), true)
     dom.window.document.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape' }))
     assert.equal(widget.classList.contains('is-drawer-open'), false)
     assert.equal(widget.classList.contains('is-pinned'), false)
+    assert.equal(dom.window.document.body.classList.contains('is-toc-pinned'), false)
+})
+
+test('provides left safety gutter and fluid push on TOC pin in share view', () => {
+    // Docked edge progress bar
+    assert.match(baseCss, /body\.share-view \.reading-progress\s*\{[^}]*left:\s*4px;/)
+    assert.match(baseCss, /body\.share-view \.reading-progress-track\s*\{[^}]*width:\s*12px;/)
+
+    // Safety gutter when unpinned
+    assert.match(baseCss, /body\.share-view:not\(\.is-toc-pinned\) #preview-md\.markdown-body/)
+    assert.match(baseCss, /padding-left:\s*max\(56px/)
+
+    // Desktop push on pin
+    assert.match(baseCss, /body\.share-view\.is-toc-pinned \.layer_3\s*\{[^}]*padding-left:\s*298px;/)
 })
 

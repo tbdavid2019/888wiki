@@ -1387,6 +1387,13 @@ html[data-ui-theme="dark"] .share-pulse-select option {
    leaves mobile readers with a blank page. */
 body.share-view .layer_3 {
     flex-direction: column;
+    box-sizing: border-box;
+    transition: padding-left 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (min-width: 1024px) {
+    body.share-view.is-toc-pinned .layer_3 {
+        padding-left: 298px;
+    }
 }
 body.share-view .share-author-preview-banner,
 body.share-view .share-deadman-released-banner,
@@ -1401,6 +1408,23 @@ body.share-view #preview-plain {
     min-width: 0;
     min-height: 0;
     height: 0;
+    box-sizing: border-box;
+}
+@media (min-width: 769px) {
+    body.share-view:not(.is-toc-pinned) #preview-md.markdown-body,
+    body.share-view:not(.is-toc-pinned) #preview-plain.markdown-body {
+        padding-left: max(56px, env(safe-area-inset-left, 0px) + 56px);
+        padding-right: max(32px, env(safe-area-inset-right, 0px) + 32px);
+        transition: padding-left 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+                    padding-right 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    body.share-view.is-toc-pinned #preview-md.markdown-body,
+    body.share-view.is-toc-pinned #preview-plain.markdown-body {
+        padding-left: max(32px, env(safe-area-inset-left, 0px) + 32px);
+        padding-right: max(32px, env(safe-area-inset-right, 0px) + 32px);
+        transition: padding-left 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+                    padding-right 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    }
 }
 body.share-view .canvas-editor-pane,
 body.share-view .whiteboard-editor-pane {
@@ -4293,12 +4317,48 @@ body.share-view .reading-progress {
     position: fixed;
     top: 50%;
     transform: translateY(-50%);
-    left: 12px;
+    left: 4px;
     z-index: 45;
+    transition: opacity 0.16s ease, left 0.2s ease;
 }
 body.share-view .reading-progress-track {
-    height: 120px;
-    width: 18px;
+    height: 110px;
+    width: 12px;
+}
+body.share-view .reading-progress-indicator {
+    width: 8px;
+    height: 6px;
+    border-radius: 3px;
+}
+body.share-view .reading-progress-toggle-btn {
+    width: 20px;
+    height: 20px;
+    margin-bottom: 2px;
+}
+body.share-view .reading-progress-toggle-btn .svg-icon {
+    width: 14px;
+    height: 14px;
+}
+body.share-view .reading-progress-value {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    max-width: 32px;
+    font: 9px/1.15 var(--editor-font-family);
+    text-align: center;
+    white-space: normal;
+    word-break: break-all;
+    margin-top: 2px;
+}
+body.share-view .reading-progress-value .reading-progress-sep {
+    display: none;
+}
+body.share-view .reading-progress-value .reading-progress-fraction {
+    font-size: 8px;
+    opacity: 0.68;
+    margin-top: 1px;
 }
 body:not(.share-view) .preview-pane .reading-progress {
     top: 50%;
@@ -4306,11 +4366,11 @@ body:not(.share-view) .preview-pane .reading-progress {
 }
 .reading-toc-drawer {
     position: absolute;
-    left: calc(100% + 12px);
+    left: calc(100% + 8px);
     top: 50%;
     transform: translateY(-50%) translateX(-8px);
     width: 260px;
-    max-height: min(520px, calc(100vh - 140px));
+    max-height: min(540px, calc(100vh - 120px));
     display: flex;
     flex-direction: column;
     border-radius: 12px;
@@ -4335,6 +4395,16 @@ body:not(.share-view) .preview-pane .reading-progress {
     pointer-events: auto;
     visibility: visible;
     transform: translateY(-50%) translateX(0);
+}
+@media (min-width: 1024px) {
+    body.share-view.is-toc-pinned .reading-toc-drawer {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+        border-color: var(--theme-border, rgba(140, 149, 159, 0.35));
+    }
+    [data-ui-theme="dark"] body.share-view.is-toc-pinned .reading-toc-drawer {
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35), 0 1px 4px rgba(0, 0, 0, 0.2);
+        border-color: var(--theme-border, rgba(200, 210, 225, 0.18));
+    }
 }
 [data-ui-theme="dark"] .reading-toc-drawer {
     background: color-mix(in srgb, var(--theme-bg, #1a1e24) 88%, transparent);

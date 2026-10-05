@@ -179,6 +179,7 @@ export const initReadingProgress = (root = document) => {
         pinBtn.setAttribute('aria-pressed', String(isPinned))
         pinBtn.title = isPinned ? labels.unpin : labels.pin
         pinBtn.setAttribute('aria-label', isPinned ? labels.unpin : labels.pin)
+        doc.body?.classList?.toggle('is-toc-pinned', isPinned)
     }
 
     if (isShareView) {
@@ -247,7 +248,11 @@ export const initReadingProgress = (root = document) => {
         widget.style.setProperty('--reading-progress', `${progress.percent}%`)
         track.setAttribute('aria-label', labels.value(progress.percent, currentHeading, activeHeadingIndex, headings.length || 1))
         value.value = String(progress.percent)
-        value.textContent = headings.length ? `${progress.percent}% · ${activeHeadingIndex + 1}/${headings.length}` : `${progress.percent}%`
+        if (headings.length) {
+            value.innerHTML = `<span class="reading-progress-percent">${progress.percent}%</span><span class="reading-progress-sep"> · </span><span class="reading-progress-fraction">${activeHeadingIndex + 1}/${headings.length}</span>`
+        } else {
+            value.textContent = `${progress.percent}%`
+        }
         track.title = labels.value(progress.percent, currentHeading, activeHeadingIndex, headings.length || 1)
         markers.querySelectorAll('.reading-progress-marker').forEach((marker, index) => {
             marker.classList.toggle('is-active', index === activeHeadingIndex)
