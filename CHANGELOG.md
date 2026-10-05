@@ -2,19 +2,20 @@
 
 ## [2026-10-05]
 
-- **📖 閱讀進度條貼邊瘦身、正文安全走廊與章節目錄「釘選推擠 (Push on Pin)」排版重構 (Slim Docked Progress Bar, Safety Gutter & Push-on-Pin TOC Layout)**：
-  - **進度條瘦身貼邊 (Slim & Docked Edge Progress Indicator)**：
-    - 將 Share View（訪客閱讀檢視）下的閱讀進度指示條緊靠螢幕左側邊界（`left: 4px`），縮減軌道寬度至 12px、指示滑塊至 8px，大幅降低視覺壓迫感。
-    - **數值標籤垂直緊湊收斂**：將百分比與章節計數改以結構化標籤（`reading-progress-percent` 與 `reading-progress-fraction`）縱向緊密排列，文字寬度由原本 65px 大幅收斂至 28px，不再橫向突兀伸出。
-  - **正文「安全走廊 (Safety Gutter)」**：
-    - 在 Share View 下為桌機/平板版面（`≥ 769px`）提供專屬的左側安全外距（`padding-left: max(56px, ...)`），為左側進度條保留清晰的 28px 專用緩衝區。
+- **📖 閱讀進度條美感升級、正文安全走廊與章節目錄「全高無留白釘選側欄 (Full-Height Pinned Sidebar)」排版重構**：
+  - **16px 圓潤美觀進度導軌 (Aesthetic Capsule Progress Rail)**：
+    - 將 Share View（訪客閱讀檢視）下的閱讀進度指示條寬度由 12px 增厚至 16px、高度 124px，採圓潤膠囊形導軌（`border-radius: 999px`）、內嵌微陰影與 12px × 9px 觸感指示滑塊，徹底告別生硬乾癟的細線條，呈現頂級工藝質感。
+    - **微型膠囊進度徽章**：百分比與章節計數採用精緻半透明微膠囊外框與微調字重，縱向緊密排列不外突，視覺清爽平衡。
+  - **正文 64px 專屬「安全走廊 (Safety Gutter)」**：
+    - 在 Share View 下為桌機/平板版面（`≥ 769px`）提供專屬的左側安全外距（`padding-left: max(64px, ...)`），為左側進度條保留清晰的專用緩衝走廊。
     - 徹底終結清單序號（`1.`、`2.`、`3.`）、引用框與段落開頭遭進度條踩字覆蓋的排版缺陷。
-  - **目錄「釘選推擠 (Push on Pin)」動態雙欄體驗 (Dynamic Responsive Sidebar on Pin)**：
+  - **目錄「全高無留白釘選側欄 (Full-Height Pinned Sidebar)」動態雙欄體驗**：
     - **平時（未釘選）**：保持全寬/置中大氣視野，零浪費任何橫向空間，滑鼠懸浮維持快速預覽。
-    - **釘選時（Pin 📌）**：點擊釘選時即時在 `document.body` 切換 `.is-toc-pinned`，桌機環境（`≥ 1024px`）下正文外層容器 `.layer_3` 自動藉由平滑貝茲過渡（`transition: padding-left 0.28s cubic-bezier(0.16, 1, 0.3, 1)`）推開 298px 專屬側欄位，目錄抽屜化身為固定側欄，正文完全露出一字不遮。
-    - **取消釘選或 Esc**：正文與頂部橫幅絲般順滑回彈，完美兼顧各類短 memo、寬表格、畫布與深度技術長文的閱讀場景。
+    - **釘選時（Pin 📌）**：點擊釘選時即時在 `document.body` 切換 `.is-toc-pinned`，桌機環境（`≥ 1024px`）下正文外層容器 `.layer_3` 自動藉由平滑貝茲過渡（`transition: padding-left 0.28s cubic-bezier(0.16, 1, 0.3, 1)`）推開 280px 專屬側欄位。
+    - **徹底消除上下留白**：釘選狀態下目錄抽屜擺脫局部置中浮卡，無縫切換為自頂端（`top: 0`）頂到底欄（`bottom: 48px`）的完整獨立側欄，徹底根除卡片上下尷尬的垂直留白；同時父容器重置 `transform: none` 杜絕 CSS 包含塊拘束。
+    - **浮動軌道無縫收斂**：釘選時自動隱藏浮動軌道與數字標籤，由側欄全權接管，典雅潔淨；取消釘選或 Esc 鍵時正文與導軌絲般順滑回彈。
   - **自動化測試全量驗證**：
-    - 於 `test/reading-progress.test.mjs` 中新增釘選狀態事件連動、`is-toc-pinned` 樣式規則、安全走廊與進度數值排版之全量自動化測試合約，520 項測試 100% 通過。
+    - 於 `test/reading-progress.test.mjs` 中更新 16px 導軌、64px 安全走廊、全高固定側欄排版與包含塊變形重置測試合約，520 項測試 100% 通過。
 
 ## [2026-10-02]
 

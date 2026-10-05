@@ -211,14 +211,18 @@ test('renders slide-out TOC drawer and interactive outline controls on share vie
 
 test('provides left safety gutter and fluid push on TOC pin in share view', () => {
     // Docked edge progress bar
-    assert.match(baseCss, /body\.share-view \.reading-progress\s*\{[^}]*left:\s*4px;/)
-    assert.match(baseCss, /body\.share-view \.reading-progress-track\s*\{[^}]*width:\s*12px;/)
+    assert.match(baseCss, /body\.share-view \.reading-progress\s*\{[^}]*left:\s*8px;/)
+    assert.match(baseCss, /body\.share-view \.reading-progress-track\s*\{[^}]*width:\s*16px;/)
 
     // Safety gutter when unpinned
     assert.match(baseCss, /body\.share-view:not\(\.is-toc-pinned\) #preview-md\.markdown-body/)
-    assert.match(baseCss, /padding-left:\s*max\(56px/)
+    assert.match(baseCss, /padding-left:\s*max\(64px/)
 
     // Desktop push on pin
-    assert.match(baseCss, /body\.share-view\.is-toc-pinned \.layer_3\s*\{[^}]*padding-left:\s*298px;/)
+    assert.match(baseCss, /body\.share-view\.is-toc-pinned \.layer_3\s*\{[^}]*padding-left:\s*280px;/)
+
+    // Desktop full-height sidebar when pinned (no top/bottom gaps)
+    assert.match(baseCss, /body\.share-view\.is-toc-pinned \.reading-progress\s*\{[^}]*transform:\s*none !important;/)
+    assert.match(baseCss, /body\.share-view\.is-toc-pinned \.reading-toc-drawer\s*\{[^}]*position:\s*fixed;[^}]*top:\s*0;[^}]*bottom:\s*48px;[^}]*width:\s*280px;/)
 })
 

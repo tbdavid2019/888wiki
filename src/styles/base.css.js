@@ -1392,7 +1392,7 @@ body.share-view .layer_3 {
 }
 @media (min-width: 1024px) {
     body.share-view.is-toc-pinned .layer_3 {
-        padding-left: 298px;
+        padding-left: 280px;
     }
 }
 body.share-view .share-author-preview-banner,
@@ -1413,14 +1413,14 @@ body.share-view #preview-plain {
 @media (min-width: 769px) {
     body.share-view:not(.is-toc-pinned) #preview-md.markdown-body,
     body.share-view:not(.is-toc-pinned) #preview-plain.markdown-body {
-        padding-left: max(56px, env(safe-area-inset-left, 0px) + 56px);
+        padding-left: max(64px, env(safe-area-inset-left, 0px) + 64px);
         padding-right: max(32px, env(safe-area-inset-right, 0px) + 32px);
         transition: padding-left 0.28s cubic-bezier(0.16, 1, 0.3, 1),
                     padding-right 0.28s cubic-bezier(0.16, 1, 0.3, 1);
     }
     body.share-view.is-toc-pinned #preview-md.markdown-body,
     body.share-view.is-toc-pinned #preview-plain.markdown-body {
-        padding-left: max(32px, env(safe-area-inset-left, 0px) + 32px);
+        padding-left: max(36px, env(safe-area-inset-left, 0px) + 36px);
         padding-right: max(32px, env(safe-area-inset-right, 0px) + 32px);
         transition: padding-left 0.28s cubic-bezier(0.16, 1, 0.3, 1),
                     padding-right 0.28s cubic-bezier(0.16, 1, 0.3, 1);
@@ -4317,27 +4317,42 @@ body.share-view .reading-progress {
     position: fixed;
     top: 50%;
     transform: translateY(-50%);
-    left: 4px;
+    left: 8px;
     z-index: 45;
-    transition: opacity 0.16s ease, left 0.2s ease;
+    transition: opacity 0.2s ease, left 0.2s ease;
 }
 body.share-view .reading-progress-track {
-    height: 110px;
-    width: 12px;
+    height: 124px;
+    width: 16px;
+    border-radius: 999px;
+    background: rgba(125, 135, 145, 0.16);
+    border: 1px solid rgba(125, 135, 145, 0.24);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+[data-ui-theme="dark"] body.share-view .reading-progress-track {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
 }
 body.share-view .reading-progress-indicator {
-    width: 8px;
-    height: 6px;
-    border-radius: 3px;
+    width: 12px;
+    height: 9px;
+    border-radius: 4.5px;
+    background: var(--theme-accent, #0969da);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.85);
+}
+[data-ui-theme="dark"] body.share-view .reading-progress-indicator {
+    background: var(--theme-accent, #38bdf8);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(30, 30, 30, 0.9);
 }
 body.share-view .reading-progress-toggle-btn {
-    width: 20px;
-    height: 20px;
-    margin-bottom: 2px;
+    width: 22px;
+    height: 22px;
+    margin-bottom: 3px;
+    border-radius: 6px;
 }
 body.share-view .reading-progress-toggle-btn .svg-icon {
-    width: 14px;
-    height: 14px;
+    width: 15px;
+    height: 15px;
 }
 body.share-view .reading-progress-value {
     display: flex;
@@ -4345,19 +4360,28 @@ body.share-view .reading-progress-value {
     align-items: center;
     justify-content: center;
     min-width: 0;
-    max-width: 32px;
-    font: 9px/1.15 var(--editor-font-family);
+    max-width: 36px;
+    padding: 3px 5px;
+    border-radius: 6px;
+    background: rgba(125, 135, 145, 0.12);
+    border: 1px solid rgba(125, 135, 145, 0.18);
+    font: 600 10px/1.2 var(--editor-font-family);
     text-align: center;
     white-space: normal;
     word-break: break-all;
-    margin-top: 2px;
+    margin-top: 3px;
+}
+[data-ui-theme="dark"] body.share-view .reading-progress-value {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
 }
 body.share-view .reading-progress-value .reading-progress-sep {
     display: none;
 }
 body.share-view .reading-progress-value .reading-progress-fraction {
-    font-size: 8px;
-    opacity: 0.68;
+    font-size: 8.5px;
+    font-weight: 500;
+    opacity: 0.72;
     margin-top: 1px;
 }
 body:not(.share-view) .preview-pane .reading-progress {
@@ -4397,13 +4421,58 @@ body:not(.share-view) .preview-pane .reading-progress {
     transform: translateY(-50%) translateX(0);
 }
 @media (min-width: 1024px) {
+    /* When pinned on desktop, seamlessly transform into full-height sidebar and hide the floating rail */
+    body.share-view.is-toc-pinned .reading-progress {
+        top: 0 !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        transform: none !important;
+        pointer-events: none;
+    }
+
+    body.share-view.is-toc-pinned .reading-progress-track,
+    body.share-view.is-toc-pinned .reading-progress-toggle-btn,
+    body.share-view.is-toc-pinned .reading-progress-value {
+        opacity: 0 !important;
+        pointer-events: none !important;
+        visibility: hidden !important;
+    }
+
     body.share-view.is-toc-pinned .reading-toc-drawer {
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
-        border-color: var(--theme-border, rgba(140, 149, 159, 0.35));
+        position: fixed;
+        top: 0;
+        bottom: 48px;
+        left: 0;
+        width: 280px;
+        height: auto;
+        max-height: none;
+        transform: none !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        visibility: visible !important;
+        border-radius: 0;
+        border-top: none;
+        border-bottom: none;
+        border-left: none;
+        border-right: 1px solid var(--theme-border, rgba(140, 149, 159, 0.28));
+        box-shadow: 2px 0 16px rgba(0, 0, 0, 0.04);
+        background: var(--theme-bg, #ffffff);
+        z-index: 50;
     }
     [data-ui-theme="dark"] body.share-view.is-toc-pinned .reading-toc-drawer {
-        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35), 0 1px 4px rgba(0, 0, 0, 0.2);
-        border-color: var(--theme-border, rgba(200, 210, 225, 0.18));
+        background: color-mix(in srgb, var(--theme-bg, #1a1e24) 96%, transparent);
+        border-right-color: var(--theme-border, rgba(200, 210, 225, 0.16));
+        box-shadow: 2px 0 16px rgba(0, 0, 0, 0.35);
+    }
+    body.share-view.is-toc-pinned .reading-toc-header {
+        padding: 12px 14px;
+        height: 48px;
+        box-sizing: border-box;
+    }
+    body.share-view.is-toc-pinned .reading-toc-body {
+        max-height: none;
+        flex: 1 1 auto;
+        overflow-y: auto;
     }
 }
 [data-ui-theme="dark"] .reading-toc-drawer {
