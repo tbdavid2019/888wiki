@@ -429,15 +429,15 @@ ${getMarkdownCss()}
                                         <span id="editor-search-count" class="editor-search-count">0 / 0</span>
                                     </div>
                                     <div class="editor-search-options">
-                                        <button type="button" id="editor-search-case" class="search-opt-btn" title="${lang === 'zh-TW' ? '區分大小寫 (Aa)' : 'Match Case (Aa)'}" aria-label="Match Case">Aa</button>
-                                        <button type="button" id="editor-search-word" class="search-opt-btn" title="${lang === 'zh-TW' ? '全字匹配 (\\b)' : 'Match Whole Word (\\b)'}" aria-label="Match Whole Word">\\b</button>
-                                        <button type="button" id="editor-search-regex" class="search-opt-btn" title="${lang === 'zh-TW' ? '正規表達式 (.*)' : 'Use Regex (.*)'}" aria-label="Use Regex">.*</button>
+                                        <button type="button" id="editor-search-case" class="search-opt-btn" title="${lang === 'zh-TW' ? '區分大小寫 (Aa)' : 'Match Case (Aa)'}" aria-label="${lang === 'zh-TW' ? '區分大小寫' : 'Match Case'}">Aa</button>
+                                        <button type="button" id="editor-search-word" class="search-opt-btn" title="${lang === 'zh-TW' ? '全字匹配 (\\b)' : 'Match Whole Word (\\b)'}" aria-label="${lang === 'zh-TW' ? '全字匹配' : 'Match Whole Word'}">\\b</button>
+                                        <button type="button" id="editor-search-regex" class="search-opt-btn" title="${lang === 'zh-TW' ? '正規表達式 (.*)' : 'Use Regex (.*)'}" aria-label="${lang === 'zh-TW' ? '正規表達式' : 'Use Regex'}">.*</button>
                                     </div>
                                     <div class="editor-search-nav">
-                                        <button type="button" id="editor-search-prev" class="search-nav-btn" title="${lang === 'zh-TW' ? '上一個 (Shift+Enter)' : 'Previous match'}" aria-label="Previous">▲</button>
-                                        <button type="button" id="editor-search-next" class="search-nav-btn" title="${lang === 'zh-TW' ? '下一個 (Enter)' : 'Next match'}" aria-label="Next">▼</button>
-                                        <button type="button" id="editor-search-toggle-replace" class="search-nav-btn" title="${lang === 'zh-TW' ? '切換取代面板' : 'Toggle Replace'}" aria-label="Toggle Replace">⇄</button>
-                                        <button type="button" id="editor-search-close" class="search-close-btn" title="${lang === 'zh-TW' ? '關閉 (Esc)' : 'Close'}" aria-label="Close">✕</button>
+                                        <button type="button" id="editor-search-prev" class="search-nav-btn" title="${lang === 'zh-TW' ? '上一個 (Shift+Enter)' : 'Previous match'}" aria-label="${lang === 'zh-TW' ? '上一個搜尋結果' : 'Previous match'}">▲</button>
+                                        <button type="button" id="editor-search-next" class="search-nav-btn" title="${lang === 'zh-TW' ? '下一個 (Enter)' : 'Next match'}" aria-label="${lang === 'zh-TW' ? '下一個搜尋結果' : 'Next match'}">▼</button>
+                                        <button type="button" id="editor-search-toggle-replace" class="search-nav-btn" title="${lang === 'zh-TW' ? '切換取代面板' : 'Toggle Replace'}" aria-label="${lang === 'zh-TW' ? '切換取代面板' : 'Toggle Replace'}">⇄</button>
+                                        <button type="button" id="editor-search-close" class="search-close-btn" title="${lang === 'zh-TW' ? '關閉 (Esc)' : 'Close'}" aria-label="${lang === 'zh-TW' ? '關閉搜尋面板' : 'Close search'}">✕</button>
                                     </div>
                                 </div>
                                 <div id="editor-replace-row" class="editor-replace-row hide">
@@ -468,7 +468,7 @@ ${getMarkdownCss()}
                                 </div>
                                 <div id="editor-line-mirror" class="editor-line-mirror" aria-hidden="true"></div>
                                 <div id="editor-line-numbers" class="editor-line-numbers" aria-hidden="true"></div>
-                                <textarea id="contents" class="contents" spellcheck="false" placeholder="${SUPPORTED_LANG[lang].emptyPH}">${escapeHtml(content)}</textarea>
+                                <textarea id="contents" class="contents" spellcheck="false" aria-label="${lang === 'zh-TW' ? '筆記內文編輯區' : 'Note content editor'}" placeholder="${SUPPORTED_LANG[lang].emptyPH}">${escapeHtml(content)}</textarea>
                                 ${isEdit && !isBlockDocument ? '<div id="editor-welcome" class="editor-welcome" aria-hidden="true" hidden></div>' : ''}
                             </div>
                             <div id="editor-status" class="editor-status" aria-live="polite"></div>

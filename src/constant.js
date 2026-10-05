@@ -431,7 +431,7 @@ export const SUPPORTED_LANG = {
         copy: '複製',
         copied: '已複製',
         copyFailed: '複製失敗',
-        emptyPH: '',
+        emptyPH: '在此開始撰寫筆記內容，支援 Markdown 語法與雙欄即時預覽...',
         tipEncrypt: '這是一篇加密筆記，你必須先輸入密碼',
         tip404: '404，你要找的東西並不存在',
         published: '已發布',
