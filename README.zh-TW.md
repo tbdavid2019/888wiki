@@ -10,7 +10,7 @@
 
 **＋ 新增**選單可將不同來源的內容直接帶進筆記：
 
-- **即時語音聽打：** 透過 Web Audio 16kHz PCM 與 WebSocket 串流直連 Confucius4-R2T2 引擎（`asr.5gao.ai`），以低於 200ms 的極速延遲將說話即時化為繁體文字流暢注入游標處；全面支援 Markdown 工具列與 Block 區塊模式（Slash 指令 `/dictate` 或快速鍵 `Cmd/Ctrl + Shift + D`），具備智慧在線偵測機制，伺服器在線時自動現身、離線時安靜隱藏。
+- **即時語音聽打：** 透過 Web Audio 16kHz PCM 與 WebSocket 串流直連 Confucius4-R2T2 引擎（`asr.5gao.ai`），以低於 200ms 的極速延遲將說話即時化為繁體文字流暢注入游標處；全面支援 Markdown 工具列與 Block 區塊模式。Markdown 工具列的聽打按鈕移至最左側，方便快速啟動；亦可使用 Slash 指令 `/dictate` 或快速鍵 `Cmd/Ctrl + Shift + D`，並由智慧在線偵測於服務在線時顯示、離線時隱藏按鈕。
 - **即時錄音：** 錄音與播放器先保存在 IndexedDB；連線後轉錄，發布／同步時再上傳至 888box 附件服務。
 - **匯入音訊（逐字稿）：** 取得忠實原音、附時間標記的逐字稿。
 - **匯入音訊（智慧排版）：** 使用 AI 將語音整理成段落與章節。

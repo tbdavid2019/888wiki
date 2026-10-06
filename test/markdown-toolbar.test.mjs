@@ -144,7 +144,7 @@ test('renders the toolbar for editable Markdown pages', () => {
     assert.match(commonTemplate, /data-markdown-toolbar/)
     assert.match(
         commonTemplate,
-        /data-language="\$\{lang\}" role="toolbar"[^>]*>\s*<button type="button" id="editor-ai-format-btn"/
+        /data-language="\$\{lang\}" role="toolbar"[^>]*>\s*<button type="button" class="markdown-toolbar-button is-dictate-btn" data-command="dictate"[^>]*>\s*<span[^>]*>\$\{dictateCommand\.glyph\}<\/span><\/button>\s*<button type="button" id="editor-ai-format-btn"/
     )
     assert.match(commonTemplate, /id="editor-ai-edit-btn"[^>]*data-ai-action="edit"/)
     assert.match(commonTemplate, /id="editor-ai-edit-btn"[^>]*>\s*<span[^>]*>\$\{SVG_ICONS\.magic\}<\/span>\s*<\/button>/)

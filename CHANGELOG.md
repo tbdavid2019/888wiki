@@ -1,5 +1,9 @@
 # Changelog
 
+## [2026-10-06]
+
+- **Markdown 工具列聽打按鈕前移 (Move Dictation to the Front of the Markdown Toolbar)**：將「即時聽打」按鈕移至 Markdown 工具列最左側、AI 工具之前；保留 ASR 在線時顯示、離線時隱藏的動態行為，並同步更新中英文 README。
+
 ## [2026-10-05]
 
 - **📖 閱讀進度條美感升級、正文安全走廊與章節目錄「全高無留白釘選側欄 (Full-Height Pinned Sidebar)」排版重構**：

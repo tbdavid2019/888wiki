@@ -203,16 +203,18 @@ const EDITOR_TOOLBAR_COMMANDS = [
 export const EDITOR_TOOLBAR = lang => {
     const isZh = lang === 'zh-TW'
     const label = isZh ? 'Markdown 編輯工具' : 'Markdown editing tools'
+    const dictateCommand = EDITOR_TOOLBAR_COMMANDS.find(item => item.command === 'dictate')
     return `
     <div class="markdown-editor-toolbar-wrap">
     <div class="markdown-editor-toolbar" data-markdown-toolbar data-language="${lang}" role="toolbar" aria-label="${label}">
+        <button type="button" class="markdown-toolbar-button is-dictate-btn" data-command="dictate" data-tooltip="${isZh ? dictateCommand.zh : dictateCommand.en}" title="${isZh ? dictateCommand.zh : dictateCommand.en}" aria-label="${isZh ? dictateCommand.zh : dictateCommand.en}" style="display: none;"><span class="markdown-toolbar-glyph" aria-hidden="true">${dictateCommand.glyph}</span></button>
         <button type="button" id="editor-ai-format-btn" class="markdown-toolbar-button" data-ai-action="format" data-tooltip="${isZh ? 'AI 格式化排版' : 'AI Format Document'}" title="${isZh ? 'AI 格式化排版' : 'AI Format Document'}" aria-label="${isZh ? 'AI 格式化排版' : 'AI Format Document'}"><span class="markdown-toolbar-glyph is-ai" aria-hidden="true">${SVG_ICONS.sparkles}</span></button>
         <button type="button" id="editor-ai-edit-btn" class="markdown-toolbar-button" data-ai-action="edit" data-tooltip="${isZh ? 'AI 輔助編輯' : 'AI Edit Document'}" title="${isZh ? 'AI 輔助編輯' : 'AI Edit Document'}" aria-label="${isZh ? 'AI 輔助編輯' : 'AI Edit Document'}"><span class="markdown-toolbar-glyph is-ai" aria-hidden="true">${SVG_ICONS.magic}</span></button>
         <button type="button" id="editor-ai-translate-btn" class="markdown-toolbar-button" data-ai-action="translate" data-tooltip="${isZh ? 'AI 翻譯／雙語' : 'AI Translate / Bilingual'}" title="${isZh ? 'AI 翻譯／雙語' : 'AI Translate / Bilingual'}" aria-label="${isZh ? 'AI 翻譯／雙語' : 'AI Translate / Bilingual'}"><span class="markdown-toolbar-glyph is-ai" aria-hidden="true">${SVG_ICONS.languages}</span></button>
         <span class="markdown-toolbar-separator" role="separator" aria-hidden="true"></span>
-        ${EDITOR_TOOLBAR_COMMANDS.map(item => item.separator
+        ${EDITOR_TOOLBAR_COMMANDS.filter(item => item.command !== 'dictate').map(item => item.separator
             ? '<span class="markdown-toolbar-separator" role="separator" aria-hidden="true"></span>'
-            : `<button type="button" class="markdown-toolbar-button ${item.command === 'dictate' ? 'is-dictate-btn' : ''}" data-command="${item.command}" data-tooltip="${isZh ? item.zh : item.en}" title="${isZh ? item.zh : item.en}" aria-label="${isZh ? item.zh : item.en}" ${item.hidden ? 'style="display: none;"' : ''}><span class="markdown-toolbar-glyph ${item.glyphClass || ''}" aria-hidden="true">${item.glyph}</span></button>`
+            : `<button type="button" class="markdown-toolbar-button" data-command="${item.command}" data-tooltip="${isZh ? item.zh : item.en}" title="${isZh ? item.zh : item.en}" aria-label="${isZh ? item.zh : item.en}" ${item.hidden ? 'style="display: none;"' : ''}><span class="markdown-toolbar-glyph ${item.glyphClass || ''}" aria-hidden="true">${item.glyph}</span></button>`
         ).join('')}
     </div>
     <input id="markdown-toolbar-image-input" class="visually-hidden-file-input" type="file" accept="image/*" aria-label="${isZh ? '選擇要上傳的圖片' : 'Choose an image to upload'}">
