@@ -1,5 +1,34 @@
 # Changelog
 
+## [2026-10-09]
+
+- **✏️ 底欄左下角編輯按鈕圖示與尺寸重構（Bottom-Left Split Action Edit Button & Icon Redesign）**：
+  - **徹底根治圖示微型化與擠壓變形**：修復 `.split-action-main` 因繼承 `.toolbar-icon-button` 固定 `width: var(--toolbar-height)` (28px) 與 `padding: 0 9px` 導致內容寬度僅剩 10px 的嚴重擠壓缺陷；改為 `width: auto !important; min-width: 32px; padding: 0 8px;`，使按鈕內部空間舒展。
+  - **全新標準編輯筆頭向量圖示 (`SVG_ICONS.edit`)**：為未設密碼的公開筆記提供清晰醒目的 24x24 滿版編輯鉛筆向量圖示，筆觸粗細為 2px，具有清晰橡皮擦線條，徹底擺脫原先未上鎖筆記誤用微型上鎖圖示的違和感。
+  - **鎖定編輯圖示比例重構 (`SVG_ICONS.editLock`)**：重構密碼鎖定編輯圖示，鎖身尺寸擴充為 13x10，鎖環與斜角筆桿以 2px 粗筆觸大器呈現，在 17px/20px 下依然清晰可辨。
+  - **圖示等比例放大至 17px/20px**：底欄膠囊左側主按鈕圖示放大至 17px（行動端 20px），右側下拉選單「＋」加大至 14px（粗體 700），完美匹配底欄其他圖示（列印、匯出、朗讀等）的視覺份量。
+  - **新增 Markdown 筆記圖示語義修正**：下拉選單中的「新增 Markdown 筆記」項目由誤用的 `editLock` 改為標準的 `edit` 鉛筆圖示，邏輯更加一致。
+- **📢 編輯器發布狀態列升級：最左側直達分享頁圖示與靈動抖動提醒、隱藏冗長純文字 URL（Direct Share Open Button with Nudge Shake & Hidden Raw URL）**：
+  - **最左側直達分享頁按鈕 (Far-Left Direct Share Open Link)**：於發布狀態列最左側（`▷` 簡報與 `📖` 書本按鈕前）新增獨立的圖示按鈕（`#editor-share-page-btn`，採用標準新分頁外開圖示 `SVG_ICONS.externalLink`），點擊即可直接於獨立新分頁開啟公開分享頁面。
+  - **靈巧週期抖動提醒 (Periodic Nudge Shake Animation)**：加入 `@keyframes share-btn-nudge-shake` 旋轉搖晃微動畫（每 3.5 秒進行微幅度旋轉晃動提醒，滑鼠懸浮時自動暫停，並支援 `prefers-reduced-motion: reduce` 無障礙停用），優雅提醒用戶可點擊存取公開發布成果。
+  - **發布引導與即時同步 (Publish Nudge & Dynamic Sync)**：若筆記尚未發布，點擊該按鈕將自動呼叫發布選項對話框（`openPublishOptions()`），Tooltip 即時提示「打開分享頁面 (尚未發布)」；發布後自動同步真實分享路徑。
+  - **隱藏對人類無意義之原始 URL 純文字 (Hidden Cluttered Raw URL Text)**：徹底移除與隱藏底欄中冗長佔位、對人類無實質閱讀意義的 `分享 URL https://...` 連結文字，大幅釋放底欄橫向空間；保留極簡精巧的剪貼簿複製按鈕（`#publication-copy-url`，Tooltip「複製分享連結」）與搜尋索引狀態開關。
+- **📖 閱讀進度導軌全面升級為 Notion 風格大器長條大綱（Notion-Style Grand Vertical Outline）**：
+  - **大器縱向長條導軌 (Expansive Vertical Track)**：擺脫原先 124px 的封閉膠囊小框，升級為充分展開的縱向極簡導軌（`max-height: min(76vh, 680px)`），無多餘厚重外框與背景，呈現極簡典雅之大綱視覺。
+  - **章節標題長短階層區隔 (Hierarchical Dash Lengths)**：依照標題層級（H1~H6）賦予精準的橫條長度階層：
+    - `H1`：26px 長橫條（3px 高度）
+    - `H2`：18px 中橫條（2.5px 高度）
+    - `H3`：12px 短橫條（2px 高度）
+    - `H4`：8px 細橫條（2px 高度）
+    - `H5 / H6`：6px 極細橫條
+    - 靠左對齊，層次分明，視覺猶如文件 Minimap。
+  - **懸浮標題氣泡 (Floating Title Tooltips)**：滑鼠懸浮任意橫條刻度時，右側即時彈出洗鍊精緻的標題氣泡（帶有箭頭指向刻度），完整顯示章節名稱；點擊即平滑滾動（smooth scroll）至該標題。
+  - **當前閱讀章節高對比焦點 (Active Reading Highlight)**：隨頁面捲動即時高亮當前章節刻度（淺色模式純黑高對比，深色模式高亮純白，具備放大與光暈效果）；非活躍刻度保持舒適半透明。
+  - **徹底移除底部突兀數字 (Removed Cluttered Bottom Numbers)**：徹底移除下方容易造成折行的百分比與章節計數數字框（`.reading-progress-value`），維持純粹清爽的閱讀大綱介面。
+  - **完整目錄側欄整合 (TOC Drawer Integration)**：保留頂部目錄圖示按鈕，平時維持 Notion 簡約大綱，點擊圖示仍可展開或釘選完整文字目錄側欄。
+  - **無障礙滾動條強化 (Accessible Slider & No Flex Shrink)**：進度軌道支援鍵盤方向鍵導航（ARIA Slider），大綱標記群組防止壓縮（`flex-shrink: 0`），確保長篇大量標題時平滑捲動不變形。
+  - **快顯快取破除 (`?v=2.2`)**：更新 `/js/reading-progress.mjs?v=2.2` 版本號，確保讀者客戶端即時載入最新樣式與行為。
+
 ## [2026-10-06]
 
 - **Markdown 工具列聽打按鈕前移 (Move Dictation to the Front of the Markdown Toolbar)**：將「即時聽打」按鈕移至 Markdown 工具列最左側、AI 工具之前；保留 ASR 在線時顯示、離線時隱藏的動態行為，並同步更新中英文 README。

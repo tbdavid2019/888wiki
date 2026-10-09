@@ -2,7 +2,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { JSDOM } from 'jsdom'
 
-import { EDITOR_PREFERENCE_MODAL, FOOTER } from '../src/templates/common.js'
+import { EDITOR_PREFERENCE_MODAL, FOOTER, SVG_ICONS } from '../src/templates/common.js'
+import { getBaseCss } from '../src/styles/base.css.js'
 import {
     DEFAULT_EDITOR_FORMAT,
     EDITOR_PREFERENCE_STORAGE_KEY,
@@ -121,6 +122,9 @@ test('editor preference modal provides interactive language switch buttons for f
 })
 
 test('share mode combines edit note link and new note menu into a split action capsule', () => {
+    assert.ok(SVG_ICONS.edit.includes('<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>'))
+    assert.ok(SVG_ICONS.editLock.includes('lock-combo-icon'))
+
     const shareFooter = FOOTER({
         lang: 'zh-TW',
         isEdit: false,
@@ -132,4 +136,29 @@ test('share mode combines edit note link and new note menu into a split action c
     assert.match(shareFooter, /class="toolbar-icon-button split-action-main readonly-edit-link"/)
     assert.match(shareFooter, /class="toolbar-icon-button dropdown-trigger new-note-menu-trigger split-action-dropdown"/)
     assert.match(shareFooter, /<strong>編輯目前這篇筆記<\/strong>/)
+    // Non-password note uses standard edit pencil icon, not lock-combo-icon
+    assert.ok(shareFooter.includes(SVG_ICONS.edit))
+    assert.ok(!shareFooter.includes('readonly-edit-link" data-tooltip="返回編輯" title="返回編輯" aria-label="返回編輯"><svg class="svg-icon lock-combo-icon"'))
 })
+
+test('share mode uses editLock icon when authPath is present', () => {
+    const protectedFooter = FOOTER({
+        lang: 'zh-TW',
+        isEdit: false,
+        path: 'note123',
+        authPath: '/auth/note123',
+        sharePath: '/share/note123',
+    })
+
+    assert.match(protectedFooter, /id="readonly-edit-btn"/)
+    assert.ok(protectedFooter.includes('id="readonly-edit-btn" class="toolbar-icon-button split-action-main"'))
+    assert.ok(protectedFooter.includes(SVG_ICONS.editLock))
+})
+
+test('split action group styles provide legible icon sizing and min-width', () => {
+    const css = getBaseCss()
+    assert.match(css, /\.split-action-group \.split-action-main\s*\{[^}]*min-width:\s*32px/)
+    assert.match(css, /\.split-action-group \.split-action-main \.svg-icon,\s*\.split-action-group \.split-action-main \.lock-combo-icon\s*\{[^}]*width:\s*17px !important/)
+    assert.match(css, /\.split-action-group \.split-action-dropdown \.new-note-plus\s*\{[^}]*font-size:\s*14px/)
+})
+

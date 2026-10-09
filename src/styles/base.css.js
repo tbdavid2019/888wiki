@@ -2491,8 +2491,11 @@ html[data-ui-theme="dark"] .share-menu-trigger.is-published {
 .split-action-group .split-action-main {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 5px;
-    padding: 0 9px;
+    padding: 0 8px;
+    width: auto !important;
+    min-width: 32px;
     height: 100%;
     border: 0;
     background: transparent;
@@ -2505,18 +2508,30 @@ html[data-ui-theme="dark"] .share-menu-trigger.is-published {
     border-bottom-left-radius: calc(var(--toolbar-radius) - 1px);
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
-    transition: background-color 0.12s ease, color 0.12s ease;
+    transition: background-color 0.12s ease, color 0.12s ease, transform 0.1s ease;
 }
 .split-action-group .split-action-main:hover {
     background: var(--toolbar-bg-hover);
     color: var(--toolbar-accent);
 }
+.split-action-group .split-action-main:active {
+    transform: scale(0.96);
+}
+.split-action-group .split-action-main .svg-icon,
+.split-action-group .split-action-main .lock-combo-icon {
+    width: 17px !important;
+    height: 17px !important;
+    margin: 0;
+    flex-shrink: 0;
+}
 .split-action-group .split-action-dropdown {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 2px;
+    gap: 3px;
     padding: 0 7px;
+    width: auto !important;
+    min-width: 28px;
     height: 100%;
     border: 0;
     border-left: 1px solid var(--toolbar-border);
@@ -2527,14 +2542,19 @@ html[data-ui-theme="dark"] .share-menu-trigger.is-published {
     border-bottom-left-radius: 0;
     border-top-right-radius: calc(var(--toolbar-radius) - 1px);
     border-bottom-right-radius: calc(var(--toolbar-radius) - 1px);
-    transition: background-color 0.12s ease, color 0.12s ease;
+    transition: background-color 0.12s ease, color 0.12s ease, transform 0.1s ease;
 }
 .split-action-group .split-action-dropdown:hover {
     background: var(--toolbar-bg-hover);
     color: var(--toolbar-accent);
 }
+.split-action-group .split-action-dropdown .active,
+.split-action-group .split-action-dropdown:active {
+    transform: scale(0.96);
+}
 .split-action-group .split-action-dropdown .new-note-plus {
-    font-size: 13px;
+    font-size: 14px;
+    font-weight: 700;
     line-height: 1;
 }
 .split-action-group .split-action-dropdown .toolbar-button-caret {
@@ -4067,10 +4087,15 @@ html[data-ui-theme="dark"] .note-history-body.markdown-body blockquote,
     min-width: 0;
     gap: 8px;
 }
-.publication-status-main,
-.publication-share-details {
+.publication-status-main {
     flex: 1 1 auto;
     overflow: hidden;
+}
+.publication-share-details {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 .publication-state {
     flex: 0 0 auto;
@@ -4084,19 +4109,80 @@ html[data-ui-theme="dark"] .note-history-body.markdown-body blockquote,
     background: var(--status-success-bg);
     color: var(--status-success-text);
 }
-.publication-label { color: var(--status-muted); }
+.publication-label,
 #publication-share-url {
-    max-width: min(26vw, 300px);
-    overflow: hidden;
-    color: var(--status-link);
-    text-decoration: none;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    display: none !important;
 }
-#publication-share-url:hover { text-decoration: underline; }
+@keyframes share-btn-nudge-shake {
+    0%, 72%, 100% {
+        transform: rotate(0deg) scale(1);
+    }
+    75% {
+        transform: rotate(-12deg) scale(1.08);
+    }
+    78% {
+        transform: rotate(11deg) scale(1.08);
+    }
+    81% {
+        transform: rotate(-9deg) scale(1.08);
+    }
+    84% {
+        transform: rotate(7deg) scale(1.05);
+    }
+    87% {
+        transform: rotate(-3deg) scale(1.02);
+    }
+    90% {
+        transform: rotate(0deg) scale(1);
+    }
+}
+.publication-share-page-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 24px;
+    width: 24px;
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0;
+    border: 1px solid var(--status-border);
+    border-radius: 6px;
+    background: var(--status-control-bg);
+    color: var(--status-link, var(--toolbar-accent));
+    cursor: pointer;
+    text-decoration: none;
+    line-height: 1;
+    transform-origin: center center;
+    animation: share-btn-nudge-shake 3.5s ease-in-out infinite;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.publication-share-page-btn:hover {
+    animation-play-state: paused;
+    background: var(--status-control-bg-hover, var(--status-muted-bg));
+    color: var(--status-link, var(--toolbar-accent));
+    transform: scale(1.1);
+}
+.publication-share-page-btn:active {
+    transform: scale(0.92);
+}
+.publication-share-page-btn:focus-visible {
+    outline: 2px solid var(--status-link);
+    outline-offset: 2px;
+}
+.publication-share-page-btn .svg-icon {
+    width: 13px;
+    height: 13px;
+    margin: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+    .publication-share-page-btn {
+        animation: none !important;
+    }
+}
 .publication-icon-button,
 .publication-index-button,
-.publication-present-btn {
+.publication-present-btn,
+.publication-book-btn {
     min-height: 24px;
     border: 1px solid var(--status-border);
     border-radius: 6px;
@@ -4248,124 +4334,206 @@ html[data-ui-theme="dark"] .note-history-body.markdown-body blockquote,
 }
 .reading-progress-track {
     position: relative;
-    width: 16px;
-    height: 96px;
-    padding: 0;
-    border: 0;
-    border-radius: 999px;
-    background: rgba(87, 96, 106, 0.16);
-    color: inherit;
-    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    width: 32px;
+    min-height: 180px;
+    max-height: min(76vh, 680px);
+    padding: 6px 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    cursor: default;
+    overflow-y: auto;
+    overflow-x: visible;
+    scrollbar-width: none;
 }
-.reading-progress-track:focus-visible { outline: 2px solid #0969da; outline-offset: 2px; }
+.reading-progress-track::-webkit-scrollbar {
+    display: none;
+}
+.reading-progress-track:focus-visible { outline: 2px solid var(--theme-accent, #0969da); outline-offset: 2px; }
+
+/* In Notion-style outline, sliding indicator is hidden */
 .reading-progress-indicator {
-    position: absolute;
-    top: var(--reading-progress, 0%);
-    left: 50%;
-    width: 11px;
-    height: 7px;
-    border-radius: 3.5px;
-    background: currentColor;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25), 0 0 0 1.5px rgba(255, 255, 255, 0.85);
-    transform: translate(-50%, -50%);
-    transition: top 0.08s ease-out;
+    display: none !important;
 }
-[data-ui-theme="dark"] .reading-progress-indicator {
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 0 0 1.5px rgba(30, 30, 30, 0.85);
-}
+
 .reading-progress-markers {
-    position: absolute;
-    top: 6px;
-    bottom: 6px;
-    left: 0;
-    right: 0;
-    pointer-events: none;
-}
-.reading-progress-marker {
-    position: absolute;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: var(--progress-marker-color, #504239);
-    transition: width 0.15s ease, height 0.15s ease, opacity 0.15s ease, transform 0.15s ease, background 0.15s ease;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: clamp(5px, 1.25vh, 10px);
+    width: 100%;
+    padding: 2px 0;
     pointer-events: auto;
-    cursor: pointer;
+    flex-shrink: 0;
 }
-[data-ui-theme="dark"] .reading-progress-marker {
-    background: #dfd4cc;
-}
-.reading-progress-marker.is-heading-major {
-    width: 10px;
+
+/* Notion-style Hierarchical Dashes (長短區隔) */
+.reading-progress-marker {
+    position: relative;
+    display: block;
     height: 2.5px;
-    border-radius: 1.5px;
-    opacity: 0.88;
-    box-shadow: var(--progress-marker-shadow, 0 0.5px 1px rgba(255, 255, 255, 0.5));
+    border-radius: 999px;
+    background: var(--progress-marker-color, rgba(55, 53, 47, 0.22));
+    border: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: width 0.16s cubic-bezier(0.16, 1, 0.3, 1),
+                height 0.16s cubic-bezier(0.16, 1, 0.3, 1),
+                background 0.16s ease,
+                opacity 0.16s ease,
+                transform 0.16s ease;
+    transform-origin: left center;
+    -webkit-appearance: none;
+    appearance: none;
+    outline: none;
 }
-[data-ui-theme="dark"] .reading-progress-marker.is-heading-major {
-    box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.6);
+
+/* Invisible hit box expansion for comfortable clicking and hovering */
+.reading-progress-marker::before {
+    content: "";
+    position: absolute;
+    top: -5px;
+    bottom: -5px;
+    left: -4px;
+    right: -10px;
 }
-.reading-progress-marker.is-heading-major:hover {
-    width: 13px;
-    height: 3.5px;
-    opacity: 1;
-    background: var(--accent-color, #2563eb);
+
+/* Distinct lengths per heading level */
+.reading-progress-marker.is-level-1 {
+    width: 26px;
+    height: 3px;
 }
-.reading-progress-marker.is-heading-major.is-active {
-    width: 13px;
-    height: 3.5px;
-    opacity: 1;
-    background: var(--accent-color, #2563eb);
-    box-shadow: 0 0 6px var(--accent-color, rgba(37, 99, 235, 0.6));
+.reading-progress-marker.is-level-2 {
+    width: 18px;
+    height: 2.5px;
 }
-.reading-progress-marker.is-heading-minor {
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    opacity: 0.82;
-    background: var(--progress-marker-minor-color, #6a5a50);
-    box-shadow: var(--progress-marker-shadow, 0 0.5px 1px rgba(255, 255, 255, 0.4));
+.reading-progress-marker.is-level-3 {
+    width: 12px;
+    height: 2px;
 }
-[data-ui-theme="dark"] .reading-progress-marker.is-heading-minor {
-    background: #b5a79f;
-    box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.5);
+.reading-progress-marker.is-level-4 {
+    width: 8px;
+    height: 2px;
 }
-.reading-progress-marker.is-heading-minor:hover {
-    width: 7px;
-    height: 7px;
-    opacity: 1;
-    background: var(--accent-color, #2563eb);
-}
-.reading-progress-marker.is-heading-minor.is-active {
-    width: 7px;
-    height: 7px;
-    opacity: 1;
-    background: var(--accent-color, #2563eb);
-    box-shadow: 0 0 6px var(--accent-color, rgba(37, 99, 235, 0.6));
-}
-.reading-progress-marker:not(.is-heading-major):not(.is-heading-minor) {
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    opacity: 0.75;
-}
-.reading-progress-marker:not(.is-heading-major):not(.is-heading-minor).is-active {
+.reading-progress-marker.is-level-5,
+.reading-progress-marker.is-level-6 {
     width: 6px;
-    height: 6px;
+    height: 2px;
+}
+
+/* Major and minor fallbacks */
+.reading-progress-marker.is-heading-major:not([class*="is-level-"]) {
+    width: 22px;
+    height: 2.5px;
+}
+.reading-progress-marker.is-heading-minor:not([class*="is-level-"]) {
+    width: 12px;
+    height: 2px;
+}
+
+/* Dark mode inactive dashes */
+[data-ui-theme="dark"] .reading-progress-marker {
+    background: var(--progress-marker-color-dark, rgba(255, 255, 255, 0.24));
+}
+
+/* Hover state */
+.reading-progress-marker:hover,
+.reading-progress-marker:focus-visible {
+    background: var(--theme-accent, #111111);
+    transform: scaleY(1.3);
+}
+[data-ui-theme="dark"] .reading-progress-marker:hover,
+[data-ui-theme="dark"] .reading-progress-marker:focus-visible {
+    background: var(--theme-accent, #ffffff);
+}
+
+/* Active reading section */
+.reading-progress-marker.is-active {
+    background: var(--theme-accent, #111111);
     opacity: 1;
-    background: var(--accent-color, #2563eb);
+    transform: scaleY(1.35);
+    box-shadow: 0 0 1px rgba(0, 0, 0, 0.4);
 }
-.reading-progress-value {
-    min-width: 42px;
-    color: inherit;
-    font: 10px/1 var(--editor-font-family);
-    text-align: center;
+[data-ui-theme="dark"] .reading-progress-marker.is-active {
+    background: var(--theme-accent, #ffffff);
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.45);
+}
+
+/* Notion-style Floating Title Tooltip */
+.reading-progress-tooltip {
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%) translateX(-4px);
+    padding: 4px 9px;
+    border-radius: 6px;
+    background: var(--footer-bg, #1a1615);
+    color: var(--footer-text, #ffffff);
+    border: 1px solid var(--footer-border, rgba(255, 255, 255, 0.12));
+    font: 500 11.5px/1.3 var(--editor-font-family);
     white-space: nowrap;
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.1);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.14s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.14s cubic-bezier(0.16, 1, 0.3, 1),
+                visibility 0.14s ease;
+    z-index: 70;
 }
+[data-ui-theme="dark"] .reading-progress-tooltip {
+    background: #2b2523;
+    border-color: #554943;
+    color: #ede2dc;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+.reading-progress-tooltip::before {
+    content: "";
+    position: absolute;
+    right: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    border-width: 4px;
+    border-style: solid;
+    border-color: transparent var(--footer-bg, #1a1615) transparent transparent;
+}
+[data-ui-theme="dark"] .reading-progress-tooltip::before {
+    border-color: transparent #2b2523 transparent transparent;
+}
+.reading-progress-marker:hover .reading-progress-tooltip,
+.reading-progress-marker:focus-visible .reading-progress-tooltip,
+.reading-progress-tooltip.is-visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(-50%) translateX(0);
+}
+
+/* Remove ugly bottom 1%..100% and 7/7 numbers */
+.reading-progress-value {
+    display: none !important;
+}
+
 body.share-view .reading-progress {
     position: fixed;
     top: 50%;
     transform: translateY(-50%);
     left: 8px;
     z-index: 45;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
     transition: opacity 0.2s ease, left 0.2s ease;
     opacity: 0.94;
 }
@@ -4376,38 +4544,23 @@ body.share-view .reading-progress.is-pinned {
     opacity: 1;
 }
 body.share-view .reading-progress-track {
-    height: 124px;
-    width: 16px;
-    border-radius: 999px;
-    background: var(--progress-track-bg, #ebe4db);
-    border: 1px solid var(--progress-track-border, #d4cbc0);
-    box-shadow: var(--progress-track-shadow, inset 0 1px 3px rgba(0, 0, 0, 0.14), 0 1px 2px rgba(255, 255, 255, 0.6));
+    width: 32px;
 }
-[data-ui-theme="dark"] body.share-view .reading-progress-track {
-    background: #231e1c;
-    border-color: #4a3e39;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 0 rgba(255, 255, 255, 0.04);
-}
-body.share-view .reading-progress-indicator {
-    width: 12px;
-    height: 9px;
-    border-radius: 4.5px;
-    background: var(--theme-accent, #0969da);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.85);
-}
-[data-ui-theme="dark"] body.share-view .reading-progress-indicator {
-    background: var(--theme-accent, #38bdf8);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(30, 30, 30, 0.9);
-}
+
 body.share-view .reading-progress-toggle-btn {
-    width: 22px;
-    height: 22px;
-    margin-bottom: 3px;
+    width: 24px;
+    height: 24px;
+    margin-bottom: 2px;
     border-radius: 6px;
     background: var(--progress-control-bg, #fbf8f4);
     border: 1px solid var(--progress-control-border, #d8cfc4);
     color: var(--footer-text, #4a3833);
     box-shadow: var(--progress-control-shadow, 0 1px 3px rgba(0, 0, 0, 0.08));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
 }
 [data-ui-theme="dark"] body.share-view .reading-progress-toggle-btn {
     background: var(--footer-bg, #2d2826);
@@ -4415,65 +4568,49 @@ body.share-view .reading-progress-toggle-btn {
     color: var(--footer-text, #e8ddd8);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
+body.share-view .reading-progress-toggle-btn:hover {
+    background: var(--footer-bg-hover, #ede5de);
+    color: var(--theme-accent, #0969da);
+}
+[data-ui-theme="dark"] body.share-view .reading-progress-toggle-btn:hover {
+    background: #3a322e;
+    color: var(--theme-accent, #38bdf8);
+}
 body.share-view .reading-progress-toggle-btn .svg-icon {
     width: 15px;
     height: 15px;
 }
 body.share-view .reading-progress-value {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-width: 0;
-    max-width: 36px;
-    padding: 3px 5px;
-    border-radius: 6px;
-    background: var(--progress-control-bg, #fbf8f4);
-    border: 1px solid var(--progress-control-border, #d8cfc4);
-    color: var(--footer-text, #4a3833);
-    font: 600 10px/1.2 var(--editor-font-family);
-    text-align: center;
-    white-space: normal;
-    word-break: break-all;
-    margin-top: 3px;
-    box-shadow: var(--progress-control-shadow, 0 1px 3px rgba(0, 0, 0, 0.08));
-}
-[data-ui-theme="dark"] body.share-view .reading-progress-value {
-    background: var(--footer-bg, #2d2826);
-    border-color: var(--footer-border, #554943);
-    color: var(--footer-text, #e8ddd8);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    display: none !important;
 }
 @media (prefers-color-scheme: dark) {
-    html[data-ui-theme="auto"] body.share-view .reading-progress-track,
-    html:not([data-ui-theme]) body.share-view .reading-progress-track {
-        background: #231e1c;
-        border-color: #4a3e39;
-        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 0 rgba(255, 255, 255, 0.04);
-    }
     html[data-ui-theme="auto"] body.share-view .reading-progress-toggle-btn,
-    html:not([data-ui-theme]) body.share-view .reading-progress-toggle-btn,
-    html[data-ui-theme="auto"] body.share-view .reading-progress-value,
-    html:not([data-ui-theme]) body.share-view .reading-progress-value {
+    html:not([data-ui-theme]) body.share-view .reading-progress-toggle-btn {
         background: var(--footer-bg, #2d2826);
         border-color: var(--footer-border, #554943);
         color: var(--footer-text, #e8ddd8);
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     }
-    html[data-ui-theme="auto"] body.share-view .reading-progress-indicator,
-    html:not([data-ui-theme]) body.share-view .reading-progress-indicator {
-        background: var(--theme-accent, #38bdf8);
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(30, 30, 30, 0.9);
+    html[data-ui-theme="auto"] .reading-progress-marker,
+    html:not([data-ui-theme]) .reading-progress-marker {
+        background: var(--progress-marker-color-dark, rgba(255, 255, 255, 0.24));
     }
-}
-body.share-view .reading-progress-value .reading-progress-sep {
-    display: none;
-}
-body.share-view .reading-progress-value .reading-progress-fraction {
-    font-size: 8.5px;
-    font-weight: 500;
-    opacity: 0.72;
-    margin-top: 1px;
+    html[data-ui-theme="auto"] .reading-progress-marker.is-active,
+    html:not([data-ui-theme]) .reading-progress-marker.is-active {
+        background: var(--theme-accent, #ffffff);
+        box-shadow: 0 0 5px rgba(255, 255, 255, 0.45);
+    }
+    html[data-ui-theme="auto"] .reading-progress-tooltip,
+    html:not([data-ui-theme]) .reading-progress-tooltip {
+        background: #2b2523;
+        border-color: #554943;
+        color: #ede2dc;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+    }
+    html[data-ui-theme="auto"] .reading-progress-tooltip::before,
+    html:not([data-ui-theme]) .reading-progress-tooltip::before {
+        border-color: transparent #2b2523 transparent transparent;
+    }
 }
 body:not(.share-view) .preview-pane .reading-progress {
     top: 50%;
@@ -4800,6 +4937,16 @@ body:not(.share-view) .preview-pane .reading-progress {
         align-items: center;
         gap: 6px;
     }
+    .publication-share-page-btn {
+        height: 30px;
+        width: 30px;
+        min-width: 30px;
+        flex: 0 0 30px;
+    }
+    .publication-share-page-btn .svg-icon {
+        width: 15px;
+        height: 15px;
+    }
     .publication-present-btn {
         height: 30px;
         padding: 0 8px;
@@ -4835,12 +4982,8 @@ body:not(.share-view) .preview-pane .reading-progress {
         font-size: 12px;
     }
     .publication-label,
-    .publication-metrics { display: none; }
-    #publication-share-url {
-        flex: 1;
-        max-width: none;
-        font-size: 12px;
-    }
+    .publication-metrics,
+    #publication-share-url { display: none !important; }
     .publication-pending-hint { font-size: 11px; }
 
     /* Touch-friendly modal close button */
@@ -5921,6 +6064,23 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
         width: var(--toolbar-height) !important;
         padding: 0 !important;
         justify-content: center;
+    }
+    .split-action-group .split-action-main {
+        min-width: 40px !important;
+        padding: 0 10px !important;
+    }
+    .split-action-group .split-action-main .svg-icon,
+    .split-action-group .split-action-main .lock-combo-icon {
+        width: 20px !important;
+        height: 20px !important;
+    }
+    .split-action-group .split-action-dropdown {
+        width: auto !important;
+        min-width: 36px !important;
+        padding: 0 8px !important;
+    }
+    .split-action-group .split-action-dropdown .new-note-plus {
+        font-size: 16px !important;
     }
 
     .footer-section-edit .footer-section-body,

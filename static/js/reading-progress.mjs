@@ -111,21 +111,28 @@ export const initReadingProgress = (root = document) => {
         closeBtn = drawerHeader.querySelector('.reading-toc-close-btn')
     }
 
-    const track = doc.createElement('button')
-    track.type = 'button'
+    const track = doc.createElement('div')
     track.className = 'reading-progress-track'
+    track.tabIndex = 0
+    track.setAttribute('role', 'group')
     track.setAttribute('aria-label', labels.label)
     const indicator = doc.createElement('span')
     indicator.className = 'reading-progress-indicator'
     indicator.setAttribute('aria-hidden', 'true')
     track.append(indicator)
-    const markers = doc.createElement('span')
+    const markers = doc.createElement('div')
     markers.className = 'reading-progress-markers'
-    markers.setAttribute('aria-hidden', 'true')
+    markers.setAttribute('aria-hidden', 'false')
     track.append(markers)
     const value = doc.createElement('output')
-    value.className = 'reading-progress-value'
-    widget.append(track, value)
+    value.className = 'reading-progress-value is-sr-only'
+
+    const floatingTooltip = doc.createElement('div')
+    floatingTooltip.className = 'reading-progress-tooltip'
+    floatingTooltip.setAttribute('role', 'tooltip')
+    floatingTooltip.setAttribute('aria-hidden', 'true')
+
+    widget.append(track, value, floatingTooltip)
 
     if (drawer) {
         widget.append(drawer)
@@ -255,8 +262,14 @@ export const initReadingProgress = (root = document) => {
         }
         track.title = labels.value(progress.percent, currentHeading, activeHeadingIndex, headings.length || 1)
         markers.querySelectorAll('.reading-progress-marker').forEach((marker, index) => {
-            marker.classList.toggle('is-active', index === activeHeadingIndex)
+            const isActive = index === activeHeadingIndex
+            marker.classList.toggle('is-active', isActive)
+            marker.setAttribute('aria-current', isActive ? 'true' : 'false')
         })
+        const activeMarker = markers.children[activeHeadingIndex]
+        if (activeMarker && typeof activeMarker.scrollIntoView === 'function' && track.scrollHeight > track.clientHeight) {
+            activeMarker.scrollIntoView({ block: 'nearest' })
+        }
         if (tocList) {
             tocList.querySelectorAll('.reading-toc-item').forEach((item, index) => {
                 const isActive = index === activeHeadingIndex
@@ -282,15 +295,38 @@ export const initReadingProgress = (root = document) => {
         }
 
         markers.replaceChildren(...headings.map((heading, index) => {
-            const marker = doc.createElement('span')
+            const marker = doc.createElement('button')
+            marker.type = 'button'
             marker.className = 'reading-progress-marker'
             const tag = (heading.tagName || '').toLowerCase()
             const level = parseInt(tag.replace('h', '') || '1', 10)
             const isMajor = level <= 2
             marker.classList.add(isMajor ? 'is-heading-major' : 'is-heading-minor')
+            marker.classList.add(`is-level-${level}`)
             marker.dataset.level = String(level)
-            marker.style.top = `${headings.length > 1 ? index / (headings.length - 1) * 100 : 0}%`
-            marker.title = headingText(heading)
+            marker.dataset.index = String(index)
+            const titleText = headingText(heading)
+            marker.setAttribute('aria-label', titleText)
+
+            const showTooltip = () => {
+                floatingTooltip.textContent = titleText
+                const widgetRect = widget.getBoundingClientRect ? widget.getBoundingClientRect() : { top: 0 }
+                const markerRect = marker.getBoundingClientRect ? marker.getBoundingClientRect() : { top: 0, height: 10 }
+                const topOffset = (markerRect.top || 0) - (widgetRect.top || 0) + ((markerRect.height || 10) / 2)
+                floatingTooltip.style.top = `${topOffset}px`
+                floatingTooltip.classList.add('is-visible')
+                floatingTooltip.setAttribute('aria-hidden', 'false')
+            }
+            const hideTooltip = () => {
+                floatingTooltip.classList.remove('is-visible')
+                floatingTooltip.setAttribute('aria-hidden', 'true')
+            }
+
+            marker.addEventListener('mouseenter', showTooltip)
+            marker.addEventListener('mouseleave', hideTooltip)
+            marker.addEventListener('focus', showTooltip)
+            marker.addEventListener('blur', hideTooltip)
+
             marker.addEventListener('click', e => {
                 e.stopPropagation()
                 scrollToHeading(heading)
@@ -343,8 +379,34 @@ export const initReadingProgress = (root = document) => {
         update()
     }
 
+    track.addEventListener('keydown', event => {
+        if (event.target !== track) return
+        const progress = getReadingProgress(preview)
+        if (!progress.maxScroll) return
+        const step = Math.max(40, preview.clientHeight * 0.15)
+        if (event.key === 'ArrowDown' || event.key === 'PageDown') {
+            event.preventDefault()
+            preview.scrollTop = Math.min(progress.maxScroll, preview.scrollTop + step)
+            update()
+        } else if (event.key === 'ArrowUp' || event.key === 'PageUp') {
+            event.preventDefault()
+            preview.scrollTop = Math.max(0, preview.scrollTop - step)
+            update()
+        } else if (event.key === 'Home') {
+            event.preventDefault()
+            preview.scrollTop = 0
+            update()
+        } else if (event.key === 'End') {
+            event.preventDefault()
+            preview.scrollTop = progress.maxScroll
+            update()
+        }
+    })
+
     track.addEventListener('click', event => {
+        if (event.target.closest('.reading-progress-marker')) return
         const rect = track.getBoundingClientRect()
+        if (!rect.height) return
         const ratio = Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height))
         preview.scrollTop = ratio * getReadingProgress(preview).maxScroll
         update()

@@ -127,13 +127,36 @@ test('distinguishes major headings (#, ##) and minor subheadings (###+) with das
     const markers = dom.window.document.querySelectorAll('.reading-progress-marker')
     assert.equal(markers.length, 4)
 
-    // H1 and H2 are major (dash)
+    // H1 and H2 are major
     assert.equal(markers[0].classList.contains('is-heading-major'), true)
     assert.equal(markers[1].classList.contains('is-heading-major'), true)
 
-    // H3 and H4 are minor (dot)
+    // H3 and H4 are minor
     assert.equal(markers[2].classList.contains('is-heading-minor'), true)
     assert.equal(markers[3].classList.contains('is-heading-minor'), true)
+
+    // Notion hierarchical levels and tooltips
+    assert.equal(markers[0].classList.contains('is-level-1'), true)
+    assert.equal(markers[1].classList.contains('is-level-2'), true)
+    assert.equal(markers[2].classList.contains('is-level-3'), true)
+    assert.equal(markers[0].getAttribute('aria-label'), '第一篇')
+    assert.equal(markers[1].getAttribute('aria-label'), '大章節')
+
+    // Floating tooltip appears outside scroll clip on hover/focus
+    const tooltip = dom.window.document.querySelector('.reading-progress-tooltip')
+    assert.ok(tooltip)
+    markers[0].dispatchEvent(new dom.window.Event('mouseenter'))
+    assert.equal(tooltip.textContent, '第一篇')
+    assert.equal(tooltip.classList.contains('is-visible'), true)
+    markers[0].dispatchEvent(new dom.window.Event('mouseleave'))
+    assert.equal(tooltip.classList.contains('is-visible'), false)
+
+    // Keyboard outline seek interactions on track (group role keeps child buttons accessible)
+    const track = dom.window.document.querySelector('.reading-progress-track')
+    assert.equal(track.getAttribute('role'), 'group')
+    assert.equal(track.tabIndex, 0)
+    track.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'ArrowDown' }))
+    assert.ok(preview.scrollTop > 0)
 })
 
 test('renders slide-out TOC drawer and interactive outline controls on share view', () => {
@@ -212,7 +235,7 @@ test('renders slide-out TOC drawer and interactive outline controls on share vie
 test('provides left safety gutter and fluid push on TOC pin in share view', () => {
     // Docked edge progress bar
     assert.match(baseCss, /body\.share-view \.reading-progress\s*\{[^}]*left:\s*8px;/)
-    assert.match(baseCss, /body\.share-view \.reading-progress-track\s*\{[^}]*width:\s*16px;/)
+    assert.match(baseCss, /body\.share-view \.reading-progress-track\s*\{[^}]*width:\s*32px;/)
 
     // Safety gutter when unpinned
     assert.match(baseCss, /body\.share-view:not\(\.is-toc-pinned\) #preview-md\.markdown-body/)
@@ -226,21 +249,27 @@ test('provides left safety gutter and fluid push on TOC pin in share view', () =
     assert.match(baseCss, /body\.share-view\.is-toc-pinned \.reading-toc-drawer\s*\{[^}]*position:\s*fixed;[^}]*top:\s*0;[^}]*bottom:\s*48px;[^}]*width:\s*280px;/)
 })
 
-test('styles progress track with tactile groove and high-contrast section markers for light, dark, and auto modes', () => {
-    // Light mode track with distinct tactile background and border via theme variables
-    assert.match(baseCss, /body\.share-view \.reading-progress-track\s*\{[^}]*background:\s*var\(--progress-track-bg,\s*#ebe4db\);/)
-    assert.match(baseCss, /body\.share-view \.reading-progress-track\s*\{[^}]*border:\s*1px solid var\(--progress-track-border,\s*#d4cbc0\);/)
+test('styles Notion-style grand outline track with hierarchical dash markers and hover tooltips', () => {
+    // Grand vertical outline track with clean frameless layout and scroll support
+    assert.match(baseCss, /\.reading-progress-track\s*\{[^}]*max-height:\s*min\(76vh,\s*680px\);/)
+    assert.match(baseCss, /\.reading-progress-track\s*\{[^}]*background:\s*transparent;/)
 
-    // Dark mode track
-    assert.match(baseCss, /\[data-ui-theme="dark"\] body\.share-view \.reading-progress-track\s*\{[^}]*background:\s*#231e1c;/)
+    // Hierarchical dash markers with distinct lengths for heading levels
+    assert.match(baseCss, /\.reading-progress-marker\.is-level-1\s*\{[^}]*width:\s*26px;/)
+    assert.match(baseCss, /\.reading-progress-marker\.is-level-2\s*\{[^}]*width:\s*18px;/)
+    assert.match(baseCss, /\.reading-progress-marker\.is-level-3\s*\{[^}]*width:\s*12px;/)
+    assert.match(baseCss, /\.reading-progress-marker\.is-level-4\s*\{[^}]*width:\s*8px;/)
 
-    // Automatic dark mode for share view progress controls
-    assert.match(baseCss, /@media\s*\(prefers-color-scheme:\s*dark\)[\s\S]*html\[data-ui-theme="auto"\] body\.share-view \.reading-progress-track/)
+    // Section markers contrast colors
+    assert.match(baseCss, /\.reading-progress-marker\s*\{[^}]*background:\s*var\(--progress-marker-color/)
+    assert.match(baseCss, /\[data-ui-theme="dark"\] \.reading-progress-marker\s*\{[^}]*background:\s*var\(--progress-marker-color-dark/)
 
-    // Section markers: major notch and minor dot with explicit contrast colors
-    assert.match(baseCss, /\.reading-progress-marker\s*\{[^}]*background:\s*var\(--progress-marker-color,\s*#504239\);/)
-    assert.match(baseCss, /\[data-ui-theme="dark"\] \.reading-progress-marker\s*\{[^}]*background:\s*#dfd4cc;/)
-    assert.match(baseCss, /\.reading-progress-marker\.is-heading-major\s*\{[^}]*width:\s*10px;\s*height:\s*2\.5px;/)
-    assert.match(baseCss, /\.reading-progress-marker\.is-heading-minor\s*\{[^}]*width:\s*5px;\s*height:\s*5px;/)
+    // Hover tooltip displaying title text
+    assert.match(baseCss, /\.reading-progress-tooltip\s*\{[^}]*position:\s*absolute;[^}]*left:\s*calc\(100%\s*\+\s*10px\);/)
+    assert.match(baseCss, /\.reading-progress-marker:hover \.reading-progress-tooltip/)
+
+    // Bottom percentage and fraction numbers are hidden per user request
+    assert.match(baseCss, /body\.share-view \.reading-progress-value\s*\{[^}]*display:\s*none\s*!important;/)
 })
+
 

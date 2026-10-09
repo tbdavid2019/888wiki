@@ -97,9 +97,16 @@ const EDITOR_PUBLICATION_STATUS = ({ lang, ext = {}, shareId = '', isEdit = true
     const safeVersionCount = Number.isSafeInteger(ext.versionCount) && ext.versionCount >= 0 ? ext.versionCount : null
     const safeViewCount = Number.isSafeInteger(ext.viewCount) && ext.viewCount >= 0 ? ext.viewCount : null
     const sharePath = published ? `/share/${encodeURIComponent(shareId)}` : ''
+    const shareTooltip = lang === 'zh-TW'
+        ? (published ? '打開分享頁面' : '打開分享頁面 (尚未發布)')
+        : (published ? 'Open Share Page' : 'Open Share Page (Draft)')
 
     return `<aside class="editor-publication-status" data-published="${published ? 'true' : 'false'}" aria-live="polite">
         <div class="publication-status-main">
+            <a id="editor-share-page-btn" class="publication-share-page-btn toolbar-icon-button" href="${escapeHtml(sharePath || '#')}" target="_blank" rel="noopener noreferrer" data-tooltip="${escapeHtml(shareTooltip)}" title="${escapeHtml(shareTooltip)}" aria-label="${escapeHtml(shareTooltip)}">
+                ${SVG_ICONS.externalLink}
+                <span class="toolbar-button-label">${lang === 'zh-TW' ? '分享頁' : 'Share'}</span>
+            </a>
             <button type="button" id="present-btn" class="publication-present-btn toolbar-icon-button" data-tooltip="${escapeHtml(t.presentTitle)}" title="${escapeHtml(t.presentTitle)}" aria-label="${escapeHtml(t.presentTitle)}">
                 ${SVG_ICONS.play}
                 <span class="toolbar-button-label">${escapeHtml(t.present)}</span>
@@ -110,9 +117,9 @@ const EDITOR_PUBLICATION_STATUS = ({ lang, ext = {}, shareId = '', isEdit = true
             </button>
             <span id="publication-state" class="publication-state ${published ? 'is-published' : 'is-draft'}">${escapeHtml(published ? t.publicationPublished : t.publicationDraft)}</span>
             <div class="publication-share-details" ${published ? '' : 'hidden'}>
-                <span class="publication-label">${escapeHtml(t.publicationUrl)}</span>
-                <a id="publication-share-url" href="${escapeHtml(sharePath || '#')}" target="_blank" rel="noopener noreferrer">${escapeHtml(sharePath)}</a>
-                <button type="button" id="publication-copy-url" class="publication-icon-button" aria-label="${escapeHtml(t.copy)}" title="${escapeHtml(t.copy)}">${SVG_ICONS.copy}</button>
+                <span class="publication-label" style="display:none;">${escapeHtml(t.publicationUrl)}</span>
+                <a id="publication-share-url" href="${escapeHtml(sharePath || '#')}" target="_blank" rel="noopener noreferrer" style="display:none;">${escapeHtml(sharePath)}</a>
+                <button type="button" id="publication-copy-url" class="publication-icon-button" aria-label="${lang === 'zh-TW' ? '複製分享連結' : 'Copy share URL'}" title="${lang === 'zh-TW' ? '複製分享連結' : 'Copy share URL'}" data-tooltip="${lang === 'zh-TW' ? '複製分享連結' : 'Copy share URL'}">${SVG_ICONS.copy}</button>
                 <button type="button" id="publication-public-index" class="publication-index-button ${ext.publicIndex === true ? 'is-indexed' : ''}" aria-pressed="${ext.publicIndex === true ? 'true' : 'false'}">${escapeHtml(ext.publicIndex === true ? t.publicIndexOn : t.publicIndexOff)}</button>
             </div>
         </div>
@@ -3724,6 +3731,16 @@ ${getMarkdownCss()}
                 $publicationShareUrl.href = shareUrl || '#'
                 $publicationShareUrl.textContent = shareUrl
             }
+            const $editorSharePageBtn = document.querySelector('#editor-share-page-btn')
+            if ($editorSharePageBtn) {
+                $editorSharePageBtn.href = shareUrl || '#'
+                const shareTooltip = published
+                    ? (APP_STATE.lang === 'zh-TW' ? '打開分享頁面' : 'Open Share Page')
+                    : (APP_STATE.lang === 'zh-TW' ? '打開分享頁面 (尚未發布)' : 'Open Share Page (Draft)')
+                $editorSharePageBtn.title = shareTooltip
+                $editorSharePageBtn.dataset.tooltip = shareTooltip
+                $editorSharePageBtn.setAttribute('aria-label', shareTooltip)
+            }
             if (versionCount) versionCount.textContent = Number.isSafeInteger(APP_STATE.versionCount) ? String(APP_STATE.versionCount) : '—'
             if (viewCount) viewCount.textContent = Number.isSafeInteger(APP_STATE.viewCount) ? String(APP_STATE.viewCount) : '—'
             if (updatedAt) {
@@ -4885,6 +4902,23 @@ ${getMarkdownCss()}
                     return
                 }
                 $shareOpenLink.href = shareUrl
+            })
+        }
+        const $editorSharePageBtn = document.querySelector('#editor-share-page-btn');
+        if ($editorSharePageBtn) {
+            $editorSharePageBtn.href = initialShareUrl || '#'
+            $editorSharePageBtn.addEventListener('click', event => {
+                const shareUrl = getCurrentShareUrl()
+                if (!shareUrl) {
+                    event.preventDefault()
+                    if (typeof openPublishOptions === 'function') {
+                        openPublishOptions()
+                    } else {
+                        errHandle(APP_STATE.lang === 'zh-TW' ? '請先發布文章以產生分享頁' : 'Publish this note first')
+                    }
+                    return
+                }
+                $editorSharePageBtn.href = shareUrl
             })
         }
         const $sharePresentOpenLink = document.querySelector('#share-present-open-link');
@@ -6056,7 +6090,7 @@ ${getMarkdownCss()}
     ${isCanvasDocument ? '<script type="module" src="/js/canvas-editor.bundle.mjs?v=3.9"></script>' : ''}
     ${isWhiteboardDocument ? '<script type="module" src="/js/whiteboard-editor.bundle.mjs?v=1.2"></script>' : ''}
     <script type="module" src="/js/pwa-install.mjs"></script>
-    <script type="module" src="/js/reading-progress.mjs?v=2.1"></script>
+    <script type="module" src="/js/reading-progress.mjs?v=2.3"></script>
     <script type="module" src="/js/floating-controls.mjs"></script>
     ${isEmbed ? '' : '<script type="module" src="/js/editor-preference.mjs"></script>'}
     ${annotationsUiEnabled ? '<script type="module" src="/js/share-annotations.mjs"></script>' : ''}

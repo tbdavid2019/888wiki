@@ -88,9 +88,11 @@ export const SVG_ICONS = {
     canvas: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="16" y="16" width="6" height="6" rx="1"></rect><rect x="2" y="16" width="6" height="6" rx="1"></rect><rect x="9" y="2" width="6" height="6" rx="1"></rect><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"></path><path d="M12 12V8"></path></svg>`,
     whiteboard: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h20"></path><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"></path><path d="m7 21 5-5 5 5"></path></svg>`,
     settings: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`,
-    editLock: `<svg class="svg-icon lock-combo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="10" width="11" height="10" rx="2"></rect><path d="M6.5 10V7a3 3 0 0 1 5.5-1.7"></path><path d="m14 16 5-5a1.4 1.4 0 0 1 2 2l-5 5-2.8.8z"></path><path d="m17.5 12.5 1.5 1.5"></path></svg>`,
+    edit: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>`,
+    editLock: `<svg class="svg-icon lock-combo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="11" width="13" height="10" rx="2"></rect><path d="M5 11V7a3.5 3.5 0 0 1 7 0v4"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L13 14l-4 1 1-4 8.5-8.5z"></path></svg>`,
     readLock: `<svg class="svg-icon lock-combo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="10" width="11" height="10" rx="2"></rect><path d="M6 10V7a3 3 0 0 1 5.5-1.7"></path><path d="M14.5 15s2-3 4.5-3 4.5 3 4.5 3-2 3-4.5 3-4.5-3-4.5-3z"></path><circle cx="19" cy="15" r="1.1"></circle></svg>`,
     link: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>`,
+    externalLink: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`,
     copy: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`,
     check: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"></path></svg>`,
     play: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>`,
@@ -636,7 +638,7 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                             <div class="split-action-group">
                                 ${authPath
                                     ? `<button type="button" id="readonly-edit-btn" class="toolbar-icon-button split-action-main" data-tooltip="${t.backToEdit}" title="${t.backToEdit}" aria-label="${t.backToEdit}">${SVG_ICONS.editLock}<span class="toolbar-button-label">${lang === 'zh-TW' ? '編輯' : 'Edit'}</span></button>`
-                                    : `<a href="/${path}" class="toolbar-icon-button split-action-main readonly-edit-link" data-tooltip="${t.backToEdit}" title="${t.backToEdit}" aria-label="${t.backToEdit}">${SVG_ICONS.editLock}<span class="toolbar-button-label">${lang === 'zh-TW' ? '編輯' : 'Edit'}</span></a>`
+                                    : `<a href="/${path}" class="toolbar-icon-button split-action-main readonly-edit-link" data-tooltip="${t.backToEdit}" title="${t.backToEdit}" aria-label="${t.backToEdit}">${SVG_ICONS.edit}<span class="toolbar-button-label">${lang === 'zh-TW' ? '編輯' : 'Edit'}</span></a>`
                                 }
                                 <div class="dropdown-container new-note-dropdown" id="new-note-dropdown">
                                     <button type="button" id="new-note-menu-btn" class="toolbar-icon-button dropdown-trigger new-note-menu-trigger split-action-dropdown" data-tooltip="${newNoteTitle}" title="${newNoteTitle}" aria-label="${newNoteTitle}" aria-haspopup="menu" aria-expanded="false">
@@ -646,7 +648,7 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                                     <div class="dropdown-menu new-note-dropdown-menu" role="menu">
                                         <div class="dropdown-menu-label">${lang === 'zh-TW' ? '目前與新增' : 'Current & New'}</div>
                                         <a class="dropdown-item dropdown-item-rich" href="${authPath ? '#auth' : `/${path}`}" ${authPath ? 'onclick="document.getElementById(\'readonly-edit-btn\')?.click(); return false;"' : ''}>
-                                            ${SVG_ICONS.editLock}
+                                            ${authPath ? SVG_ICONS.editLock : SVG_ICONS.edit}
                                             <span class="dropdown-item-copy">
                                                 <strong>${lang === 'zh-TW' ? '編輯目前這篇筆記' : 'Edit this note'}</strong>
                                                 <small>${lang === 'zh-TW' ? '進入此文章的編輯模式' : 'Switch to editing mode'}</small>
@@ -655,7 +657,7 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                                         <div class="dropdown-divider"></div>
                                         <div class="dropdown-menu-label">${createSectionTitle}</div>
                                         <a id="new-markdown-note-link" class="dropdown-item dropdown-item-rich" href="/new/markdown">
-                                            ${SVG_ICONS.editLock}
+                                            ${SVG_ICONS.edit}
                                             <span class="dropdown-item-copy">
                                                 <strong>${newMarkdownTitle}</strong>
                                                 <small>${newMarkdownDescription}</small>
@@ -705,7 +707,7 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                                 <div class="dropdown-menu new-note-dropdown-menu" role="menu">
                                     <div class="dropdown-menu-label">${createSectionTitle}</div>
                                     <a id="new-markdown-note-link" class="dropdown-item dropdown-item-rich" href="/new/markdown">
-                                        ${SVG_ICONS.editLock}
+                                        ${SVG_ICONS.edit}
                                         <span class="dropdown-item-copy">
                                             <strong>${newMarkdownTitle}</strong>
                                             <small>${newMarkdownDescription}</small>

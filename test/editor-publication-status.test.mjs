@@ -64,3 +64,11 @@ test('publication status labels are localized', () => {
     assert.match(constantSource, /publicationVersions: '保留版本'/)
     assert.match(constantSource, /publicationViews: '不重複瀏覽'/)
 })
+
+test('publication bar provides far-left direct share open button with shake reminder and hides raw URL text', () => {
+    assert.match(baseTemplateSource, /id="editor-share-page-btn" class="publication-share-page-btn toolbar-icon-button"/)
+    assert.match(baseTemplateSource, /const \$editorSharePageBtn = document\.querySelector\('#editor-share-page-btn'\)/)
+    assert.match(baseCssSource, /@keyframes share-btn-nudge-shake/)
+    assert.match(baseCssSource, /\.publication-share-page-btn \{[\s\S]*animation: share-btn-nudge-shake 3\.5s ease-in-out infinite;/)
+    assert.match(baseCssSource, /\.publication-label,\s*#publication-share-url \{\s*display: none !important;\s*\}/)
+})
