@@ -3,6 +3,7 @@
  * The page is server-rendered so filters and pagination remain shareable URLs.
  */
 import dayjs from 'dayjs'
+import { getFlowTrackerScript } from '../constant.js'
 import { getAdminCss } from '../styles/admin.css.js'
 import { getAdminScript } from '../scripts/admin.js'
 
@@ -72,6 +73,7 @@ export const Admin = ({ lang, notes, stats, pagination, filters, historyEnabled,
         <title>Admin — Cloud Notepad</title>
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+        ${getFlowTrackerScript()}
         <style>${getAdminCss()}</style>
     </head>
     <body>

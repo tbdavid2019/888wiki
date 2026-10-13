@@ -1,5 +1,12 @@
 # Changelog
 
+## [2026-10-13]
+
+- **📊 整合 Flow 流量統計分析追蹤器（Flow Analytics Tracker Integration）**：
+  - **全站 `<head>` 區塊自動非同步載入**：在所有筆記編輯頁面（Markdown、Block、Canvas、Whiteboard）、公開及密碼保護分享頁面、首頁、管理後台以及 PWA 離線頁面的 `<head>` 區塊中注入 Flow 流量追蹤腳本（`https://flow.aiurl.tw/script.js?siteId=35d0ab7f-85c0-4460-ab85-76241f8ea9e2`），採用 `defer` 屬性確保零延遲阻塞。
+  - **靈活環境變數支援 (`SCN_FLOW_TRACKER_URL`)**：於 `src/constant.js` 提供 `getFlowTrackerUrl` 與 `getFlowTrackerScript` 輔助函式，支援透過 Cloudflare Worker 環境變數 `SCN_FLOW_TRACKER_URL` 自由切換不同追蹤網址，或設定為 `"0"` / `"none"` 停用。
+  - **完整測試驗證**：新增 `test/flow-tracker.test.mjs` 覆蓋常數預設、環境變數覆寫與關閉、各版面注入位置，530 項測試全數通過。
+
 ## [2026-10-09]
 
 - **✏️ 底欄左下角編輯按鈕圖示與尺寸重構（Bottom-Left Split Action Edit Button & Icon Redesign）**：

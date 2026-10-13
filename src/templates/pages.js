@@ -3,7 +3,7 @@
  * NeedPasswd and Page404 template functions
  */
 import dayjs from 'dayjs'
-import { SUPPORTED_LANG } from '../constant.js'
+import { SUPPORTED_LANG, getFlowTrackerScript } from '../constant.js'
 import { HTML } from './base.js'
 import { EDITOR_PREFERENCE_MODAL } from './common.js'
 
@@ -339,6 +339,7 @@ export const Home = ({ lang = 'zh-TW', canonicalUrl, ogImageUrl }) => `
     <meta name="twitter:image" content="${escapeHtml(ogImageUrl)}" />
     <meta name="twitter:image:alt" content="DAVID888 WIKI social card" />
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"DAVID888 WIKI","description":"DAVID888 WIKI is a fast Markdown wiki for writing, publishing, and sharing notes.","url":"${escapeHtml(canonicalUrl)}","image":"${escapeHtml(ogImageUrl)}"}</script>
+    ${getFlowTrackerScript()}
     <style>
         :root { color-scheme: light; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
         body { min-height: 100vh; margin: 0; background: #f8f7f3; color: #2c2a29; }

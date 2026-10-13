@@ -2,7 +2,7 @@
  * src/templates/base.js
  * HTML wrapper function (base page structure for editor/share pages)
  */
-import { CDN_PREFIX, SUPPORTED_LANG, APP_NAME, DEFAULT_PREVIEW_WIDTH } from '../constant.js'
+import { CDN_PREFIX, SUPPORTED_LANG, APP_NAME, DEFAULT_PREVIEW_WIDTH, getFlowTrackerScript } from '../constant.js'
 import { THEMES } from '../theme_data.js'
 import { EDITOR_TOOLBAR, FOOTER, MODAL, EDITOR_PREFERENCE_MODAL, MATH_FORMAT_MODAL, URL_IMPORT_MODAL, CITE_MODAL, VAULT_PRESETS_MODAL, SVG_ICONS } from './common.js'
 import { getBaseCss } from '../styles/base.css.js'
@@ -133,6 +133,7 @@ const EDITOR_PUBLICATION_STATUS = ({ lang, ext = {}, shareId = '', isEdit = true
 }
 
 export const HTML = ({ lang = 'zh-TW', title, content = '', ext = {}, tips, isEdit, showPwPrompt, path, shareId }) => {
+    const flowTrackerScript = ext.flowTrackerScript ?? getFlowTrackerScript()
     const gaMeasurementId = ext.gaMeasurementId ? String(ext.gaMeasurementId).trim() : ''
     const initialShareFont = ext.shareFont === 'maple' ? 'maple' : 'jetbrains'
     const isEmbed = ext.embed === true
@@ -199,6 +200,7 @@ export const HTML = ({ lang = 'zh-TW', title, content = '', ext = {}, tips, isEd
     return `
 <!DOCTYPE html>
 <html lang="${htmlLang}">
+<head>
     <script>
         (function() {
             try {
@@ -366,6 +368,7 @@ ${getMarkdownCss()}
     <link rel="alternate icon" href="/favicon.ico" type="image/x-icon" />
     <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
     <link rel="apple-touch-icon" href="${PUBLIC_ICON_PNG_URL}" />
+    ${flowTrackerScript}
     ${gaScript}
 </head>
 <body class="${ext.sharePath && !isEdit ? `share-view share-font-${initialShareFont}${isEmbed ? ' share-embed' : ''}` : ''}">

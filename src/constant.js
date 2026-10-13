@@ -24,6 +24,17 @@ export const getSlugLength = () => parseInt(readRuntimeVar('SCN_SLUG_LENGTH') ||
 export const getEnableR2 = () => readRuntimeVar('SCN_ENABLE_R2') === '1'
 export const getR2Domain = () => (typeof readRuntimeVar('SCN_R2_DOMAIN') !== 'undefined' ? readRuntimeVar('SCN_R2_DOMAIN') : '')
 export const getGaMeasurementId = () => (typeof readRuntimeVar('SCN_GA_MEASUREMENT_ID') !== 'undefined' ? String(readRuntimeVar('SCN_GA_MEASUREMENT_ID') || '').trim() : '')
+export const DEFAULT_FLOW_TRACKER_URL = 'https://flow.aiurl.tw/script.js?siteId=35d0ab7f-85c0-4460-ab85-76241f8ea9e2'
+export const getFlowTrackerUrl = () => {
+    const custom = readRuntimeVar('SCN_FLOW_TRACKER_URL')
+    if (custom === '0' || custom === 'false' || custom === 'none') return ''
+    if (typeof custom === 'string' && custom.trim()) return custom.trim()
+    return DEFAULT_FLOW_TRACKER_URL
+}
+export const getFlowTrackerScript = () => {
+    const url = getFlowTrackerUrl()
+    return url ? `<script defer src="${url}"></script>` : ''
+}
 const WEBTALK_DEFAULTS = {
     scriptUrl: 'https://webtalk-nine.vercel.app/webtalk.js',
     scope: 'meta',

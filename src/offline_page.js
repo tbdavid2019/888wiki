@@ -1,4 +1,4 @@
-import { APP_NAME } from './constant.js'
+import { APP_NAME, getFlowTrackerScript } from './constant.js'
 import { getMarkdownCss } from './styles/markdown.css.js'
 
 export const createOfflinePageResponse = () => {
@@ -11,6 +11,7 @@ export const createOfflinePageResponse = () => {
     <meta name="theme-color" content="#0f172a">
     <link rel="manifest" href="/app.webmanifest">
     <link rel="icon" href="/notepad-icon-192.png">
+    ${getFlowTrackerScript()}
     <title>離線工作區 · ${appName}</title>
     <style>
         :root {
