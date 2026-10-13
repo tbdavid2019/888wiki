@@ -192,9 +192,9 @@ export const HTML = ({ lang = 'zh-TW', title, content = '', ext = {}, tips, isEd
     const webtalkScript = isSharePage ? `
     <script
         defer
-        src="https://webtalk-nine.vercel.app/webtalk.js"
+        src="https://webtalk.david888.com/webtalk.js"
         data-webtalk-scope="origin"
-        data-webtalk-ai-endpoint="https://webtalk-nine.vercel.app/api/webtalk/ai">
+        data-webtalk-ai-endpoint="https://webtalk.david888.com/api/webtalk/ai">
     </script>` : ''
 
     return `

@@ -12,9 +12,9 @@ test('share pages expose the WebTalk page ID without changing editor pages', () 
     assert.match(baseTemplateSource, /const isSharePage = Boolean\(shareId && !isEdit\)/)
     assert.match(baseTemplateSource, /isSharePage \? `<meta name="webtalk-page-id" content="\$\{escapeHtml\(shareId\)\}" \/>` : ''/)
     assert.match(baseTemplateSource, /const webtalkScript = isSharePage \? `/)
-    assert.match(baseTemplateSource, /<script\n\s+defer\n\s+src="https:\/\/webtalk-nine\.vercel\.app\/webtalk\.js"/)
+    assert.match(baseTemplateSource, /<script\n\s+defer\n\s+src="https:\/\/webtalk\.david888\.com\/webtalk\.js"/)
     assert.match(baseTemplateSource, /data-webtalk-scope="origin"/)
-    assert.match(baseTemplateSource, /data-webtalk-ai-endpoint="https:\/\/webtalk-nine\.vercel\.app\/api\/webtalk\/ai"/)
+    assert.match(baseTemplateSource, /data-webtalk-ai-endpoint="https:\/\/webtalk\.david888\.com\/api\/webtalk\/ai"/)
     assert.match(baseTemplateSource, /\$\{webtalkScript\}/)
 })
 
@@ -35,9 +35,9 @@ test('path-based share rendering keeps WebTalk metadata and script', () => {
     })
 
     assert.match(shareHtml, /<meta name="webtalk-page-id" content="abc123" \/>/)
-    assert.match(shareHtml, /<script\n\s+defer\n\s+src="https:\/\/webtalk-nine\.vercel\.app\/webtalk\.js"/)
+    assert.match(shareHtml, /<script\n\s+defer\n\s+src="https:\/\/webtalk\.david888\.com\/webtalk\.js"/)
     assert.doesNotMatch(editHtml, /meta name="webtalk-page-id"/)
-    assert.doesNotMatch(editHtml, /webtalk-nine\.vercel\.app\/webtalk\.js/)
+    assert.doesNotMatch(editHtml, /webtalk\.david888\.com\/webtalk\.js/)
 })
 
 test('defers WebTalk auto-mount until the share document body has been parsed', () => {
@@ -49,8 +49,8 @@ test('defers WebTalk auto-mount until the share document body has been parsed', 
         isEdit: false,
     })
 
-    assert.match(shareHtml, /<script\n\s+defer\n\s+src="https:\/\/webtalk-nine\.vercel\.app\/webtalk\.js"/)
-    assert.doesNotMatch(shareHtml, /<script\n\s+async\n\s+src="https:\/\/webtalk-nine\.vercel\.app\/webtalk\.js"/)
+    assert.match(shareHtml, /<script\n\s+defer\n\s+src="https:\/\/webtalk\.david888\.com\/webtalk\.js"/)
+    assert.doesNotMatch(shareHtml, /<script\n\s+async\n\s+src="https:\/\/webtalk\.david888\.com\/webtalk\.js"/)
 })
 
 test('dynamic HTML responses are not cached across deployments', () => {

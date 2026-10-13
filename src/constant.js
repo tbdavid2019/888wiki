@@ -36,10 +36,10 @@ export const getFlowTrackerScript = () => {
     return url ? `<script defer src="${url}"></script>` : ''
 }
 const WEBTALK_DEFAULTS = {
-    scriptUrl: 'https://webtalk-nine.vercel.app/webtalk.js',
+    scriptUrl: 'https://webtalk.david888.com/webtalk.js',
     scope: 'meta',
     siteId: 'david888-wiki',
-    aiEndpoint: 'https://webtalk-nine.vercel.app/api/webtalk/ai',
+    aiEndpoint: 'https://webtalk.david888.com/api/webtalk/ai',
 }
 const getHttpUrl = value => {
     try {

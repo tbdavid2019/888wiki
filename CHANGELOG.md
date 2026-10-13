@@ -6,6 +6,9 @@
   - **全站 `<head>` 區塊自動非同步載入**：在所有筆記編輯頁面（Markdown、Block、Canvas、Whiteboard）、公開及密碼保護分享頁面、首頁、管理後台以及 PWA 離線頁面的 `<head>` 區塊中注入 Flow 流量追蹤腳本（`https://flow.aiurl.tw/script.js?siteId=35d0ab7f-85c0-4460-ab85-76241f8ea9e2`），採用 `defer` 屬性確保零延遲阻塞。
   - **靈活環境變數支援 (`SCN_FLOW_TRACKER_URL`)**：於 `src/constant.js` 提供 `getFlowTrackerUrl` 與 `getFlowTrackerScript` 輔助函式，支援透過 Cloudflare Worker 環境變數 `SCN_FLOW_TRACKER_URL` 自由切換不同追蹤網址，或設定為 `"0"` / `"none"` 停用。
   - **完整測試驗證**：新增 `test/flow-tracker.test.mjs` 覆蓋常數預設、環境變數覆寫與關閉、各版面注入位置，530 項測試全數通過。
+- **💬 WebTalk 服務端點更新至自訂網域 (`webtalk.david888.com`)**：
+  - **網域遷移**：將公開分享頁面預設載入之 WebTalk 腳本網址與 AI 端點由 `https://webtalk-nine.vercel.app` 遷移至專屬自訂網域 `https://webtalk.david888.com`（`https://webtalk.david888.com/webtalk.js` 及 `https://webtalk.david888.com/api/webtalk/ai`）。
+  - **常數與範本同步**：更新 `src/constant.js` 的 `WEBTALK_DEFAULTS`、`src/templates/base.js` 預設腳本結構，以及 `test/webtalk-page-id.test.mjs` 測試斷言。
 
 ## [2026-10-09]
 
