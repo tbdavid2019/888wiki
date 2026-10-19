@@ -12,8 +12,11 @@
     - **複製原始碼 (Code) 與長圖截圖 (Snapshot)**：完全相容並保留現有所有操作。
   - **簡報模式（Presentation Mode）與區塊檢視（Block View）同步升級**：Reveal.js 投影片簡報模式與 BlockNote 區塊檢視同步啟用 Pele First 極速渲染與 fallback 機制，切頁流暢度顯著提升。
 - **🐛 修復 ECharts 滑鼠懸停柱狀圖擦除與殘留破圖缺陷（Fix ECharts Hover Bar Erasure & Clipping Bug）**：
-  - **關閉不穩定的髒矩形渲染（Disable Experimental `useDirtyRect`）**：在 `static/js/echarts-renderer.mjs` 中將 `useDirtyRect` 設定為 `false`。原有 `useDirtyRect: true` 模式在搭配 `axisPointer: { type: 'shadow' }` 或滑鼠快速掠過多根柱狀圖時，ZRender 區域擦除後未能及時重繪資料矩形，導致柱體消失、變成細縫、被白色遮塊覆蓋或整根不見。
+  - **關閉不穩定的髒矩形渲染（Disable Experimental `useDirtyRect`）**：在 `static/js/echarts-renderer.mjs` 中將 `useDirtyRect` 設定為 `false`。原有 `useDirtyRect: true`模式在搭配 `axisPointer: { type: 'shadow' }` 或滑鼠快速掠過多根柱狀圖時，ZRender 區域擦除後未能及時重繪資料矩形，導致柱體消失、變成細縫、被白色遮塊覆蓋或整根不見。
   - **穩定性驗證**：新增 `test/echarts-code-block.test.mjs` 斷言 `useDirtyRect === false`，並經 Chrome Headless 模擬滑鼠軌跡截圖實測驗證，全數 13 個社區柱體於反覆懸停時皆能穩定、完整顯示。
+- **🧹 清理倉庫過期暫存目錄與未引用截圖資產（Repository Maintenance & Obsolete Artifacts Cleanup）**：
+  - **移除無引用舊檔案**：清除過去手動建置圖示殘留之 `.tmp-icon-build/`（1.1 MB）與 `.tmp-icon-preview/`（48 KB），以及根目錄無任何引用的孤立歷史截圖 `image-1.png` 與 `image-2.png`，立即為倉庫減重約 1.6 MB。
+  - **忽略規則強化**：於 `.gitignore` 補充 `.tmp-*` 規則，防止臨時建置與預覽目錄未來再次誤入版本控制。
 
 ## [2026-10-13]
 
