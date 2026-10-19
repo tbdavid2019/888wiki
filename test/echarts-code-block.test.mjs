@@ -43,6 +43,7 @@ test('initializes, labels, and disposes a chart instance', () => {
         init(node, theme, options) {
             assert.equal(node, container)
             assert.equal(options.renderer, 'canvas')
+            assert.equal(options.useDirtyRect, false)
             return chart
         },
     }

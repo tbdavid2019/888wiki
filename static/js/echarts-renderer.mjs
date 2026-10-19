@@ -48,7 +48,7 @@ export const renderEchartsChart = (container, source, echartsApi = globalThis.ec
     const option = parseEchartsOption(source)
     const chart = echartsApi.init(container, null, {
         renderer: 'canvas',
-        useDirtyRect: true,
+        useDirtyRect: false,
     })
     const record = {
         chart,
