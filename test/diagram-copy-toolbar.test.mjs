@@ -43,3 +43,22 @@ test('rendered HTML with Mermaid diagram renders correctly without syntax errors
     assert.match(page, /diagram-btn-png/)
     assert.match(page, /diagram-btn-code/)
 })
+
+test('base template implements Pele-first rendering with Mermaid fallback and CSS variable inlining for image exports', () => {
+    assert.match(baseTemplateSource, /https:\/\/cdn\.jsdelivr\.net\/npm\/pele@1\.6\.0\/dist\/pele\.js/)
+    assert.match(baseTemplateSource, /peleModule\.render\(code/)
+    assert.match(baseTemplateSource, /data-diagram-engine/)
+    assert.match(baseTemplateSource, /getMermaid/)
+    assert.match(baseTemplateSource, /--pele-bg/)
+    assert.match(baseTemplateSource, /--pele-fg/)
+    assert.match(baseTemplateSource, /--pele-surface/)
+})
+
+test('base CSS declares Pele CSS variables with automatic dark/light theme adaptation', () => {
+    assert.match(baseCssSource, /--pele-bg:\s*transparent;/)
+    assert.match(baseCssSource, /--pele-fg:\s*currentColor;/)
+    assert.match(baseCssSource, /--pele-line:\s*currentColor;/)
+    assert.match(baseCssSource, /--pele-surface:/)
+    assert.match(baseCssSource, /--pele-surface-alt:/)
+    assert.match(baseCssSource, /--pele-border:/)
+})

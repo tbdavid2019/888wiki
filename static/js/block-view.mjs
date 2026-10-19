@@ -12,9 +12,37 @@ async function renderMermaid() {
     const nodes = document.querySelectorAll('.mermaid-block-container .mermaid')
     if (!nodes.length) return
     try {
-        const mermaid = (await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs')).default
-        mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' })
-        await mermaid.run({ nodes: Array.from(nodes) })
+        let pele = null
+        try {
+            pele = await import('https://cdn.jsdelivr.net/npm/pele@1.6.0/dist/pele.js')
+        } catch (pe) {
+            console.warn('Block-view Pele load failed:', pe)
+        }
+        const unrendered = []
+        if (pele && typeof pele.render === 'function') {
+            nodes.forEach(node => {
+                const code = (node.textContent || '').trim()
+                if (!code) return
+                try {
+                    const res = pele.render(code, { responsive: true })
+                    if (res && res.svg) {
+                        node.innerHTML = res.svg
+                        node.setAttribute('data-diagram-engine', 'pele')
+                        return
+                    }
+                } catch (e) {
+                    console.warn('Block-view Pele render failed, falling back:', e)
+                }
+                unrendered.push(node)
+            })
+        } else {
+            unrendered.push(...nodes)
+        }
+        if (unrendered.length > 0) {
+            const mermaid = (await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs')).default
+            mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' })
+            await mermaid.run({ nodes: unrendered })
+        }
     } catch (error) {
         console.error('Mermaid block render failed', error)
     }

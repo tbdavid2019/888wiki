@@ -862,6 +862,42 @@ ${getMarkdownCss()}
                         }
                         svgClone.setAttribute('width', width);
                         svgClone.setAttribute('height', height);
+                        if (window.getComputedStyle) {
+                            try {
+                                const cs = window.getComputedStyle(renderNode);
+                                const isDark = document.documentElement.getAttribute('data-ui-theme') === 'dark' || document.body.classList.contains('theme-dark');
+                                const actualColor = cs.color || (isDark ? '#e2e8f0' : '#1f1f1f');
+                                svgClone.style.color = actualColor;
+                                const peleVars = [
+                                    '--pele-bg', '--pele-fg', '--pele-muted', '--pele-line',
+                                    '--pele-surface', '--pele-surface-alt', '--pele-border',
+                                    '--pele-accent', '--pele-critical', '--pele-error', '--pele-font', '--pele-font-mono',
+                                    '--pele-title-weight', '--pele-heading-weight', '--pele-bold-weight', '--pele-radius'
+                                ];
+                                let extraCss = 'color:' + actualColor + ';';
+                                peleVars.forEach(function(v) {
+                                    let val = cs.getPropertyValue(v).trim();
+                                    if (val) {
+                                        val = val.replace(/currentColor/g, actualColor);
+                                        extraCss += v + ':' + val + ';';
+                                    }
+                                });
+                                const curBg = cs.getPropertyValue('--pele-bg').trim();
+                                if (!curBg || curBg === 'transparent') {
+                                    const docBg = (cs.backgroundColor && cs.backgroundColor !== 'transparent' && cs.backgroundColor !== 'rgba(0, 0, 0, 0)')
+                                        ? cs.backgroundColor
+                                        : (isDark ? '#1a1b26' : '#ffffff');
+                                    extraCss += '--pele-bg:' + docBg + ';';
+                                }
+                                if (extraCss) {
+                                    const styleEl = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+                                    styleEl.textContent = ':root, svg, .pele { ' + extraCss + ' }';
+                                    svgClone.insertBefore(styleEl, svgClone.firstChild);
+                                }
+                            } catch (csErr) {
+                                console.warn('Pele style inline error for PNG export:', csErr);
+                            }
+                        }
                         const svgData = new XMLSerializer().serializeToString(svgClone);
                         const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
                         const url = URL.createObjectURL(svgBlob);
@@ -979,7 +1015,47 @@ ${getMarkdownCss()}
                     try {
                         const svgEl = renderNode.querySelector('svg');
                         if (!svgEl) return;
-                        const svgText = new XMLSerializer().serializeToString(svgEl);
+                        let svgText = '';
+                        if (window.getComputedStyle) {
+                            try {
+                                const svgClone = svgEl.cloneNode(true);
+                                const cs = window.getComputedStyle(renderNode);
+                                const isDark = document.documentElement.getAttribute('data-ui-theme') === 'dark' || document.body.classList.contains('theme-dark');
+                                const actualColor = cs.color || (isDark ? '#e2e8f0' : '#1f1f1f');
+                                svgClone.style.color = actualColor;
+                                const peleVars = [
+                                    '--pele-bg', '--pele-fg', '--pele-muted', '--pele-line',
+                                    '--pele-surface', '--pele-surface-alt', '--pele-border',
+                                    '--pele-accent', '--pele-critical', '--pele-error', '--pele-font', '--pele-font-mono',
+                                    '--pele-title-weight', '--pele-heading-weight', '--pele-bold-weight', '--pele-radius'
+                                ];
+                                let extraCss = 'color:' + actualColor + ';';
+                                peleVars.forEach(function(v) {
+                                    let val = cs.getPropertyValue(v).trim();
+                                    if (val) {
+                                        val = val.replace(/currentColor/g, actualColor);
+                                        extraCss += v + ':' + val + ';';
+                                    }
+                                });
+                                const curBg = cs.getPropertyValue('--pele-bg').trim();
+                                if (!curBg || curBg === 'transparent') {
+                                    const docBg = (cs.backgroundColor && cs.backgroundColor !== 'transparent' && cs.backgroundColor !== 'rgba(0, 0, 0, 0)')
+                                        ? cs.backgroundColor
+                                        : (isDark ? '#1a1b26' : '#ffffff');
+                                    extraCss += '--pele-bg:' + docBg + ';';
+                                }
+                                if (extraCss) {
+                                    const styleEl = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+                                    styleEl.textContent = ':root, svg, .pele { ' + extraCss + ' }';
+                                    svgClone.insertBefore(styleEl, svgClone.firstChild);
+                                }
+                                svgText = new XMLSerializer().serializeToString(svgClone);
+                            } catch (_) {
+                                svgText = new XMLSerializer().serializeToString(svgEl);
+                            }
+                        } else {
+                            svgText = new XMLSerializer().serializeToString(svgEl);
+                        }
                         if (navigator.clipboard && navigator.clipboard.writeText) {
                             await navigator.clipboard.writeText(svgText);
                         } else {
@@ -1046,7 +1122,6 @@ ${getMarkdownCss()}
         const initDiagrams = async () => {
             const mermaidNodes = document.querySelectorAll('.diagram-mermaid-render');
             if (mermaidNodes.length > 0) {
-                 const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs');
                  const mermaidFontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "PingFang SC", "Hiragino Sans GB", "Microsoft JhengHei", "Microsoft YaHei", "Noto Sans CJK TC", "Noto Sans CJK SC", "Source Han Sans TC", "Source Han Sans SC", Helvetica, Arial, sans-serif';
                  if (document.fonts?.ready) {
                      try {
@@ -1055,33 +1130,71 @@ ${getMarkdownCss()}
                          console.warn('Font readiness check failed before Mermaid render', e);
                      }
                  }
-                 mermaid.initialize({
-                     startOnLoad: false,
-                     securityLevel: 'strict',
-                     fontFamily: mermaidFontFamily,
-                     themeVariables: {
-                         fontFamily: mermaidFontFamily
-                     },
-                     flowchart: {
-                         htmlLabels: false,
-                         useMaxWidth: true
+                 let peleModule = null;
+                 try {
+                     peleModule = await import('https://cdn.jsdelivr.net/npm/pele@1.6.0/dist/pele.js');
+                 } catch (peleLoadErr) {
+                     console.warn('Pele engine load failed, will use Mermaid fallback:', peleLoadErr);
+                 }
+                 let mermaidInstance = null;
+                 const getMermaid = async () => {
+                     if (!mermaidInstance) {
+                         const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs');
+                         mermaidInstance = mermaid;
+                         mermaidInstance.initialize({
+                             startOnLoad: false,
+                             securityLevel: 'strict',
+                             fontFamily: mermaidFontFamily,
+                             themeVariables: {
+                                 fontFamily: mermaidFontFamily
+                             },
+                             flowchart: {
+                                 htmlLabels: false,
+                                 useMaxWidth: true
+                             }
+                         });
                      }
-                 });
+                     return mermaidInstance;
+                 };
+
                  for (let i = 0; i < mermaidNodes.length; i++) {
                      const renderNode = mermaidNodes[i];
                      const container = renderNode.previousElementSibling;
                      if (container && !renderNode.hasAttribute('data-processed')) {
-                         try {
-                              const code = container.textContent.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-                              const id = \`mermaid-svg-\${Date.now()}-\${i}\`;
-                              const { svg } = await mermaid.render(id, code);
-                              renderNode.innerHTML = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true, svgFilters: true } }) : svg;
-                              renderNode.setAttribute('data-processed', 'true');
-                              attachDiagramActions(renderNode, code, 'mermaid');
-                         } catch (e) {
-                              console.error('Mermaid render error', e);
-                              const errMsg = String(e?.message || e || 'Unknown error').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                              renderNode.innerHTML = \`<pre style="color:red; background:#fee; padding:10px; border:1px solid red;">Mermaid Render Error: \${errMsg}</pre>\`;
+                         const code = container.textContent.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+                         let rendered = false;
+                         if (peleModule && typeof peleModule.render === 'function') {
+                             try {
+                                 const res = peleModule.render(code, {
+                                     fontFamily: mermaidFontFamily,
+                                     responsive: true
+                                 });
+                                 if (res && res.svg) {
+                                     const svg = res.svg;
+                                     renderNode.innerHTML = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true, svgFilters: true } }) : svg;
+                                     renderNode.setAttribute('data-processed', 'true');
+                                     renderNode.setAttribute('data-diagram-engine', 'pele');
+                                     attachDiagramActions(renderNode, code, 'mermaid');
+                                     rendered = true;
+                                 }
+                             } catch (peleErr) {
+                                 console.warn('Pele render error, attempting Mermaid fallback:', peleErr);
+                             }
+                         }
+                         if (!rendered) {
+                             try {
+                                  const mermaid = await getMermaid();
+                                  const id = \`mermaid-svg-\${Date.now()}-\${i}\`;
+                                  const { svg } = await mermaid.render(id, code);
+                                  renderNode.innerHTML = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true, svgFilters: true } }) : svg;
+                                  renderNode.setAttribute('data-processed', 'true');
+                                  renderNode.setAttribute('data-diagram-engine', 'mermaid');
+                                  attachDiagramActions(renderNode, code, 'mermaid');
+                             } catch (e) {
+                                  console.error('Mermaid render error', e);
+                                  const errMsg = String(e?.message || e || 'Unknown error').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                                  renderNode.innerHTML = \`<pre style="color:red; background:#fee; padding:10px; border:1px solid red;">Mermaid Render Error: \${errMsg}</pre>\`;
+                             }
                          }
                      }
                  }
@@ -7342,34 +7455,62 @@ themeCss + '\\n' +
             // 2. Mermaid Diagrams
             var mermaidBlocks = container.querySelectorAll('.reveal pre code.language-mermaid, .reveal code.language-mermaid');
             if (mermaidBlocks.length > 0) {
+                var peleModule = null;
                 try {
+                    peleModule = await import('https://cdn.jsdelivr.net/npm/pele@1.6.0/dist/pele.js');
+                } catch (peleLoadErr) {
+                    console.warn('Presentation Pele load failed, will use Mermaid fallback:', peleLoadErr);
+                }
+                var mermaidInstance = null;
+                var getPresentationMermaid = async function() {
+                    if (mermaidInstance) return mermaidInstance;
                     var mermaidModule = await import('https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs');
-                    var mermaid = mermaidModule.default || mermaidModule;
+                    mermaidInstance = mermaidModule.default || mermaidModule;
                     var isDarkTheme = APP_STATE.uiTheme === 'dark' || APP_STATE.theme === 'tokyo-night' || APP_STATE.theme === 'ayu-dark' || APP_STATE.theme === 'terminal';
-                    mermaid.initialize({
+                    mermaidInstance.initialize({
                         startOnLoad: false,
                         theme: isDarkTheme ? 'dark' : 'default',
                         securityLevel: 'loose',
                         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
                     });
-                    for (var i = 0; i < mermaidBlocks.length; i++) {
-                        var codeEl = mermaidBlocks[i];
-                        var preEl = codeEl.closest('pre') || codeEl;
-                        var code = (codeEl.textContent || '').trim();
-                        if (!code) continue;
-                        var mid = 'pres-mermaid-' + Date.now() + '-' + i;
+                    return mermaidInstance;
+                };
+
+                for (var i = 0; i < mermaidBlocks.length; i++) {
+                    var codeEl = mermaidBlocks[i];
+                    var preEl = codeEl.closest('pre') || codeEl;
+                    var code = (codeEl.textContent || '').trim();
+                    if (!code) continue;
+                    var rendered = false;
+                    if (peleModule && typeof peleModule.render === 'function') {
                         try {
-                            var mRes = await mermaid.render(mid, code);
+                            var pRes = peleModule.render(code, { responsive: true });
+                            if (pRes && pRes.svg) {
+                                var wrap = document.createElement('div');
+                                wrap.className = 'presentation-diagram-fit';
+                                wrap.setAttribute('data-diagram-engine', 'pele');
+                                wrap.innerHTML = pRes.svg;
+                                preEl.parentNode.replaceChild(wrap, preEl);
+                                rendered = true;
+                            }
+                        } catch (pErr) {
+                            console.warn('Presentation Pele render error, attempting Mermaid fallback:', pErr);
+                        }
+                    }
+                    if (!rendered) {
+                        try {
+                            var m = await getPresentationMermaid();
+                            var mid = 'pres-mermaid-' + Date.now() + '-' + i;
+                            var mRes = await m.render(mid, code);
                             var wrap = document.createElement('div');
                             wrap.className = 'presentation-diagram-fit';
+                            wrap.setAttribute('data-diagram-engine', 'mermaid');
                             wrap.innerHTML = mRes.svg;
                             preEl.parentNode.replaceChild(wrap, preEl);
                         } catch (err) {
                             console.warn('Mermaid render error:', err);
                         }
                     }
-                } catch (err) {
-                    console.warn('Mermaid loader error:', err);
                 }
             }
 

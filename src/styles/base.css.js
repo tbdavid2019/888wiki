@@ -5314,14 +5314,28 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
     flex-shrink: 0;
 }
 
-/* Mermaid Renderer Specific Fixes */
+/* Mermaid & Pele Renderer Specific Fixes */
 .diagram-mermaid-render {
     line-height: normal;
     font-size: 14px;
     overflow-x: auto;
     overflow-y: visible;
+    --pele-bg: transparent;
+    --pele-fg: currentColor;
+    --pele-line: currentColor;
+    --pele-muted: color-mix(in srgb, currentColor 65%, transparent);
+    --pele-surface: color-mix(in srgb, currentColor 5%, transparent);
+    --pele-surface-alt: color-mix(in srgb, currentColor 9%, transparent);
+    --pele-border: color-mix(in srgb, currentColor 22%, transparent);
+    --pele-accent: var(--accent, #5b7bd5);
+    --pele-critical: #e45756;
+    --pele-error: #e45756;
+    --pele-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "PingFang SC", "Hiragino Sans GB", "Microsoft JhengHei", "Microsoft YaHei", "Noto Sans CJK TC", "Noto Sans CJK SC", "Source Han Sans TC", "Source Han Sans SC", Helvetica, Arial, sans-serif;
+    --pele-font-mono: "Maple Mono", "JetBrains Mono", "SF Mono", Consolas, monospace;
+    --pele-radius: 6px;
 }
-.diagram-mermaid-render svg {
+.diagram-mermaid-render svg,
+.diagram-mermaid-render svg.pele {
     display: block;
     max-width: 100%;
     height: auto;
@@ -5329,7 +5343,8 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
 }
 .diagram-mermaid-render text,
 .diagram-mermaid-render tspan,
-.diagram-mermaid-render .label {
+.diagram-mermaid-render .label,
+.diagram-mermaid-render .pele-label {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "PingFang SC", "Hiragino Sans GB", "Microsoft JhengHei", "Microsoft YaHei", "Noto Sans CJK TC", "Noto Sans CJK SC", "Source Han Sans TC", "Source Han Sans SC", Helvetica, Arial, sans-serif;
 }
 
@@ -5580,6 +5595,14 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
     max-height: 380px;
     margin: 0.6em auto;
     overflow: hidden;
+    --pele-bg: transparent;
+    --pele-fg: currentColor;
+    --pele-line: currentColor;
+    --pele-muted: color-mix(in srgb, currentColor 65%, transparent);
+    --pele-surface: color-mix(in srgb, currentColor 8%, transparent);
+    --pele-surface-alt: color-mix(in srgb, currentColor 14%, transparent);
+    --pele-border: color-mix(in srgb, currentColor 28%, transparent);
+    --pele-accent: var(--accent, #5b7bd5);
 }
 .presentation-diagram-fit svg {
     max-width: 100% !important;

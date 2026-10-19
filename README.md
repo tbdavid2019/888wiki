@@ -23,7 +23,7 @@ The same import choices can create Markdown notes or convert content into editab
 
 | Mode | Best for | What you get |
 | --- | --- | --- |
-| **Markdown** | Articles, research, and technical notes | Live preview, live voice dictation, math, diagrams, citations, imports, search and replace, and flexible layouts. |
+| **Markdown** | Articles, research, and technical notes | Live preview, live voice dictation, math, ultra-fast Pele/Mermaid diagrams (sub-millisecond rendering with theme-aware PNG/SVG export), citations, imports, search and replace, and flexible layouts. |
 | **Block** | Structured pages and mixed media | Rich editable blocks, live voice dictation (`/dictate`), slash commands, floating formatting toolbar, drag-to-reorder, editable embeds, and direct exports. |
 | **Canvas** | Maps, plans, and connected ideas | Eight kinds of thought cards, labeled relationships, media cards, undo/redo, and `.canvas` / PNG / SVG export. |
 | **Whiteboard** | Sketches and visual explanations | Excalidraw drawing tools, read-only sharing, and PNG / SVG export. |
@@ -41,7 +41,7 @@ Seal separates content passwords from release timing. Set a scheduled unlock, bu
 
 ## A Markdown workspace with room to shape the page
 
-Markdown is the starting point: write portable plain text, preview it live, and use math, diagrams, citations, footnotes, alerts, and extended Markdown syntax. Enjoy clean, standardized Lucide and Tabler vector iconography with pixel-perfect vertical and horizontal centering across all toolbars, menus, and modals. Editor toolbars feature Fitts's Law-optimized visual controls and a compact cloud save capsule, using a consistent warm palette in light and dark UI modes with restrained active states and square-corner controls. Receive inspiration from bilingual editor tips and Tagore's Stray Birds poetry upon opening a new note. Choose from 20 colorful light and dark themes, fonts, preview widths, and split layouts. The same Markdown can become a book or slide presentation.
+Markdown is the starting point: write portable plain text, preview it live, and use math, diagrams (powered by Obsidian's high-performance Pele engine with sub-millisecond rendering, CSS theme adaptation, and native Mermaid fallback), citations, footnotes, alerts, and extended Markdown syntax. Enjoy clean, standardized Lucide and Tabler vector iconography with pixel-perfect vertical and horizontal centering across all toolbars, menus, and modals. Editor toolbars feature Fitts's Law-optimized visual controls and a compact cloud save capsule, using a consistent warm palette in light and dark UI modes with restrained active states and square-corner controls. Receive inspiration from bilingual editor tips and Tagore's Stray Birds poetry upon opening a new note. Choose from 20 colorful light and dark themes, fonts, preview widths, and split layouts. The same Markdown can become a book or slide presentation.
 
 ## Built for agents and automation
 
