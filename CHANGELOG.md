@@ -1,5 +1,13 @@
 # Changelog
 
+## [2026-10-22]
+
+- **🎨 編輯器外殼全面重塑為 2md 旗艦配色系統（App Shell Redesign with Saffron Warm Cream & Saffron Midnight）**：
+  - **亮色模式（Saffron Warm Cream）**：全面引入 `2md.aiurl.tw` 旗艦配色，採用溫暖典雅的米奶油調底色（`--toolbar-bg: #fff9e8;`、`--status-bg: #fff0cc;`）、暖金邊框（`#ddc58b`）、深褐內文字（`#2b251a`）與深海藍／番紅赤褐重點色（`#17324d` / `#a9471d`），使 App Shell、工具列、底欄、發布狀態列、對話框（Modals）與進度條告別生硬灰白，呈現溫潤且精緻的旗艦寫作氛圍。
+  - **深色模式（Saffron Midnight）**：外殼全面升級為午夜深沉夜藍底色（`--toolbar-bg: #131b24;`、`--modal-bg: #1a2430;`）、午夜灰藍邊框（`#2e3d4e`）、柔和米白內文字（`#f5ebd4`）與曜金琥珀重點色（`#ffb010`），提供極致沉浸且舒適的夜間閱讀與編寫體驗。
+  - **嚴格遵循 WCAG AA/AAA 可讀性與高對比規範**：重新調校主要操作按鈕、選中狀態（精準 `color-mix` 疊加）、成功狀態（翡翠綠）、次要輔助文字等色彩，確保全環境可讀性優異且不眩光。
+  - **全域外殼元件高度統一**：完整同步 `:root`、`html[data-ui-theme="dark"]` 及 `@media (prefers-color-scheme: dark)` 之各項 CSS 變數，並更新單元測試斷言確保回歸測試零異常。
+
 ## [2026-10-19]
 
 - **⚡️ 升級 Mermaid 圖表渲染引擎為 Pele 雙引擎架構（Pele-First Mermaid Engine with Seamless Fallback）**：

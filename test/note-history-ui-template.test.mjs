@@ -24,9 +24,9 @@ test('local save capsule uses the same square toolbar radius as neighboring cont
 })
 
 test('note history and recent shares modals support full dark mode theme variables and styles', () => {
-    assert.match(baseCss, /--modal-bg:\s*#1e293b;/)
-    assert.match(baseCss, /--modal-border:\s*#334155;/)
-    assert.match(baseCss, /--toolbar-fg:\s*#e8ddd8;/)
+    assert.match(baseCss, /--modal-bg:\s*#1a2430;/)
+    assert.match(baseCss, /--modal-border:\s*#2e3d4e;/)
+    assert.match(baseCss, /--toolbar-fg:\s*#f5ebd4;/)
     assert.match(baseCss, /\.share-history-content\s*\{[\s\S]*background:\s*var\(--modal-bg/)
     assert.match(baseCss, /\.note-history-content\s*\{[\s\S]*background:\s*var\(--modal-bg/)
     assert.match(baseCss, /\.sync-status-badge\s*\{[\s\S]*color:\s*var\(--toolbar-fg/)
