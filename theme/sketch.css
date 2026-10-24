@@ -18,7 +18,7 @@
    - 温暖纸张 #fdfbf7（背景）
    - 铅笔黑 #2d2d2d（主文字，非纯黑更有机）
    - 旧纸张 #e5e0d8（辅助背景/擦除痕迹）
-   - 红色马克笔 #ff4d4d（主强调色）
+   - 红色马克笔 #b91c1c（主强调色）
    - 蓝色圆珠笔 #2d5da1（次强调色/链接）
    - 便签黄 #fff9c4（高亮/引用）
    - 木纹边 #c9c3b8（柔和边框）
@@ -70,7 +70,7 @@
   color: #d94545;
   padding: 0.3em 0.6em;
   border-left: 5px solid #d94545;
-  background-color: rgba(255, 77, 77, 0.06);
+  background-color: rgba(185, 28, 28, 0.06);
   /* 不规则圆角：右侧看起来像手绘 */
   border-radius: 0 12px 8px 0;
 }
@@ -78,11 +78,11 @@
 /* H3 - 内联标签风格 */
 #bm-md h3 {
   font-size: 1.25em;
-  color: #ff4d4d;
+  color: #b91c1c;
   display: inline-block;
   padding: 0.15em 0.5em;
-  background-color: rgba(255, 77, 77, 0.08);
-  border: 2px solid #ff4d4d;
+  background-color: rgba(185, 28, 28, 0.08);
+  border: 2px solid #b91c1c;
   /* 不规则手绘边框 */
   border-radius: 4px 12px 6px 10px;
 }
@@ -138,7 +138,7 @@
   font-weight: 700;
   color: #c93030;
   /* 底部高亮效果，像用荧光笔划过 */
-  background: linear-gradient(180deg, transparent 55%, rgba(255, 77, 77, 0.18) 55%);
+  background: linear-gradient(180deg, transparent 55%, rgba(185, 28, 28, 0.18) 55%);
 }
 
 /* 斜体 - 蓝色圆珠笔 */
@@ -155,7 +155,7 @@
   color: #888888;
   text-decoration: line-through;
   text-decoration-style: wavy;
-  text-decoration-color: #ff4d4d;
+  text-decoration-color: #b91c1c;
   text-decoration-thickness: 2px;
 }
 
@@ -184,7 +184,7 @@
 /* 上标 - 红色小标签 */
 #bm-md sup {
   vertical-align: super;
-  color: #ff4d4d;
+  color: #b91c1c;
   font-weight: 600;
 }
 
@@ -212,14 +212,14 @@
 
 #bm-md q::before {
   content: open-quote;
-  color: #ff4d4d;
+  color: #b91c1c;
   font-weight: 700;
   font-size: 1.15em;
 }
 
 #bm-md q::after {
   content: close-quote;
-  color: #ff4d4d;
+  color: #b91c1c;
   font-weight: 700;
   font-size: 1.15em;
 }
@@ -245,7 +245,7 @@
 
 /* 缩写 - 虚线下划线 */
 #bm-md abbr[title] {
-  border-bottom: 2px dotted #ff4d4d;
+  border-bottom: 2px dotted #b91c1c;
   cursor: help;
   text-decoration: none;
 }
@@ -266,8 +266,8 @@
 }
 
 #bm-md a:hover {
-  color: #ff4d4d;
-  background-image: linear-gradient(90deg, #ff4d4d 60%, transparent 60%);
+  color: #b91c1c;
+  background-image: linear-gradient(90deg, #b91c1c 60%, transparent 60%);
 }
 
 /* ============================================
@@ -311,7 +311,7 @@
 
 /* 列表标记 - 红色马克笔 */
 #bm-md li::marker {
-  color: #ff4d4d;
+  color: #b91c1c;
   font-weight: 700;
 }
 
@@ -346,7 +346,7 @@
   margin-top: 0.35em;
   width: 1.15em;
   height: 1.15em;
-  accent-color: #ff4d4d;
+  accent-color: #b91c1c;
   border: 2px solid #2d2d2d;
   border-radius: 3px;
 }
@@ -362,7 +362,7 @@
   color: #2d2d2d;
   /* 厚边框 + 红色左边 */
   border: 2px solid #2d2d2d;
-  border-left: 5px solid #ff4d4d;
+  border-left: 5px solid #b91c1c;
   /* 不规则手绘圆角 */
   border-radius: 4px 16px 12px 6px;
   /* 硬偏移阴影 - 剪贴画效果 */
@@ -609,7 +609,7 @@
   color: #c93030;
   margin-top: 0.6em;
   padding-left: 0.5em;
-  border-left: 3px solid #ff4d4d;
+  border-left: 3px solid #b91c1c;
 }
 
 #bm-md dt:first-child {
@@ -706,8 +706,8 @@
 
 /* Caution - 红色马克笔 */
 #bm-md .markdown-alert-caution {
-  background-color: rgba(255, 77, 77, 0.06);
-  border-color: #ff4d4d;
+  background-color: rgba(185, 28, 28, 0.06);
+  border-color: #b91c1c;
 }
 
 #bm-md .markdown-alert-caution .markdown-alert-title {
@@ -754,7 +754,7 @@
 }
 
 #bm-md summary::marker {
-  color: #ff4d4d;
+  color: #b91c1c;
 }
 
 #bm-md details[open] summary {

@@ -57,8 +57,27 @@ test('initializes, labels, and disposes a chart instance', () => {
     assert.deepEqual(calls.at(-1), ['dispose'])
 })
 
+test('passes theme parameter to echartsApi.init', () => {
+    let capturedTheme = null
+    const container = { setAttribute() {} }
+    const chart = { setOption() {}, resize() {}, dispose() {} }
+    const echartsApi = {
+        init(node, theme) {
+            capturedTheme = theme
+            return chart
+        },
+    }
+
+    renderEchartsChart(container, '{"title":{"text":"Dark Theme Chart"}}', echartsApi, 'dark')
+    assert.equal(capturedTheme, 'dark')
+
+    renderEchartsChart(container, '{"title":{"text":"Default Theme Chart"}}', echartsApi)
+    assert.equal(capturedTheme, null)
+})
+
 test('integrates ECharts into the existing diagram pipeline', () => {
     assert.match(baseTemplate, /lang === 'echarts'/)
     assert.match(baseTemplate, /echarts@6\.1\.0\/dist\/echarts\.min\.js/)
     assert.match(baseTemplate, /diagram-echarts-render/)
+    assert.match(baseTemplate, /isDarkContext\(currentTheme\)/)
 })

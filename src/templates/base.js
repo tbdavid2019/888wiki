@@ -1119,6 +1119,15 @@ ${getMarkdownCss()}
             wrapper.appendChild(toolbar);
         };
 
+        const isDarkContext = (themeName) => {
+            const darkThemes = ['tokyo-night', 'x-ai', 'terminal', 'kanagawa', 'catppuccin-macchiato'];
+            if (darkThemes.includes(themeName)) return true;
+            const uiTheme = document.documentElement.getAttribute('data-ui-theme');
+            if (uiTheme === 'dark') return true;
+            if (uiTheme === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return true;
+            return document.body.classList.contains('theme-dark');
+        };
+
         const initDiagrams = async () => {
             const mermaidNodes = document.querySelectorAll('.diagram-mermaid-render');
             if (mermaidNodes.length > 0) {
@@ -1141,12 +1150,16 @@ ${getMarkdownCss()}
                      if (!mermaidInstance) {
                          const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs');
                          mermaidInstance = mermaid;
+                         const currentTheme = (typeof APP_STATE !== 'undefined' && APP_STATE?.theme) || window.APP_STATE?.theme || '${pageTheme}';
+                         const isDark = isDarkContext(currentTheme);
                          mermaidInstance.initialize({
                              startOnLoad: false,
                              securityLevel: 'strict',
+                             theme: isDark ? 'dark' : 'neutral',
                              fontFamily: mermaidFontFamily,
                              themeVariables: {
-                                 fontFamily: mermaidFontFamily
+                                 fontFamily: mermaidFontFamily,
+                                 darkMode: isDark
                              },
                              flowchart: {
                                  htmlLabels: false,
@@ -1270,11 +1283,13 @@ ${getMarkdownCss()}
                 try {
                     await loadScript('https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js');
                     const { renderEchartsChart } = await import('/js/echarts-renderer.mjs');
+                    const currentTheme = (typeof APP_STATE !== 'undefined' && APP_STATE?.theme) || window.APP_STATE?.theme || '${pageTheme}';
+                    const chartTheme = isDarkContext(currentTheme) ? 'dark' : null;
                     document.querySelectorAll('.diagram-echarts-render').forEach(el => {
                         if (el.hasAttribute('data-processed') || !el.isConnected) return;
                         const source = el.previousElementSibling?.textContent || '';
                         try {
-                            renderEchartsChart(el, source, window.echarts);
+                            renderEchartsChart(el, source, window.echarts, chartTheme);
                             el.setAttribute('data-processed', 'true');
                             attachDiagramActions(el, source, 'echarts');
                         } catch (error) {
@@ -7466,7 +7481,7 @@ themeCss + '\\n' +
                     if (mermaidInstance) return mermaidInstance;
                     var mermaidModule = await import('https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs');
                     mermaidInstance = mermaidModule.default || mermaidModule;
-                    var isDarkTheme = APP_STATE.uiTheme === 'dark' || APP_STATE.theme === 'tokyo-night' || APP_STATE.theme === 'ayu-dark' || APP_STATE.theme === 'terminal';
+                    var isDarkTheme = typeof isDarkContext === 'function' ? isDarkContext(APP_STATE.theme) : (APP_STATE.uiTheme === 'dark' || ['tokyo-night', 'x-ai', 'terminal', 'kanagawa', 'catppuccin-macchiato'].includes(APP_STATE.theme));
                     mermaidInstance.initialize({
                         startOnLoad: false,
                         theme: isDarkTheme ? 'dark' : 'default',
@@ -7537,7 +7552,7 @@ themeCss + '\\n' +
                             var chartDiv = document.createElement('div');
                             chartDiv.className = 'presentation-echarts-chart';
                             ePreEl.parentNode.replaceChild(chartDiv, ePreEl);
-                            var isDarkTheme = APP_STATE.uiTheme === 'dark' || APP_STATE.theme === 'tokyo-night';
+                            var isDarkTheme = typeof isDarkContext === 'function' ? isDarkContext(APP_STATE.theme) : (APP_STATE.uiTheme === 'dark' || ['tokyo-night', 'x-ai', 'terminal', 'kanagawa', 'catppuccin-macchiato'].includes(APP_STATE.theme));
                             var chartInst = window.echarts.init(chartDiv, isDarkTheme ? 'dark' : null);
                             chartInst.setOption(chartConfig);
                             _echartsInstances.push(chartInst);

@@ -5325,10 +5325,10 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
     --pele-bg: transparent;
     --pele-fg: currentColor;
     --pele-line: currentColor;
-    --pele-muted: color-mix(in srgb, currentColor 65%, transparent);
-    --pele-surface: color-mix(in srgb, currentColor 5%, transparent);
+    --pele-muted: color-mix(in srgb, currentColor 78%, transparent);
+    --pele-surface: color-mix(in srgb, currentColor 8%, transparent);
     --pele-surface-alt: color-mix(in srgb, currentColor 9%, transparent);
-    --pele-border: color-mix(in srgb, currentColor 22%, transparent);
+    --pele-border: color-mix(in srgb, currentColor 45%, transparent);
     --pele-accent: var(--accent, #5b7bd5);
     --pele-critical: #e45756;
     --pele-error: #e45756;
@@ -5600,10 +5600,10 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
     --pele-bg: transparent;
     --pele-fg: currentColor;
     --pele-line: currentColor;
-    --pele-muted: color-mix(in srgb, currentColor 65%, transparent);
+    --pele-muted: color-mix(in srgb, currentColor 78%, transparent);
     --pele-surface: color-mix(in srgb, currentColor 8%, transparent);
     --pele-surface-alt: color-mix(in srgb, currentColor 14%, transparent);
-    --pele-border: color-mix(in srgb, currentColor 28%, transparent);
+    --pele-border: color-mix(in srgb, currentColor 45%, transparent);
     --pele-accent: var(--accent, #5b7bd5);
 }
 .presentation-diagram-fit svg {

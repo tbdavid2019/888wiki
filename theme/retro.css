@@ -28,32 +28,20 @@
 
 /* ============================================
    容器 - Windows 95 风格主界面
-   经典外凸 3D 边框效果
+   经典内凹 3D 边框文档视窗
    ============================================ */
 
 #bm-md {
-  color: #000000;
-  background-color: #c0c0c0;
+  color: #111111;
+  background-color: #ffffff;
   font-family: 'MS Sans Serif', 'Segoe UI', Tahoma, Geneva, Verdana, Arial, sans-serif;
   font-size: 14px;
   line-height: 1.5;
   padding: 1em;
-  /* 外凸边框效果 (Outset Bevel) */
+  /* 经典 Win95 下沉边框 (Sunken Bevel) */
   border: 2px solid;
-  border-color: #ffffff #808080 #808080 #ffffff;
-  box-shadow:
-    inset -1px -1px 0 #404040,
-    inset 1px 1px 0 #dfdfdf;
-  /* 90年代瓷砖纹理背景 */
-  background-image:
-    linear-gradient(45deg, #b8b8b8 25%, transparent 25%), linear-gradient(-45deg, #b8b8b8 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #b8b8b8 75%), linear-gradient(-45deg, transparent 75%, #b8b8b8 75%);
-  background-size: 4px 4px;
-  background-position:
-    0 0,
-    0 2px,
-    2px -2px,
-    -2px 0px;
+  border-color: #808080 #ffffff #ffffff #808080;
+  box-shadow: inset 1px 1px 0 #000, 1px 1px 0 #fff;
 }
 
 /* ============================================
@@ -164,7 +152,7 @@
 #bm-md strong,
 #bm-md b {
   font-weight: 700;
-  color: #ff0000;
+  color: #cc0000;
 }
 
 /* 斜体 - 海军蓝 */
@@ -178,9 +166,9 @@
 #bm-md del,
 #bm-md s,
 #bm-md strike {
-  color: #808080;
+  color: #555555;
   text-decoration: line-through;
-  text-decoration-color: #ff0000;
+  text-decoration-color: #cc0000;
   text-decoration-thickness: 2px;
 }
 
@@ -194,7 +182,7 @@
 
 #bm-md small {
   font-size: 0.875em;
-  color: #404040;
+  color: #555555;
 }
 
 #bm-md sup,
@@ -206,14 +194,14 @@
 /* 上标 - 红色粗体 */
 #bm-md sup {
   vertical-align: super;
-  color: #ff0000;
+  color: #cc0000;
   font-weight: 700;
 }
 
 /* 下标 - 蓝色 */
 #bm-md sub {
   vertical-align: sub;
-  color: #0000ff;
+  color: #0000cc;
 }
 
 /* 插入 - Lime 绿背景 */
@@ -232,13 +220,13 @@
 
 #bm-md q::before {
   content: open-quote;
-  color: #ff0000;
+  color: #cc0000;
   font-weight: 700;
 }
 
 #bm-md q::after {
   content: close-quote;
-  color: #ff0000;
+  color: #cc0000;
   font-weight: 700;
 }
 
@@ -264,7 +252,7 @@
 
 /* 缩写 - 蓝色虚线下划线 */
 #bm-md abbr[title] {
-  border-bottom: 1px dotted #0000ff;
+  border-bottom: 1px dotted #0000cc;
   cursor: help;
   text-decoration: none;
 }
@@ -275,12 +263,12 @@
    ============================================ */
 
 #bm-md a {
-  color: #0000ff;
+  color: #0000cc;
   text-decoration: underline;
 }
 
 #bm-md a:hover {
-  color: #ff0000;
+  color: #cc0000;
 }
 
 /* ============================================
@@ -293,11 +281,11 @@
 
 #bm-md rt {
   font-size: 0.5em;
-  color: #808080;
+  color: #555555;
 }
 
 #bm-md rp {
-  color: #808080;
+  color: #555555;
 }
 
 /* ============================================
@@ -559,7 +547,7 @@
 #bm-md figcaption {
   margin-top: 0.4em;
   font-size: 0.875em;
-  color: #404040;
+  color: #555555;
   font-style: italic;
 }
 
@@ -572,7 +560,7 @@
   padding-top: 0.75em;
   border-top: 2px solid #808080;
   font-size: 0.875em;
-  color: #404040;
+  color: #555555;
 }
 
 #bm-md .footnotes ol {
@@ -593,7 +581,7 @@
 /* 脚注返回链接 */
 #bm-md .footnote-backref,
 #bm-md .data-footnote-backref {
-  color: #0000ff;
+  color: #0000cc;
   text-decoration: underline;
   font-weight: 700;
 }
@@ -717,11 +705,11 @@
 /* Caution - 红色危险框 */
 #bm-md .markdown-alert-caution {
   background-color: #fff0f0;
-  border-left: 4px solid #ff0000;
+  border-left: 4px solid #cc0000;
 }
 
 #bm-md .markdown-alert-caution .markdown-alert-title {
-  color: #ff0000;
+  color: #cc0000;
 }
 
 /* ============================================
@@ -798,7 +786,7 @@
 #bm-md .meta,
 #bm-md time {
   font-size: 0.875em;
-  color: #404040;
+  color: #555555;
   padding: 0.1em 0.35em;
   background-color: #e0e0e0;
   border: 1px solid;

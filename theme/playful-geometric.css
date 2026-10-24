@@ -7,8 +7,8 @@
 /* 配色定义（硬编码）
    背景色: #FFFDF5 (温暖奶油白 - 纸质感)
    前景色: #1E293B (石板色 800)
-   主紫色: #8B5CF6 (Vivid Violet - 品牌主色)
-   粉色: #F472B6 (Hot Pink - 俏皮活力)
+   主紫色: #6D28D9 (Vivid Violet - 品牌主色)
+   粉色: #BE185D (Hot Pink - 俏皮活力)
    黄色: #FBBF24 (Amber/Yellow - 乐观积极)
    薄荷绿: #34D399 (Emerald/Mint - 清新感)
    边框色: #1E293B (深色边框 - 硬边界)
@@ -51,7 +51,7 @@
 #bm-md h1 {
   font-size: 1.875em;
   padding: 0.4em 0.65em;
-  background-color: #8b5cf6;
+  background-color: #6d28d9;
   color: #ffffff;
   border: 3px solid #1e293b;
   border-radius: 0 28px 0 28px;
@@ -65,9 +65,9 @@
   background-color: #fffdf5;
   color: #7c3aed;
   border: 3px solid #1e293b;
-  border-left: 10px solid #8b5cf6;
+  border-left: 10px solid #6d28d9;
   border-radius: 0 20px 20px 0;
-  box-shadow: 5px 5px 0 #f472b6;
+  box-shadow: 5px 5px 0 #be185d;
 }
 
 /* H3 - 药丸形状黄色贴纸 */
@@ -141,7 +141,7 @@
 #bm-md em,
 #bm-md i {
   font-style: italic;
-  color: #8b5cf6;
+  color: #6d28d9;
   font-weight: 500;
 }
 
@@ -151,7 +151,7 @@
 #bm-md strike {
   color: #64748b;
   text-decoration: line-through;
-  text-decoration-color: #f472b6;
+  text-decoration-color: #be185d;
   text-decoration-thickness: 3px;
 }
 
@@ -182,7 +182,7 @@
   vertical-align: super;
   color: #ffffff;
   font-weight: 700;
-  background-color: #f472b6;
+  background-color: #be185d;
   padding: 0.15em 0.35em;
   border-radius: 9999px;
   border: 1px solid #1e293b;
@@ -191,7 +191,7 @@
 /* 下标 - 紫色强调 */
 #bm-md sub {
   vertical-align: sub;
-  color: #8b5cf6;
+  color: #6d28d9;
   font-weight: 600;
 }
 
@@ -212,14 +212,14 @@
 
 #bm-md q::before {
   content: open-quote;
-  color: #f472b6;
+  color: #be185d;
   font-weight: 800;
   font-size: 1.25em;
 }
 
 #bm-md q::after {
   content: close-quote;
-  color: #f472b6;
+  color: #be185d;
   font-weight: 800;
   font-size: 1.25em;
 }
@@ -228,8 +228,8 @@
 #bm-md var {
   font-style: italic;
   font-weight: 600;
-  color: #8b5cf6;
-  background-color: rgba(139, 92, 246, 0.12);
+  color: #6d28d9;
+  background-color: rgba(109, 40, 217, 0.12);
   padding: 0.08em 0.25em;
   border-radius: 5px;
 }
@@ -248,7 +248,7 @@
 
 /* 缩写 - 紫色点状下划线 */
 #bm-md abbr[title] {
-  border-bottom: 2px dotted #8b5cf6;
+  border-bottom: 2px dotted #6d28d9;
   cursor: help;
   text-decoration: none;
 }
@@ -258,18 +258,18 @@
    ============================================ */
 
 #bm-md a {
-  color: #8b5cf6;
+  color: #6d28d9;
   text-decoration: none;
   font-weight: 500;
-  background-color: rgba(139, 92, 246, 0.1);
+  background-color: rgba(109, 40, 217, 0.1);
   padding: 0.08em 0.25em;
   border-radius: 5px;
-  border-bottom: 2px solid #8b5cf6;
+  border-bottom: 2px solid #6d28d9;
 }
 
 #bm-md a:hover {
   color: #ffffff;
-  background-color: #8b5cf6;
+  background-color: #6d28d9;
   border-bottom-color: #1e293b;
 }
 
@@ -314,7 +314,7 @@
 
 /* 列表标记 - 紫色粗体 */
 #bm-md li::marker {
-  color: #8b5cf6;
+  color: #6d28d9;
   font-weight: 700;
 }
 
@@ -349,7 +349,7 @@
   margin-top: 0.35em;
   width: 1.2em;
   height: 1.2em;
-  accent-color: #8b5cf6;
+  accent-color: #6d28d9;
   border: 2px solid #1e293b;
   border-radius: 5px;
 }
@@ -361,7 +361,7 @@
 #bm-md blockquote {
   margin: 1em 0;
   padding: 0.8em 1.1em 0.8em 1.6em;
-  background-color: #f472b6;
+  background-color: #be185d;
   color: #1e293b;
   border: 3px solid #1e293b;
   border-left: 10px solid #fbbf24;
@@ -382,7 +382,7 @@
   margin-top: 0.8em;
   margin-bottom: 0;
   background-color: #fbbf24;
-  border-left-color: #8b5cf6;
+  border-left-color: #6d28d9;
   border-radius: 0 20px 20px 0;
   box-shadow: 4px 4px 0 #1e293b;
 }
@@ -409,7 +409,7 @@
   background-color: #1e293b;
   border: 3px solid #1e293b;
   border-radius: 20px;
-  box-shadow: 8px 8px 0 #8b5cf6;
+  box-shadow: 8px 8px 0 #6d28d9;
   overflow-x: auto;
 }
 
@@ -440,12 +440,12 @@
 }
 
 #bm-md thead {
-  background-color: #8b5cf6;
+  background-color: #6d28d9;
   color: #ffffff;
 }
 
 #bm-md thead th {
-  background-color: #8b5cf6;
+  background-color: #6d28d9;
   color: #ffffff;
 }
 
@@ -468,7 +468,7 @@
 }
 
 #bm-md tbody tr:nth-child(even) {
-  background-color: rgba(139, 92, 246, 0.08);
+  background-color: rgba(109, 40, 217, 0.08);
 }
 
 /* Frontmatter 表格 - 简洁无边框 */
@@ -491,7 +491,7 @@
 
 #bm-md .frontmatter-key {
   font-weight: 700;
-  color: #8b5cf6;
+  color: #6d28d9;
   white-space: nowrap;
 }
 
@@ -513,10 +513,10 @@
   height: 10px;
   background: repeating-linear-gradient(
     90deg,
-    #8b5cf6 0px,
-    #8b5cf6 24px,
-    #f472b6 24px,
-    #f472b6 48px,
+    #6d28d9 0px,
+    #6d28d9 24px,
+    #be185d 24px,
+    #be185d 48px,
     #fbbf24 48px,
     #fbbf24 72px,
     #34d399 72px,
@@ -578,11 +578,11 @@
 #bm-md .footnotes {
   margin-top: 1.75em;
   padding-top: 1.1em;
-  border-top: 5px solid #8b5cf6;
+  border-top: 5px solid #6d28d9;
   font-size: 0.875em;
   color: #64748b;
   /* 彩虹条纹顶部装饰 */
-  background: linear-gradient(90deg, #8b5cf6 0, #8b5cf6 48px, #f472b6 48px, #f472b6 80px, transparent 80px);
+  background: linear-gradient(90deg, #6d28d9 0, #6d28d9 48px, #be185d 48px, #be185d 80px, transparent 80px);
   background-size: 100% 5px;
   background-repeat: no-repeat;
   background-position: top;
@@ -598,7 +598,7 @@
   vertical-align: super;
   color: #ffffff;
   font-weight: 700;
-  background-color: #8b5cf6;
+  background-color: #6d28d9;
   padding: 0.15em 0.45em;
   border-radius: 9999px;
   border: 1px solid #1e293b;
@@ -630,7 +630,7 @@
   color: #ffffff;
   margin-top: 0.6em;
   padding: 0.25em 0.55em;
-  background-color: #8b5cf6;
+  background-color: #6d28d9;
   border: 2px solid #1e293b;
   border-radius: 10px;
   display: inline-block;
@@ -646,7 +646,7 @@
   margin-top: 0.3em;
   color: #1e293b;
   padding-left: 0.7em;
-  border-left: 5px solid #f472b6;
+  border-left: 5px solid #be185d;
 }
 
 /* ============================================
@@ -688,8 +688,8 @@
 
 /* Note - 紫色 */
 #bm-md .markdown-alert-note {
-  background-color: rgba(139, 92, 246, 0.14);
-  border-left: 8px solid #8b5cf6;
+  background-color: rgba(109, 40, 217, 0.14);
+  border-left: 8px solid #6d28d9;
 }
 
 #bm-md .markdown-alert-note .markdown-alert-title {
@@ -708,8 +708,8 @@
 
 /* Important - 粉色 */
 #bm-md .markdown-alert-important {
-  background-color: rgba(244, 114, 182, 0.14);
-  border-left: 8px solid #f472b6;
+  background-color: rgba(190, 24, 93, 0.14);
+  border-left: 8px solid #be185d;
 }
 
 #bm-md .markdown-alert-important .markdown-alert-title {
@@ -754,7 +754,7 @@
   background-color: #ffffff;
   border: 3px solid #1e293b;
   border-radius: 16px;
-  box-shadow: 5px 5px 0 #8b5cf6;
+  box-shadow: 5px 5px 0 #6d28d9;
 }
 
 /* ============================================
@@ -773,12 +773,12 @@
 #bm-md summary {
   font-weight: 700;
   cursor: pointer;
-  color: #8b5cf6;
+  color: #6d28d9;
   padding: 0.3em 0;
 }
 
 #bm-md summary::marker {
-  color: #f472b6;
+  color: #be185d;
 }
 
 #bm-md details[open] summary {

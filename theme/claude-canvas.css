@@ -30,7 +30,7 @@
 
 #bm-md h1 {
   font-size: 2.1em;
-  color: #cc785c;
+  color: #9e472a;
   border-bottom: 1px solid #e6dfd8;
   padding-bottom: 0.4em;
   margin-top: 0;
@@ -71,25 +71,25 @@
 
 #bm-md em,
 #bm-md i {
-  color: #cc785c;
+  color: #9e472a;
   font-style: italic;
 }
 
 #bm-md a {
-  color: #cc785c;
+  color: #9e472a;
   text-decoration: none;
-  border-bottom: 1px solid rgba(204, 120, 92, 0.4);
+  border-bottom: 1px solid rgba(158, 71, 42, 0.4);
   transition: border-color 0.15s ease, color 0.15s ease;
 }
 
 #bm-md a:hover {
-  color: #a9583e;
-  border-bottom-color: #a9583e;
+  color: #7d331c;
+  border-bottom-color: #7d331c;
 }
 
 #bm-md blockquote {
   padding: 0.9em 1.2em;
-  border-left: 4px solid #cc785c;
+  border-left: 4px solid #9e472a;
   background: #f5f0e8;
   color: #3d3d3a;
   border-radius: 0 8px 8px 0;
@@ -97,7 +97,7 @@
 
 #bm-md code {
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  color: #cc785c;
+  color: #9e472a;
   background: #f5f0e8;
   border: 1px solid #e6dfd8;
   border-radius: 6px;
@@ -183,7 +183,7 @@
 }
 
 #bm-md .markdown-alert-important {
-  border-left: 4px solid #cc785c;
+  border-left: 4px solid #9e472a;
 }
 
 #bm-md .markdown-alert-warning {

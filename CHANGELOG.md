@@ -1,5 +1,30 @@
 # Changelog
 
+## [2026-10-24]
+
+- **♿️ WCAG 2.1 AA 佈景主題無障礙對比度校準與圖表動態色彩適配（WCAG 2.1 AA Theme Recalibration & Dynamic Diagram Theme Matching）**：
+  - **9 款 Markdown 主題對比度全面重校（Recalibrate 9 Themes for WCAG 2.1 AA >= 4.5:1 / 3.0:1 Contrast）**：
+    - `ayu-light`：超連結改為 `#a05600`（5.1:1 on white）、行內程式碼改為 `#b83232`（4.9:1）、次要文字與 H4-H6 改為 `#505c6d`（5.5:1）、警告框邊框與標題全面校準（Note `#1b7a99`、Tip `#2b7a1e`、Warning `#945700`、Caution `#b83232`、Important `#7448a3`）。
+    - `retro`：重塑 `.markdown-body` 為乾淨 Win95 內凹下沉邊框白色視窗（`#ffffff` 底色、`#111111` 內文、`border: 2px solid; border-color: #808080 #ffffff #ffffff #808080; box-shadow: inset 1px 1px 0 #000, 1px 1px 0 #fff;`），告別原先 `#c0c0c0` 刺眼難讀灰底；連結改為經典藍 `#0000cc`（8.8:1）、粗體紅 `#cc0000`（5.4:1）、次要文字 `#555555`。
+    - `green-simple`：超連結與粗體文字由 `#2bae85`（2.8:1）校準為深翠綠 `#13795b`（4.8:1），刪除線與次要文字由 `#999`（2.85:1）校準為 `#595959`（4.6:1）。
+    - `organic`：赤陶土色連結由 `#d97742`（2.84:1）校準為 `#9e4414`（5.0:1），次要文字由 `#9a918a`（2.79:1）校準為 `#5c554e`（5.1:1）。
+    - `playful-geometric`：粉色強調由 `#f472b6`（2.6:1）校準為 `#be185d`（5.1:1），紫色強調由 `#8b5cf6`（4.16:1）校準為 `#6d28d9`（5.6:1）。
+    - `sketch`：手繪紅色強調由 `#ff4d4d`（3.16:1）校準為 `#b91c1c`（5.0:1）。
+    - `claude-canvas`：程式碼與連結強調色由 `#cc785c`（3.11:1）校準為 `#9e472a`（4.9:1）。
+    - `notion-clean`：行內紅色程式碼由 `#eb5757`（3.48:1）校準為 `#b92525`（4.8:1）。
+    - `professional`：燃金連結與點綴色由 `#b8860b`（3.11:1）校準為深金褐 `#855a00`（4.8:1）。
+    - 同步更新 `theme/*.css` 與 `src/theme_data.js`，保持 100% 同步。
+  - **Pele 圖表向量變數升級（Pele Diagram Variables for WCAG 1.4.11 Boundary Contrast）**：
+    - 更新 `src/styles/base.css.js` 中 `.diagram-mermaid-render` 與 `.presentation-diagram-fit` 之 CSS 變數：
+      - `--pele-border`: 提升至 `color-mix(in srgb, currentColor 45%, transparent);`，符合 WCAG 1.4.11 非文字邊界對比標準。
+      - `--pele-surface`: 調校為 `color-mix(in srgb, currentColor 8%, transparent);`。
+      - `--pele-muted`: 調校為 `color-mix(in srgb, currentColor 78%, transparent);`。
+  - **Mermaid 與 ECharts 深淺色彩即時自適應（Dynamic Diagram Context Matching）**：
+    - 於 `src/templates/base.js` 新增 `isDarkContext(themeName)` 判定（支援 `tokyo-night`, `x-ai`, `terminal`, `kanagawa`, `catppuccin-macchiato` 以及系統與 UI 深色設定）。
+    - Mermaid 降級渲染器動態注入 `theme: isDark ? 'dark' : 'neutral'` 與 `darkMode: isDark`，圖表在深色主題下保持高對比度可讀性。
+    - `static/js/echarts-renderer.mjs` 擴充 `theme = null` 參數支援，並於 `base.js` 調用時依當前環境傳入 `'dark'` 或 `null`。
+  - **單元測試完整覆蓋**：新增 `test/wcag-theme-contrast.test.mjs`，測試全數通過。
+
 ## [2026-10-22]
 
 - **🎨 編輯器外殼全面重塑為 2md 旗艦配色系統（App Shell Redesign with Saffron Warm Cream & Saffron Midnight）**：

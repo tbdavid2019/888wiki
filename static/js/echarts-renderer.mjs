@@ -38,7 +38,7 @@ export const disposeEchartsCharts = () => {
     Array.from(chartRecords).forEach(disposeRecord)
 }
 
-export const renderEchartsChart = (container, source, echartsApi = globalThis.echarts) => {
+export const renderEchartsChart = (container, source, echartsApi = globalThis.echarts, theme = null) => {
     if (!container) throw new Error('ECharts container is missing')
     if (!echartsApi || typeof echartsApi.init !== 'function') {
         throw new Error('ECharts library is unavailable')
@@ -46,7 +46,7 @@ export const renderEchartsChart = (container, source, echartsApi = globalThis.ec
 
     disposeRecord(container.__cfNotepadEchartsRecord)
     const option = parseEchartsOption(source)
-    const chart = echartsApi.init(container, null, {
+    const chart = echartsApi.init(container, theme, {
         renderer: 'canvas',
         useDirtyRect: false,
     })

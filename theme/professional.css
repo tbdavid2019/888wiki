@@ -17,7 +17,7 @@
    - 深黑文字: #1A1A1A
    - 次级文字: #4A4A4A
    - 辅助灰色: #6B6B6B
-   - 燃烧金色: #B8860B (Dark Goldenrod)
+   - 燃烧金色: #855a00 (Dark Goldenrod)
    - 浅金色: #D4A84B
    - 边框暖灰: #E8E4DF
    - 浅背景: #F5F3F0
@@ -60,7 +60,7 @@
   text-align: center;
   padding-bottom: 0.4em;
   margin-bottom: 0.6em;
-  border-bottom: 2px solid #b8860b;
+  border-bottom: 2px solid #855a00;
 }
 
 /* H2 - 章节标题，细边框分隔 */
@@ -179,7 +179,7 @@
   background-color: #f0ebe3;
   text-decoration: none;
   padding: 0.1em 0.2em;
-  border-bottom: 1px solid #b8860b;
+  border-bottom: 1px solid #855a00;
 }
 
 /* 行内引用 - 金色引号 */
@@ -190,13 +190,13 @@
 
 #bm-md q::before {
   content: open-quote;
-  color: #b8860b;
+  color: #855a00;
   font-weight: 600;
 }
 
 #bm-md q::after {
   content: close-quote;
-  color: #b8860b;
+  color: #855a00;
   font-weight: 600;
 }
 
@@ -219,7 +219,7 @@
 
 /* 缩写 - 金色点状下划线 */
 #bm-md abbr[title] {
-  border-bottom: 1px dotted #b8860b;
+  border-bottom: 1px dotted #855a00;
   cursor: help;
   text-decoration: none;
 }
@@ -229,14 +229,14 @@
    ============================================ */
 
 #bm-md a {
-  color: #b8860b;
+  color: #855a00;
   text-decoration: none;
   border-bottom: 1px solid #d4a84b;
 }
 
 #bm-md a:hover {
-  color: #996f09;
-  border-bottom-color: #996f09;
+  color: #664500;
+  border-bottom-color: #664500;
 }
 
 /* ============================================
@@ -280,7 +280,7 @@
 
 /* 列表标记使用金色 */
 #bm-md li::marker {
-  color: #b8860b;
+  color: #855a00;
 }
 
 #bm-md li > ul,
@@ -311,7 +311,7 @@
 
 #bm-md input[type='checkbox'] {
   margin-top: 0.35em;
-  accent-color: #b8860b;
+  accent-color: #855a00;
 }
 
 /* ============================================
@@ -321,7 +321,7 @@
 #bm-md blockquote {
   margin: 1.1em 0;
   padding: 0.75em 1em;
-  border-left: 3px solid #b8860b;
+  border-left: 3px solid #855a00;
   background-color: #f5f3f0;
   color: #2d2d2d;
   font-style: italic;
@@ -363,7 +363,7 @@
   padding: 0.875em 1em;
   background-color: #f8f7f4;
   border: 1px solid #e8e4df;
-  border-top: 2px solid #b8860b;
+  border-top: 2px solid #855a00;
   overflow-x: auto;
 }
 
@@ -514,13 +514,13 @@
 #bm-md .footnote-ref {
   font-size: 0.75em;
   vertical-align: super;
-  color: #b8860b;
+  color: #855a00;
   font-weight: 600;
 }
 
 #bm-md .footnote-backref,
 #bm-md .data-footnote-backref {
-  color: #b8860b;
+  color: #855a00;
   text-decoration: none;
 }
 
@@ -621,11 +621,11 @@
 #bm-md .markdown-alert-warning {
   background-color: #faf8f4;
   border-color: #c9a855;
-  border-left-color: #b8860b;
+  border-left-color: #855a00;
 }
 
 #bm-md .markdown-alert-warning .markdown-alert-title {
-  color: #9a7209;
+  color: #855a00;
 }
 
 /* Caution - 深红褐（危险警告） */
@@ -662,7 +662,7 @@
   padding: 0.5em 0.75em;
   background-color: #f8f7f4;
   border: 1px solid #e8e4df;
-  border-left: 3px solid #b8860b;
+  border-left: 3px solid #855a00;
 }
 
 #bm-md summary {

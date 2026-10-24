@@ -27,7 +27,7 @@
 #bm-md h4,
 #bm-md h5,
 #bm-md h6 {
-  color: #2bae85;
+  color: #13795b;
   font-weight: 700;
   line-height: 1.4em;
   word-break: break-all;
@@ -101,7 +101,7 @@
 #bm-md strong,
 #bm-md b {
   font-weight: 700;
-  color: #2bae85;
+  color: #13795b;
 }
 
 #bm-md em,
@@ -113,7 +113,7 @@
 #bm-md s,
 #bm-md strike {
   text-decoration: line-through;
-  color: #999;
+  color: #595959;
 }
 
 #bm-md mark {
@@ -172,14 +172,14 @@
 }
 
 #bm-md a {
-  color: #2bae85;
+  color: #13795b;
   text-decoration: none;
-  border-bottom: 1px solid #2bae85;
+  border-bottom: 1px solid #13795b;
   transition: border-bottom-color 0.2s ease;
 }
 
 #bm-md a:hover {
-  border-bottom-color: #23956b;
+  border-bottom-color: #0e5b44;
 }
 
 #bm-md ruby,
@@ -193,7 +193,7 @@
   margin: 8px 0;
   padding-left: 20px;
   list-style-type: disc;
-  color: #2bae85;
+  color: #13795b;
 }
 
 #bm-md ol {
@@ -251,8 +251,8 @@
 #bm-md blockquote {
   margin: 20px 0;
   padding: 16px 20px;
-  border-left: 4px solid #2bae85;
-  background: rgba(43, 174, 133, 0.05);
+  border-left: 4px solid #13795b;
+  background: rgba(19, 121, 91, 0.05);
   border-radius: 0 4px 4px 0;
 }
 
@@ -285,7 +285,7 @@
   padding: 0;
   background: #f6faf8;
   border: 1px solid #d4e5de;
-  border-left: 3px solid #2bae85;
+  border-left: 3px solid #13795b;
   border-radius: 4px;
   overflow: hidden;
 }
@@ -312,12 +312,12 @@
 
 #bm-md thead {
   background: #f8f9fa;
-  border-bottom: 2px solid #2bae85;
+  border-bottom: 2px solid #13795b;
 }
 
 #bm-md tfoot {
   background: #f8f9fa;
-  border-top: 2px solid #2bae85;
+  border-top: 2px solid #13795b;
 }
 
 #bm-md th {
@@ -339,7 +339,7 @@
 }
 
 #bm-md tbody tr:hover {
-  background: rgba(43, 174, 133, 0.05);
+  background: rgba(19, 121, 91, 0.05);
 }
 
 #bm-md .frontmatter-table {
@@ -361,8 +361,8 @@
 
 #bm-md .frontmatter-key {
   font-weight: 700;
-  color: #2bae85;
-  background: rgba(43, 174, 133, 0.05);
+  color: #13795b;
+  background: rgba(19, 121, 91, 0.05);
   width: 140px;
 }
 
@@ -373,7 +373,7 @@
 #bm-md hr {
   border: none;
   height: 2px;
-  background: linear-gradient(to right, transparent, #2bae85, transparent);
+  background: linear-gradient(to right, transparent, #13795b, transparent);
   margin: 32px 0;
 }
 
@@ -428,15 +428,15 @@
 }
 
 #bm-md .footnote-ref {
-  color: #2bae85;
+  color: #13795b;
   text-decoration: none;
-  border-bottom: 1px dotted #2bae85;
+  border-bottom: 1px dotted #13795b;
   cursor: pointer;
 }
 
 #bm-md .footnote-backref,
 #bm-md .data-footnote-backref {
-  color: #2bae85;
+  color: #13795b;
   text-decoration: none;
   font-size: 0.875em;
 }
@@ -447,7 +447,7 @@
 
 #bm-md dt {
   font-weight: 700;
-  color: #2bae85;
+  color: #13795b;
   margin: 8px 0 4px;
 }
 
@@ -493,12 +493,12 @@
 }
 
 #bm-md .markdown-alert-note {
-  border-left-color: #2bae85;
-  background: rgba(43, 174, 133, 0.05);
+  border-left-color: #13795b;
+  background: rgba(19, 121, 91, 0.05);
 }
 
 #bm-md .markdown-alert-note .markdown-alert-title {
-  color: #2bae85;
+  color: #13795b;
 }
 
 #bm-md .markdown-alert-tip {
@@ -566,13 +566,13 @@
   padding: 12px 16px;
   cursor: pointer;
   font-weight: 700;
-  color: #2bae85;
+  color: #13795b;
   user-select: none;
   transition: background 0.2s ease;
 }
 
 #bm-md summary:hover {
-  background: rgba(43, 174, 133, 0.05);
+  background: rgba(19, 121, 91, 0.05);
 }
 
 #bm-md details[open] summary {
@@ -592,13 +592,13 @@
 
 #bm-md .meta {
   font-size: 12px;
-  color: #999;
+  color: #595959;
   margin: 8px 0;
   text-align: center;
 }
 
 #bm-md time {
-  color: #999;
+  color: #595959;
   font-size: 12px;
 }
 
