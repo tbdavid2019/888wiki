@@ -2,6 +2,23 @@
 
 ## [2026-10-24]
 
+- **🎯 閱讀進度導軌升級為「層級里程碑圓點系統」（Reading Progress Outline: Hierarchical Milestone Dots System）**：
+  - **解決長篇密集線條光柵感與密集恐懼感**：徹底重構原先的長短橫條（Dashes）為極具現代感的層級里程碑圓點（Milestone Dots），大幅降低視覺躁點與密集條紋光柵感，帶來平靜優雅的閱讀體驗。
+  - **六級標題精準層級圓點直徑（Hierarchical Dot Radii）**：
+    - `H1`（`.is-level-1`）：7px 核心大綱里程碑圓點。
+    - `H2`（`.is-level-2`）：5.5px 次級章節圓點。
+    - `H3`（`.is-level-3`）：4px 小節圓點。
+    - `H4`（`.is-level-4`）：3.5px 細分段落圓點。
+    - `H5` / `H6`（`.is-level-5`, `.is-level-6`）：3px 微型圓點。
+    - 缺省 major/minor 分別為 6px / 4px。
+  - **低飽和柔和待命與動態高亮光環（Subtle Idle & Active Accent Halo）**：
+    - 亮色與暗色模式之未閱讀標記全面導入 `color-mix` 低透明度（亮色 `--progress-marker-color: color-mix(in srgb, #2b251a 22%, transparent);`、暗色 `color-mix(in srgb, #f5ebd4 25%, transparent);`），安靜融入版面邊界。
+    - 當前閱讀中章節（`.is-active`）等比放大 1.4 倍，並綻放 `color-mix` 柔和重點色擴散光環（`box-shadow: 0 0 0 2.5px ..., 0 0 8px ...`），視覺層次分明且不刺眼。
+  - **中心軸對齊與舒展點距（Centered Alignment & Comfortable Spacing）**：
+    - `.reading-progress-markers` 改為垂直軸向完全居中（`align-items: center; justify-content: center;`），點距由緊密拉闊至 `gap: clamp(7px, 1.8vh, 14px);`，各段落呼吸感十足。
+  - **隱形點擊熱區擴大（Hit Box Expansion）**：
+    - 透過 `::before` 虛擬元素提供上下 6px、左右 10px 隱形感應熱區，無論滑鼠掠過或手勢點擊皆能 100% 精準捕捉，流暢彈出章節標題氣泡（Floating Tooltip）。
+
 - **♿️ WCAG 2.1 AA 佈景主題無障礙對比度校準與圖表動態色彩適配（WCAG 2.1 AA Theme Recalibration & Dynamic Diagram Theme Matching）**：
   - **9 款 Markdown 主題對比度全面重校（Recalibrate 9 Themes for WCAG 2.1 AA >= 4.5:1 / 3.0:1 Contrast）**：
     - `ayu-light`：超連結改為 `#a05600`（5.1:1 on white）、行內程式碼改為 `#b83232`（4.9:1）、次要文字與 H4-H6 改為 `#505c6d`（5.5:1）、警告框邊框與標題全面校準（Note `#1b7a99`、Tip `#2b7a1e`、Warning `#945700`、Caution `#b83232`、Important `#7448a3`）。

@@ -235,6 +235,11 @@
       "id": "live-voice-dictation",
       "zh-TW": "小訣竅：支援 Confucius4-R2T2 高速即時語音聽打！在 Markdown 工具列點擊聽打按鈕、或在 Block 編輯器輸入「/dictate」及按下「Cmd/Ctrl + Shift + D」，即可隨說隨打直接輸入文字至游標處；伺服器在線時自動啟動，離線時自動安靜隱藏。",
       "en-US": "Tip: High-speed live voice typing powered by Confucius4-R2T2 ASR! Click the dictation button, type '/dictate' in the Block Editor, or press 'Cmd/Ctrl + Shift + D' to stream speech directly into your notes in real time. Features smart zero-flicker liveness detection."
+    },
+    {
+      "id": "reading-outline-dots",
+      "zh-TW": "小訣竅：閱讀分享頁與預覽區左側配備「層級里程碑圓點導軌」，依 H1~H6 標題自動呈現 7px 至 3px 精緻圓點，懸浮可預覽標題，點擊即可平滑捲動跳轉。",
+      "en-US": "Tip: Share pages and previews feature an elegant 'Hierarchical Milestone Dots' outline on the left margin, displaying 7px to 3px dots for H1~H6 headings with hover title tooltips and smooth scroll jumps."
     }
   ]
 }

@@ -88,7 +88,7 @@ export const getBaseCss = () => `
     --progress-control-bg: #fff9e8;
     --progress-control-border: #ddc58b;
     --progress-control-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-    --progress-marker-color: #2b251a;
+    --progress-marker-color: color-mix(in srgb, #2b251a 22%, transparent);
     --progress-marker-minor-color: #655a43;
     --progress-marker-shadow: 0 0.5px 1px rgba(255, 255, 255, 0.5);
 }
@@ -148,7 +148,7 @@ html[data-ui-theme="dark"] body {
     --progress-control-bg: #1a2430;
     --progress-control-border: #2e3d4e;
     --progress-control-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-    --progress-marker-color: #f5ebd4;
+    --progress-marker-color: color-mix(in srgb, #f5ebd4 25%, transparent);
     --progress-marker-minor-color: #ad9f88;
     --progress-marker-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.6);
     color-scheme: dark;
@@ -212,7 +212,7 @@ html[data-ui-theme="dark"] body {
         --progress-control-bg: #1a2430;
         --progress-control-border: #2e3d4e;
         --progress-control-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-        --progress-marker-color: #f5ebd4;
+        --progress-marker-color: color-mix(in srgb, #f5ebd4 25%, transparent);
         --progress-marker-minor-color: #ad9f88;
         --progress-marker-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.6);
         color-scheme: dark;
@@ -4366,107 +4366,118 @@ html[data-ui-theme="dark"] .note-history-body.markdown-body blockquote,
     position: relative;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
-    gap: clamp(5px, 1.25vh, 10px);
+    gap: clamp(7px, 1.8vh, 14px);
     width: 100%;
     padding: 2px 0;
     pointer-events: auto;
     flex-shrink: 0;
 }
 
-/* Notion-style Hierarchical Dashes (長短區隔) */
+/* Notion-style Hierarchical Milestone Dots (層級圓點) */
 .reading-progress-marker {
     position: relative;
     display: block;
-    height: 2.5px;
-    border-radius: 999px;
+    border-radius: 50%;
     background: var(--progress-marker-color, rgba(55, 53, 47, 0.22));
     border: none;
     padding: 0;
     margin: 0;
     cursor: pointer;
     flex-shrink: 0;
-    transition: width 0.16s cubic-bezier(0.16, 1, 0.3, 1),
-                height 0.16s cubic-bezier(0.16, 1, 0.3, 1),
-                background 0.16s ease,
-                opacity 0.16s ease,
-                transform 0.16s ease;
-    transform-origin: left center;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transform-origin: center center;
     -webkit-appearance: none;
     appearance: none;
     outline: none;
 }
 
-/* Invisible hit box expansion for comfortable clicking and hovering */
+/* Invisible hit box expansion for comfortable clicking and hovering (kissing without overlap) */
 .reading-progress-marker::before {
     content: "";
     position: absolute;
-    top: -5px;
-    bottom: -5px;
-    left: -4px;
+    top: -3.5px;
+    bottom: -3.5px;
+    left: -10px;
     right: -10px;
 }
 
-/* Distinct lengths per heading level */
+/* Hierarchical dot sizes per heading level */
 .reading-progress-marker.is-level-1 {
-    width: 26px;
-    height: 3px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
 }
 .reading-progress-marker.is-level-2 {
-    width: 18px;
-    height: 2.5px;
+    width: 5.5px;
+    height: 5.5px;
+    border-radius: 50%;
 }
 .reading-progress-marker.is-level-3 {
-    width: 12px;
-    height: 2px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
 }
 .reading-progress-marker.is-level-4 {
-    width: 8px;
-    height: 2px;
+    width: 3.5px;
+    height: 3.5px;
+    border-radius: 50%;
 }
 .reading-progress-marker.is-level-5,
 .reading-progress-marker.is-level-6 {
-    width: 6px;
-    height: 2px;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
 }
 
 /* Major and minor fallbacks */
 .reading-progress-marker.is-heading-major:not([class*="is-level-"]) {
-    width: 22px;
-    height: 2.5px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
 }
 .reading-progress-marker.is-heading-minor:not([class*="is-level-"]) {
-    width: 12px;
-    height: 2px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
 }
 
-/* Dark mode inactive dashes */
+/* Dark mode inactive milestone dots */
 [data-ui-theme="dark"] .reading-progress-marker {
-    background: var(--progress-marker-color-dark, rgba(255, 255, 255, 0.24));
+    background: var(--progress-marker-color, rgba(245, 235, 212, 0.25));
 }
 
-/* Hover state */
-.reading-progress-marker:hover,
-.reading-progress-marker:focus-visible {
+/* Hover and Focus-visible states */
+.reading-progress-marker:hover {
+    transform: scale(1.3);
     background: var(--theme-accent, #111111);
-    transform: scaleY(1.3);
 }
-[data-ui-theme="dark"] .reading-progress-marker:hover,
+.reading-progress-marker:focus-visible {
+    transform: scale(1.3);
+    background: var(--theme-accent, #111111);
+    box-shadow: 0 0 0 2px var(--progress-control-bg, #fff9e8), 0 0 0 4px var(--theme-accent, #111111);
+}
+[data-ui-theme="dark"] .reading-progress-marker:hover {
+    transform: scale(1.3);
+    background: var(--theme-accent, #ffb010);
+}
 [data-ui-theme="dark"] .reading-progress-marker:focus-visible {
-    background: var(--theme-accent, #ffffff);
+    transform: scale(1.3);
+    background: var(--theme-accent, #ffb010);
+    box-shadow: 0 0 0 2px var(--progress-control-bg, #1a2430), 0 0 0 4px var(--theme-accent, #ffb010);
 }
 
 /* Active reading section */
 .reading-progress-marker.is-active {
     background: var(--theme-accent, #111111);
     opacity: 1;
-    transform: scaleY(1.35);
-    box-shadow: 0 0 1px rgba(0, 0, 0, 0.4);
+    transform: scale(1.4);
+    box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--theme-accent, #111111) 25%, transparent), 0 0 8px var(--theme-accent, #111111);
 }
 [data-ui-theme="dark"] .reading-progress-marker.is-active {
-    background: var(--theme-accent, #ffffff);
-    box-shadow: 0 0 5px rgba(255, 255, 255, 0.45);
+    background: var(--theme-accent, #ffb010);
+    box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--theme-accent, #ffb010) 35%, transparent), 0 0 8px rgba(255, 176, 16, 0.45);
 }
 
 /* Notion-style Floating Title Tooltip */
@@ -4595,12 +4606,19 @@ body.share-view .reading-progress-value {
     }
     html[data-ui-theme="auto"] .reading-progress-marker,
     html:not([data-ui-theme]) .reading-progress-marker {
-        background: var(--progress-marker-color-dark, rgba(255, 255, 255, 0.24));
+        background: var(--progress-marker-color, rgba(245, 235, 212, 0.25));
+    }
+    html[data-ui-theme="auto"] .reading-progress-marker:hover,
+    html[data-ui-theme="auto"] .reading-progress-marker:focus-visible,
+    html:not([data-ui-theme]) .reading-progress-marker:hover,
+    html:not([data-ui-theme]) .reading-progress-marker:focus-visible {
+        transform: scale(1.3);
+        background: var(--theme-accent, #ffb010);
     }
     html[data-ui-theme="auto"] .reading-progress-marker.is-active,
     html:not([data-ui-theme]) .reading-progress-marker.is-active {
-        background: var(--theme-accent, #ffffff);
-        box-shadow: 0 0 5px rgba(255, 255, 255, 0.45);
+        background: var(--theme-accent, #ffb010);
+        box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--theme-accent, #ffb010) 35%, transparent), 0 0 8px rgba(255, 176, 16, 0.45);
     }
     html[data-ui-theme="auto"] .reading-progress-tooltip,
     html:not([data-ui-theme]) .reading-progress-tooltip {

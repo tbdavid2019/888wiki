@@ -249,20 +249,20 @@ test('provides left safety gutter and fluid push on TOC pin in share view', () =
     assert.match(baseCss, /body\.share-view\.is-toc-pinned \.reading-toc-drawer\s*\{[^}]*position:\s*fixed;[^}]*top:\s*0;[^}]*bottom:\s*48px;[^}]*width:\s*280px;/)
 })
 
-test('styles Notion-style grand outline track with hierarchical dash markers and hover tooltips', () => {
+test('styles Notion-style grand outline track with hierarchical milestone dot markers and hover tooltips', () => {
     // Grand vertical outline track with clean frameless layout and scroll support
     assert.match(baseCss, /\.reading-progress-track\s*\{[^}]*max-height:\s*min\(76vh,\s*680px\);/)
     assert.match(baseCss, /\.reading-progress-track\s*\{[^}]*background:\s*transparent;/)
 
-    // Hierarchical dash markers with distinct lengths for heading levels
-    assert.match(baseCss, /\.reading-progress-marker\.is-level-1\s*\{[^}]*width:\s*26px;/)
-    assert.match(baseCss, /\.reading-progress-marker\.is-level-2\s*\{[^}]*width:\s*18px;/)
-    assert.match(baseCss, /\.reading-progress-marker\.is-level-3\s*\{[^}]*width:\s*12px;/)
-    assert.match(baseCss, /\.reading-progress-marker\.is-level-4\s*\{[^}]*width:\s*8px;/)
+    // Hierarchical milestone dot markers with distinct diameters for heading levels
+    assert.match(baseCss, /\.reading-progress-marker\.is-level-1\s*\{[^}]*width:\s*7px;[^}]*height:\s*7px;/)
+    assert.match(baseCss, /\.reading-progress-marker\.is-level-2\s*\{[^}]*width:\s*5\.5px;[^}]*height:\s*5\.5px;/)
+    assert.match(baseCss, /\.reading-progress-marker\.is-level-3\s*\{[^}]*width:\s*4px;[^}]*height:\s*4px;/)
+    assert.match(baseCss, /\.reading-progress-marker\.is-level-4\s*\{[^}]*width:\s*3\.5px;[^}]*height:\s*3\.5px;/)
 
     // Section markers contrast colors
     assert.match(baseCss, /\.reading-progress-marker\s*\{[^}]*background:\s*var\(--progress-marker-color/)
-    assert.match(baseCss, /\[data-ui-theme="dark"\] \.reading-progress-marker\s*\{[^}]*background:\s*var\(--progress-marker-color-dark/)
+    assert.match(baseCss, /\[data-ui-theme="dark"\] \.reading-progress-marker\s*\{[^}]*background:\s*var\(--progress-marker-color/)
 
     // Hover tooltip displaying title text
     assert.match(baseCss, /\.reading-progress-tooltip\s*\{[^}]*position:\s*absolute;[^}]*left:\s*calc\(100%\s*\+\s*10px\);/)

@@ -251,7 +251,7 @@ export const initReadingProgress = (root = document) => {
             activeHeadingIndex = Math.max(0, headings.findIndex(heading => heading.getBoundingClientRect().top > activationLine) - 1)
         }
         const currentHeading = headingText(headings[activeHeadingIndex])
-        widget.classList.toggle('is-hidden', !progress.isScrollable && !headings.length)
+        widget.classList.toggle('is-hidden', !headings.length)
         widget.style.setProperty('--reading-progress', `${progress.percent}%`)
         track.setAttribute('aria-label', labels.value(progress.percent, currentHeading, activeHeadingIndex, headings.length || 1))
         value.value = String(progress.percent)
