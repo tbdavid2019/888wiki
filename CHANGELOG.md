@@ -2,6 +2,11 @@
 
 ## [2026-10-24]
 
+- **📐 TOC 圖示升級為 Lucide TableOfContents 並實現像素級絕對居中（TOC Icon Upgrade to Lucide TableOfContents & Pixel-Perfect Center Axis Alignment）**：
+  - **解決 TOC 按鈕偏左偏移視覺差**：修復先前 `body.share-view .reading-progress` 之 `align-items: flex-start` 導致 24px 按鈕與 32px 軌道內圓點產生 4px 偏左偏差之問題；全面切換為 `align-items: center` 與按鈕 `align-self: center; margin: 0 auto;`，使目錄方塊按鈕與下方所有里程碑圓點精準落在同一條垂直中心軸上。
+  - **升級為 Lucide 官方 TableOfContents 圖示**：將原先偏靠左之 `AlignLeft`（三條左對齊橫線）升級為 Lucide 官方規格之 `TableOfContents` 圖示（左側章節橫線搭配右側頁碼/里程碑圓點），完美呼應大綱階層與下方里程碑圓點，呈現精緻平衡之視覺美感。
+  - **快顯快取破除 (`?v=2.6`)**：更新 `/js/reading-progress.mjs?v=2.6` 版本號，確保讀者免手動清除快取即時載入最新居中排版與圖示。
+
 - **📌 目錄固定路由直達與雙向狀態同步（TOC Direct Route Sync & URL State Persistence `?toc=1`）**：
   - **解決分享複製網址無法直達固定目錄痛點**：現在當讀者在分享閱讀頁點擊目錄釘選固定（Pin TOC）時，網址列將透過 `history.replaceState` 自動同步加上 `?toc=1` 參數；取消固定或關閉目錄時自動移除，維持乾淨網址。
   - **跨裝置與訪客直達開啟（Direct TOC Route Loading）**：任何人點擊帶有 `?toc=1`（或 `?toc=true` / `?toc=pinned`）的分享網址，伺服器與前端將自動以「目錄固定模式」（`.is-toc-pinned`）直達呈現，完全免去訪客再次手動開關與釘選目錄。

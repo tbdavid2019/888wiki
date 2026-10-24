@@ -4307,6 +4307,7 @@ html[data-ui-theme="dark"] .note-history-body.markdown-body blockquote,
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    align-self: center;
     width: 22px;
     height: 22px;
     padding: 0;
@@ -4338,8 +4339,9 @@ html[data-ui-theme="dark"] .note-history-body.markdown-body blockquote,
     position: relative;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     justify-content: flex-start;
+    align-self: center;
     width: 32px;
     min-height: 180px;
     max-height: min(76vh, 680px);
@@ -4545,7 +4547,7 @@ body.share-view .reading-progress {
     z-index: 45;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     gap: 6px;
     transition: opacity 0.2s ease, left 0.2s ease;
     opacity: 0.94;
@@ -4561,6 +4563,7 @@ body.share-view .reading-progress-track {
 }
 
 body.share-view .reading-progress-toggle-btn {
+    align-self: center;
     width: 24px;
     height: 24px;
     margin-bottom: 2px;
