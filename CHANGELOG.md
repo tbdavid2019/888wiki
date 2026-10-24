@@ -2,6 +2,10 @@
 
 ## [2026-10-24]
 
+- **🛡️ 依賴安裝避坑防護與工程規範落地（Dependency Installation Safeguard `.npmrc` & AGENTS Guidelines）**：
+  - **建立根目錄 `.npmrc` 設定**：寫入 `legacy-peer-deps=true`，從底層杜絕 npm 10（Node 22）在解析 `@mantine`、`@blocknote` 與 `react 19` 複雜交錯之 peerDependencies 時陷入指數級回溯死循環（CPU 99% 卡住）。
+  - **更新 `AGENTS.md` 避坑指引**：增訂「依賴安裝避坑鐵律（Dependency Management & Peer-Dependency Trap）」，明確載明 npm 10 依賴回溯死循環成因、強制 `--legacy-peer-deps` 參數規範、以及前端 Bundle 重建與測試防護標準（更新單元測試總量至 >540 項）。
+
 - **📦 核心編輯器依賴套件升級（Core Editor Dependencies Upgrade: BlockNote 0.56.0 & xyflow 12.12.0）**：
   - **Block 筆記升級至 `0.56.0`（`@blocknote/core`, `@blocknote/react`, `@blocknote/mantine`）**：
     - **行動裝置虛擬鍵盤格式工具列轉正**：手機與平板在彈出軟體鍵盤時，浮動格式列升級為標準化鍵盤頂部操作列，徹底解決原本鍵盤遮擋或輸入失焦問題。
