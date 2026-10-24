@@ -17,7 +17,8 @@
   - **中心軸對齊與舒展點距（Centered Alignment & Comfortable Spacing）**：
     - `.reading-progress-markers` 改為垂直軸向完全居中（`align-items: center; justify-content: center;`），點距由緊密拉闊至 `gap: clamp(7px, 1.8vh, 14px);`，各段落呼吸感十足。
   - **隱形點擊熱區擴大（Hit Box Expansion）**：
-    - 透過 `::before` 虛擬元素提供上下 6px、左右 10px 隱形感應熱區，無論滑鼠掠過或手勢點擊皆能 100% 精準捕捉，流暢彈出章節標題氣泡（Floating Tooltip）。
+    - 透過 `::before` 虛擬元素提供上下 3.5px、左右 10px 隱形感應熱區，無論滑鼠掠過或手勢點擊皆能 100% 精準捕捉，流暢彈出章節標題氣泡（Floating Tooltip）。
+  - **快顯快取破除 (`?v=2.4`)**：更新 `/js/reading-progress.mjs?v=2.4` 版本號，確保讀者客戶端免強制清除快取即時載入最新圓點大綱樣式。
 
 - **♿️ WCAG 2.1 AA 佈景主題無障礙對比度校準與圖表動態色彩適配（WCAG 2.1 AA Theme Recalibration & Dynamic Diagram Theme Matching）**：
   - **9 款 Markdown 主題對比度全面重校（Recalibrate 9 Themes for WCAG 2.1 AA >= 4.5:1 / 3.0:1 Contrast）**：
