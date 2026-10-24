@@ -2,6 +2,13 @@
 
 ## [2026-10-24]
 
+- **📌 目錄固定路由直達與雙向狀態同步（TOC Direct Route Sync & URL State Persistence `?toc=1`）**：
+  - **解決分享複製網址無法直達固定目錄痛點**：現在當讀者在分享閱讀頁點擊目錄釘選固定（Pin TOC）時，網址列將透過 `history.replaceState` 自動同步加上 `?toc=1` 參數；取消固定或關閉目錄時自動移除，維持乾淨網址。
+  - **跨裝置與訪客直達開啟（Direct TOC Route Loading）**：任何人點擊帶有 `?toc=1`（或 `?toc=true` / `?toc=pinned`）的分享網址，伺服器與前端將自動以「目錄固定模式」（`.is-toc-pinned`）直達呈現，完全免去訪客再次手動開關與釘選目錄。
+  - **精準章節錨點聯動（Section Anchor Synchronization）**：在目錄清單或里程碑圓點點選章節時，即時更新網址錨點（如 `?toc=1#section-id`），複製上方網址傳送給他人即可實現「固定目錄 + 直達指定章節」雙重無縫導引。
+  - **目錄抽屜頂部一鍵複製按鈕（TOC Quick Share Button）**：於目錄側邊欄頂部新增複製圖標按鈕，單擊即可將當前包含 `?toc=1` 及章節錨點的完整網址寫入剪貼簿，並具備優雅的打勾即時視覺回饋。
+  - **快顯快取破除 (`?v=2.5`)**：更新 `/js/reading-progress.mjs?v=2.5` 版本號，確保讀者客戶端免手動清除快取即時載入最新路由同步功能。
+
 - **🎯 閱讀進度導軌升級為「層級里程碑圓點系統」（Reading Progress Outline: Hierarchical Milestone Dots System）**：
   - **解決長篇密集線條光柵感與密集恐懼感**：徹底重構原先的長短橫條（Dashes）為極具現代感的層級里程碑圓點（Milestone Dots），大幅降低視覺躁點與密集條紋光柵感，帶來平靜優雅的閱讀體驗。
   - **六級標題精準層級圓點直徑（Hierarchical Dot Radii）**：

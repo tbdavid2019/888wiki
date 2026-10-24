@@ -371,7 +371,7 @@ ${getMarkdownCss()}
     ${flowTrackerScript}
     ${gaScript}
 </head>
-<body class="${ext.sharePath && !isEdit ? `share-view share-font-${initialShareFont}${isEmbed ? ' share-embed' : ''}` : ''}">
+<body class="${ext.sharePath && !isEdit ? `share-view share-font-${initialShareFont}${isEmbed ? ' share-embed' : ''}${ext.autoToc ? ' is-toc-pinned' : ''}` : ''}">
     <div class="note-container">
         <div class="stack">
             <div class="layer_1">
@@ -6221,7 +6221,7 @@ ${getMarkdownCss()}
     ${isCanvasDocument ? '<script type="module" src="/js/canvas-editor.bundle.mjs?v=3.9"></script>' : ''}
     ${isWhiteboardDocument ? '<script type="module" src="/js/whiteboard-editor.bundle.mjs?v=1.2"></script>' : ''}
     <script type="module" src="/js/pwa-install.mjs"></script>
-    <script type="module" src="/js/reading-progress.mjs?v=2.4"></script>
+    <script type="module" src="/js/reading-progress.mjs?v=2.5"></script>
     <script type="module" src="/js/floating-controls.mjs"></script>
     ${isEmbed ? '' : '<script type="module" src="/js/editor-preference.mjs"></script>'}
     ${annotationsUiEnabled ? '<script type="module" src="/js/share-annotations.mjs"></script>' : ''}

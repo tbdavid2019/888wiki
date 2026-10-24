@@ -10,6 +10,8 @@ const ICONS = {
     toc: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="21" x2="3" y1="6" y2="6"></line><line x1="15" x2="3" y1="12" y2="12"></line><line x1="17" x2="3" y1="18" y2="18"></line></svg>`,
     pin: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.89A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.8l-1.78.89A2 2 0 0 0 5 15.24Z"></path></svg>`,
     close: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`,
+    copy: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>`,
+    check: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
 }
 
 const getProgressLabels = doc => {
@@ -24,6 +26,8 @@ const getProgressLabels = doc => {
             pin: '釘選目錄',
             unpin: '取消釘選',
             close: '關閉目錄',
+            copyLink: '複製含目錄網址',
+            copySuccess: '已複製網址！',
             untitled: '未命名章節',
         }
         : {
@@ -35,6 +39,8 @@ const getProgressLabels = doc => {
             pin: 'Pin table of contents',
             unpin: 'Unpin table of contents',
             close: 'Close table of contents',
+            copyLink: 'Copy link with TOC',
+            copySuccess: 'Copied URL!',
             untitled: 'Untitled section',
         }
 }
@@ -59,6 +65,7 @@ export const initReadingProgress = (root = document) => {
     let drawer = null
     let tocList = null
     let badge = null
+    let copyBtn = null
     let pinBtn = null
     let closeBtn = null
     let openTimer = null
@@ -88,6 +95,9 @@ export const initReadingProgress = (root = document) => {
                 <span class="reading-toc-badge">0</span>
             </div>
             <div class="reading-toc-header-actions">
+                <button type="button" class="reading-toc-action-btn reading-toc-copy-btn" title="${labels.copyLink}" aria-label="${labels.copyLink}">
+                    ${ICONS.copy}
+                </button>
                 <button type="button" class="reading-toc-action-btn reading-toc-pin-btn" title="${labels.pin}" aria-label="${labels.pin}" aria-pressed="false">
                     ${ICONS.pin}
                 </button>
@@ -107,6 +117,7 @@ export const initReadingProgress = (root = document) => {
         drawer.append(drawerBody)
 
         badge = drawerHeader.querySelector('.reading-toc-badge')
+        copyBtn = drawerHeader.querySelector('.reading-toc-copy-btn')
         pinBtn = drawerHeader.querySelector('.reading-toc-pin-btn')
         closeBtn = drawerHeader.querySelector('.reading-toc-close-btn')
     }
@@ -143,10 +154,42 @@ export const initReadingProgress = (root = document) => {
     let headings = []
     let activeHeadingIndex = 0
     let observer
+    let hasAppliedAutoPin = false
+
+    const win = doc.defaultView || (typeof window !== 'undefined' ? window : null)
+    let shouldAutoPin = false
+    if (isShareView) {
+        if (doc.body?.classList?.contains('is-toc-pinned')) {
+            shouldAutoPin = true
+        } else if (win && win.location) {
+            try {
+                const searchParams = new URL(win.location.href).searchParams
+                const tocParam = (searchParams.get('toc') || '').toLowerCase()
+                if (tocParam === '1' || tocParam === 'true' || tocParam === 'pinned' || searchParams.has('toc')) {
+                    shouldAutoPin = true
+                }
+            } catch {}
+        }
+    }
 
     const headingText = heading => heading?.textContent?.replace(/\s+/g, ' ').trim() || labels.untitled
 
-    const scrollToHeading = heading => {
+    const syncUrlState = isPinned => {
+        if (!isShareView || !win || !win.location || !win.history?.replaceState) return
+        try {
+            const url = new URL(win.location.href)
+            if (isPinned) {
+                url.searchParams.set('toc', '1')
+            } else {
+                url.searchParams.delete('toc')
+            }
+            const queryStr = url.searchParams.toString()
+            const nextUrl = url.pathname + (queryStr ? '?' + queryStr : '') + url.hash
+            win.history.replaceState(win.history.state, '', nextUrl)
+        } catch {}
+    }
+
+    const scrollToHeading = (heading, syncHash = true) => {
         if (!heading) return
         if (typeof preview.scrollTo === 'function') {
             const previewRect = preview.getBoundingClientRect ? preview.getBoundingClientRect() : { top: 0 }
@@ -157,6 +200,15 @@ export const initReadingProgress = (root = document) => {
             })
         } else if (typeof heading.scrollIntoView === 'function') {
             heading.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+        if (syncHash && heading.id && isShareView && win && win.location && win.history?.replaceState) {
+            try {
+                const url = new URL(win.location.href)
+                url.hash = '#' + heading.id
+                const queryStr = url.searchParams.toString()
+                const nextUrl = url.pathname + (queryStr ? '?' + queryStr : '') + url.hash
+                win.history.replaceState(win.history.state, '', nextUrl)
+            } catch {}
         }
     }
 
@@ -179,7 +231,7 @@ export const initReadingProgress = (root = document) => {
         widget.classList.remove('is-drawer-open')
     }
 
-    const updatePinState = () => {
+    const updatePinState = (syncUrl = true) => {
         if (!pinBtn) return
         const isPinned = widget.classList.contains('is-pinned')
         pinBtn.classList.toggle('is-active', isPinned)
@@ -187,6 +239,9 @@ export const initReadingProgress = (root = document) => {
         pinBtn.title = isPinned ? labels.unpin : labels.pin
         pinBtn.setAttribute('aria-label', isPinned ? labels.unpin : labels.pin)
         doc.body?.classList?.toggle('is-toc-pinned', isPinned)
+        if (syncUrl) {
+            syncUrlState(isPinned)
+        }
     }
 
     if (isShareView) {
@@ -224,6 +279,35 @@ export const initReadingProgress = (root = document) => {
             e.stopPropagation()
             widget.classList.toggle('is-pinned')
             updatePinState()
+        })
+
+        copyBtn?.addEventListener('click', async e => {
+            e.stopPropagation()
+            const currentUrl = win?.location?.href || ''
+            try {
+                if (win?.navigator?.clipboard?.writeText) {
+                    await win.navigator.clipboard.writeText(currentUrl)
+                } else if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+                    await navigator.clipboard.writeText(currentUrl)
+                } else {
+                    const textarea = doc.createElement('textarea')
+                    textarea.value = currentUrl
+                    textarea.style.position = 'fixed'
+                    textarea.style.opacity = '0'
+                    doc.body.append(textarea)
+                    textarea.select()
+                    doc.execCommand('copy')
+                    textarea.remove()
+                }
+                copyBtn.innerHTML = ICONS.check
+                copyBtn.title = labels.copySuccess
+                copyBtn.setAttribute('aria-label', labels.copySuccess)
+                setTimeout(() => {
+                    copyBtn.innerHTML = ICONS.copy
+                    copyBtn.title = labels.copyLink
+                    copyBtn.setAttribute('aria-label', labels.copyLink)
+                }, 1800)
+            } catch {}
         })
 
         closeBtn?.addEventListener('click', e => {
@@ -376,6 +460,22 @@ export const initReadingProgress = (root = document) => {
             }
         }, { root: preview, rootMargin: '0px 0px -80% 0px', threshold: 0 }) : undefined
         observer?.observe && headings.forEach(heading => observer.observe(heading))
+
+        if (shouldAutoPin && isShareView && headings.length && !hasAppliedAutoPin) {
+            hasAppliedAutoPin = true
+            widget.classList.add('is-drawer-open', 'is-pinned')
+            updatePinState(false)
+            if (win?.location?.hash) {
+                try {
+                    const targetId = decodeURIComponent(win.location.hash.slice(1))
+                    const target = headings.find(h => h.id === targetId || h.id === 'user-content-' + targetId)
+                    if (target) {
+                        setTimeout(() => scrollToHeading(target, false), 80)
+                    }
+                } catch {}
+            }
+        }
+
         update()
     }
 

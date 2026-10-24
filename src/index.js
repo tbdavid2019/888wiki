@@ -2172,6 +2172,10 @@ async function renderSharePage(request, presentationMode = false, execution = {}
         }
     }
 
+    const shareReqUrl = new URL(request.url)
+    const tocParam = (shareReqUrl.searchParams.get('toc') || '').toLowerCase()
+    const autoToc = tocParam === '1' || tocParam === 'true' || tocParam === 'pinned' || shareReqUrl.searchParams.has('toc')
+
     return returnPage('Share', {
         lang,
         title,
@@ -2184,6 +2188,7 @@ async function renderSharePage(request, presentationMode = false, execution = {}
             sharePath,
             presentationPath,
             bookPath,
+            autoToc,
             gaMeasurementId,
             webtalk: getWebtalkConfig(),
             presentationEntry: presentationMode && !embedMode,

@@ -272,4 +272,78 @@ test('styles Notion-style grand outline track with hierarchical milestone dot ma
     assert.match(baseCss, /body\.share-view \.reading-progress-value\s*\{[^}]*display:\s*none\s*!important;/)
 })
 
+test('synchronizes TOC pin state with URL query parameter ?toc=1 and heading anchors in share view', () => {
+    const dom = new JSDOM(`
+        <html lang="zh-Hant-TW">
+        <body class="share-view">
+            <div id="preview-md">
+                <h1 id="intro">系統介紹</h1>
+                <h2 id="install">安裝步驟</h2>
+            </div>
+        </body>
+        </html>
+    `, { url: 'https://wiki.david888.com/share/test123' })
+
+    const preview = dom.window.document.querySelector('#preview-md')
+    preview.scrollTo = () => {}
+    Object.defineProperties(preview, {
+        clientHeight: { value: 600 },
+        scrollHeight: { value: 1800 },
+    })
+
+    assert.equal(initReadingProgress(dom.window.document), true)
+    const widget = dom.window.document.querySelector('.reading-progress')
+    const drawer = dom.window.document.querySelector('.reading-toc-drawer')
+    const pinBtn = drawer.querySelector('.reading-toc-pin-btn')
+    const copyBtn = drawer.querySelector('.reading-toc-copy-btn')
+    assert.ok(copyBtn)
+
+    // Pinning TOC adds ?toc=1 to URL
+    pinBtn.dispatchEvent(new dom.window.Event('click'))
+    assert.equal(widget.classList.contains('is-pinned'), true)
+    assert.equal(dom.window.location.search, '?toc=1')
+
+    // Clicking TOC item updates URL hash with section ID
+    const tocItems = drawer.querySelectorAll('.reading-toc-item')
+    tocItems[1].dispatchEvent(new dom.window.Event('click'))
+    assert.equal(dom.window.location.hash, '#install')
+    assert.equal(dom.window.location.search, '?toc=1')
+
+    // Unpinning TOC removes ?toc from URL while preserving hash
+    pinBtn.dispatchEvent(new dom.window.Event('click'))
+    assert.equal(widget.classList.contains('is-pinned'), false)
+    assert.equal(dom.window.location.search, '')
+    assert.equal(dom.window.location.hash, '#install')
+})
+
+test('automatically opens and pins TOC when initial URL contains ?toc=1', () => {
+    const dom = new JSDOM(`
+        <html lang="zh-Hant-TW">
+        <body class="share-view">
+            <div id="preview-md">
+                <h1 id="intro">系統介紹</h1>
+                <h2 id="install">安裝步驟</h2>
+            </div>
+        </body>
+        </html>
+    `, { url: 'https://wiki.david888.com/share/test123?toc=1#install' })
+
+    const preview = dom.window.document.querySelector('#preview-md')
+    preview.scrollTo = () => {}
+    Object.defineProperties(preview, {
+        clientHeight: { value: 600 },
+        scrollHeight: { value: 1800 },
+    })
+
+    assert.equal(initReadingProgress(dom.window.document), true)
+    const widget = dom.window.document.querySelector('.reading-progress')
+    const pinBtn = widget.querySelector('.reading-toc-pin-btn')
+
+    assert.equal(widget.classList.contains('is-pinned'), true)
+    assert.equal(widget.classList.contains('is-drawer-open'), true)
+    assert.equal(dom.window.document.body.classList.contains('is-toc-pinned'), true)
+    assert.equal(pinBtn.classList.contains('is-active'), true)
+    assert.equal(pinBtn.getAttribute('aria-pressed'), 'true')
+})
+
 
