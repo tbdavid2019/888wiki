@@ -2,6 +2,18 @@
 
 ## [2026-10-24]
 
+- **📦 核心編輯器依賴套件升級（Core Editor Dependencies Upgrade: BlockNote 0.56.0 & xyflow 12.12.0）**：
+  - **Block 筆記升級至 `0.56.0`（`@blocknote/core`, `@blocknote/react`, `@blocknote/mantine`）**：
+    - **行動裝置虛擬鍵盤格式工具列轉正**：手機與平板在彈出軟體鍵盤時，浮動格式列升級為標準化鍵盤頂部操作列，徹底解決原本鍵盤遮擋或輸入失焦問題。
+    - **`Mod+A` 雙段選取優化**：第一次按下 `Cmd+A` / `Ctrl+A` 僅選取當前區塊文字，再次按下才全選全文，避免誤操作覆蓋整篇筆記。
+    - **區塊框架預覽支援 (Layout Blocks / Block Frames)**：引入更豐富的分欄與自訂區塊容器底層架構。
+  - **Canvas 畫布升級至 `12.12.0`（`@xyflow/react`）**：
+    - **節點調整大小事件時序修正**：修復 `NodeResizer` 的 `onResizeEnd` 在特定快速操作下與 `onResizeStart` 觸發時序問題。
+    - **畫布邊界計算與縮放穩定性提升**：優化雙指縮放平移時的邊界計算。
+  - **前端 Bundle 重構與單元測試全數驗證**：
+    - 重新編譯生成 `static/js/block-editor.bundle.mjs`、`static/js/block-editor.bundle.css` 與 `static/js/canvas-editor.bundle.mjs`。
+    - 同步更新 `test/block-editor-tiptap-build.test.mjs` 版本斷言，全套 543 項單元測試 100% 通過（`0` failures, `0` errors）。
+
 - **📐 TOC 圖示升級為 Lucide TableOfContents 並實現像素級絕對居中（TOC Icon Upgrade to Lucide TableOfContents & Pixel-Perfect Center Axis Alignment）**：
   - **解決 TOC 按鈕偏左偏移視覺差**：修復先前 `body.share-view .reading-progress` 之 `align-items: flex-start` 導致 24px 按鈕與 32px 軌道內圓點產生 4px 偏左偏差之問題；全面切換為 `align-items: center` 與按鈕 `align-self: center; margin: 0 auto;`，使目錄方塊按鈕與下方所有里程碑圓點精準落在同一條垂直中心軸上。
   - **升級為 Lucide 官方 TableOfContents 圖示**：將原先偏靠左之 `AlignLeft`（三條左對齊橫線）升級為 Lucide 官方規格之 `TableOfContents` 圖示（左側章節橫線搭配右側頁碼/里程碑圓點），完美呼應大綱階層與下方里程碑圓點，呈現精緻平衡之視覺美感。

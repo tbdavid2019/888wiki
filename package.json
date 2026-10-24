@@ -91,9 +91,9 @@
     "test": "node --test test/**/*.test.mjs"
   },
   "dependencies": {
-    "@blocknote/core": "^0.54.2",
-    "@blocknote/mantine": "^0.54.2",
-    "@blocknote/react": "^0.54.2",
+    "@blocknote/core": "^0.56.0",
+    "@blocknote/mantine": "^0.56.0",
+    "@blocknote/react": "^0.56.0",
     "@excalidraw/excalidraw": "^0.18.1",
     "@firecrawl/anydoc-wasm": "^0.1.6",
     "@mantine/core": "^9.5.1",
@@ -102,7 +102,7 @@
     "@paddleocr/paddleocr-js": "^0.4.2",
     "@takumi-rs/helpers": "^2.12.0",
     "@tsndr/cloudflare-worker-jwt": "^1.1.7",
-    "@xyflow/react": "^12.11.6",
+    "@xyflow/react": "^12.12.0",
     "cookie": "^2.0.1",
     "dayjs": "^1.11.2",
     "html-to-image": "^1.11.13",

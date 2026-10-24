@@ -5,9 +5,9 @@ import { existsSync, readFileSync } from 'node:fs'
 test('block editor is shipped as a locally bundled BlockNote React island', () => {
     const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
 
-    assert.equal(packageJson.dependencies['@blocknote/core'], '^0.54.2')
-    assert.equal(packageJson.dependencies['@blocknote/react'], '^0.54.2')
-    assert.equal(packageJson.dependencies['@blocknote/mantine'], '^0.54.2')
+    assert.equal(packageJson.dependencies['@blocknote/core'], '^0.56.0')
+    assert.equal(packageJson.dependencies['@blocknote/react'], '^0.56.0')
+    assert.equal(packageJson.dependencies['@blocknote/mantine'], '^0.56.0')
     assert.equal(packageJson.dependencies.react, '^19.2.8')
     assert.equal(packageJson.devDependencies.esbuild, '^0.28.1')
     assert.equal(packageJson.scripts['build:block-editor'], 'node scripts/build-block-editor.mjs')
