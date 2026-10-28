@@ -28,8 +28,12 @@ SCN_WEBTALK_SITE_ID = ""
 SCN_ENABLE_NOTE_HISTORY = "1"
 SCN_NOTE_HISTORY_LIMIT = "10"
 SCN_NOTE_HISTORY_MIN_INTERVAL_SECONDS = "300"
+SCN_ENABLE_TURNSTILE = "0"
+SCN_TURNSTILE_SITE_KEY = ""
 
 [secrets]
+# Required: SCN_SALT, SCN_SECRET, SCN_ADMIN_PW
+# Optional bot protection: SCN_TURNSTILE_SECRET (for Cloudflare Turnstile server-side verification)
 required = ["SCN_SALT", "SCN_SECRET", "SCN_ADMIN_PW"]
 
 [[r2_buckets]]

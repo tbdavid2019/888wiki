@@ -2,6 +2,17 @@
 
 ## [2026-10-28]
 
+- **🛡️ 接入 Cloudflare Turnstile 機器人防禦與 Clearance Cookie 機制（Cloudflare Turnstile Bot Defense & Siteverify Protection）**：
+  - **前端 Turnstile 按需掛載與自動容錯**：
+    - 在 HTML 模板 [`src/templates/base.js`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/base.js) 引入 Turnstile Explicit API 與懸浮容器，支援 `window.getTurnstileToken()`。
+    - **智慧 Clearance 免驗機制**：初次驗證通過後，伺服器核發 2 小時有效之安全 `cf_turnstile_cleared` Cookie，日常編輯與自動存檔（Autosave）不跳出驗證挑戰，兼顧極致流暢度與高強度防護。
+    - **高風險前端操作防堵**：未持有效授權或憑證時，筆記儲存（`POST /:path`）、圖床與媒體上傳（`POST /upload`）、AI 格式化（`POST /:path/ai-format`）與音訊轉錄（`POST /:path/transcribe`）強制檢驗 Turnstile Token。
+  - **後端 Canonical Siteverify 驗證模組**：
+    - 新增 [`src/turnstile.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/turnstile.mjs)，原生實作 `verifyTurnstileToken`、`createTurnstileClearanceToken` 與 `verifyTurnstileAccess`，透過 Cloudflare `challenges.cloudflare.com/turnstile/v0/siteverify` 端點進行二次驗證。
+    - **API 端友善豁免**：`/api/*`、`/mcp`、搜尋引擎與 Agent 探索端點豁免 Turnstile，確保自動化生態與 CLI/MCP 工具穩定運行。
+    - **平滑相容**：當未配置 `SCN_TURNSTILE_SITE_KEY` 或 `SCN_TURNSTILE_SECRET` 時自動降級放行，不影響既有本機測試與無憑證環境。
+  - **測試防護**：新增 [`test/turnstile.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/turnstile.test.mjs) 10 項完整單元測試，總測試數達 553 項通過。
+
 - **🔒 全面修復 Dependabot 安全通報與依賴項升級（Dependabot Security Alerts Resolution & Zero-Vulnerability Milestone）**：
   - **32 項 Dependabot 安全漏洞與 17 項 `npm audit` 漏洞全數歸零（0 vulnerabilities）**：
     - **`dompurify` (Critical / High / Low: GHSA-p98j-92pf-mc4p, GHSA-6688-9rhm-gjv2, GHSA-cg2g-xh64-v4q7, GHSA-mrv2-3pqr-j5jr, GHSA-c6gr-qvv4-5v3f)**：透過 `overrides` 升級至 `3.4.17`，修復 SAFE_FOR_TEMPLATES bypass、IN_PLACE detached subtree event handlers armed 與 SMIL href 等安全缺陷（Alerts #22, #25, #27, #28, #29）。

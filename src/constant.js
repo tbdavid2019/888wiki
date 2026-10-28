@@ -35,6 +35,15 @@ export const getFlowTrackerScript = () => {
     const url = getFlowTrackerUrl()
     return url ? `<script defer src="${url}"></script>` : ''
 }
+
+// Turnstile Bot Protection
+export const getTurnstileSiteKey = () => (readRuntimeVar('SCN_TURNSTILE_SITE_KEY') || readRuntimeVar('TURNSTILE_SITE_KEY') || '').trim()
+export const getTurnstileSecret = () => (readRuntimeVar('SCN_TURNSTILE_SECRET') || readRuntimeVar('TURNSTILE_SECRET') || '').trim()
+export const isTurnstileEnabled = () => {
+    const flag = readRuntimeVar('SCN_ENABLE_TURNSTILE')
+    if (flag === '0' || flag === 'false') return false
+    return Boolean(getTurnstileSiteKey() && getTurnstileSecret())
+}
 const WEBTALK_DEFAULTS = {
     scriptUrl: 'https://webtalk.david888.com/webtalk.js',
     scope: 'meta',
@@ -428,6 +437,8 @@ export const SUPPORTED_LANG = {
         historyRestoreDone: 'Version restored.',
         historyCopiedContent: 'Content copied.',
         historyChars: 'chars',
+        turnstileRequired: 'Please complete security verification to proceed.',
+        turnstileFailed: 'Security verification failed, please try again.',
     },
     'zh-TW': {
         quickStartTemplates: '快速情境範本',
@@ -607,5 +618,7 @@ export const SUPPORTED_LANG = {
         historyRestoreDone: '已還原此版本。',
         historyCopiedContent: '已複製內容。',
         historyChars: '字',
+        turnstileRequired: '請完成安全驗證以繼續保存。',
+        turnstileFailed: '安全驗證失敗，請重新嘗試。',
     }
 }

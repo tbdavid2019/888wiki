@@ -1,7 +1,7 @@
 import jwt from '@tsndr/cloudflare-worker-jwt'
 import { Cookies } from './cookie_compat.mjs'
 import * as TEMPL from './template.js'
-import { SUPPORTED_LANG, getGaMeasurementId, getSalt, getSecret } from './constant.js'
+import { SUPPORTED_LANG, getGaMeasurementId, getSalt, getSecret, getTurnstileSiteKey, isTurnstileEnabled } from './constant.js'
 import { resolvePasswordRole } from './password_policy.mjs'
 import { getNoteHistoryConfig, deleteNoteHistoryVersions } from './note_history.mjs'
 import { driverQueryNote, driverDeleteNote } from './storage_driver.mjs'
@@ -34,6 +34,8 @@ export function returnPage(type, data, headers = {}) {
         ...(data?.ext || {}),
         gaMeasurementId: data?.ext?.gaMeasurementId ?? getGaMeasurementId(),
         noteHistoryEnabled: data?.ext?.noteHistoryEnabled ?? getNoteHistoryConfig().enabled,
+        turnstileSiteKey: data?.ext?.turnstileSiteKey ?? getTurnstileSiteKey(),
+        turnstileEnabled: data?.ext?.turnstileEnabled ?? isTurnstileEnabled(),
     }
 
     return new Response(TEMPL[type]({ ...data, ext }), {

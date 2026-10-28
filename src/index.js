@@ -3,7 +3,8 @@ import { Router } from 'itty-router'
 import { Cookies } from './cookie_compat.mjs'
 import jwt from '@tsndr/cloudflare-worker-jwt'
 import { queryNote, MD5, checkAuth, genRandomStr, returnPage, returnJSON, saltPw, passwordMatches, getPasswordRole, getI18n, deleteEmptyPages, deleteNoteHistoryForPath } from './helper.js'
-import { APP_NAME, getSlugLength, getAdminPath, getAdminPassword, getEnableR2, getR2Domain, getGaMeasurementId, getWebtalkConfig, getSecret, DEFAULT_PREVIEW_WIDTH, normalizePreviewWidth } from './constant.js'
+import { APP_NAME, getSlugLength, getAdminPath, getAdminPassword, getEnableR2, getR2Domain, getGaMeasurementId, getWebtalkConfig, getSecret, DEFAULT_PREVIEW_WIDTH, normalizePreviewWidth, isTurnstileEnabled } from './constant.js'
+import { verifyTurnstileAccess } from './turnstile.mjs'
 import { NOTEPAD_ICON_SVG } from './icon.js'
 import { NOTEPAD_FAVICON_ICO, NOTEPAD_ICON_PNG, NOTEPAD_OG_IMAGE_PNG } from './icon_assets.js'
 import { handleMcpRequest } from './mcp_server.mjs'
@@ -1219,6 +1220,27 @@ const ALLOWED_IMAGE_MIME_MAP = {
 
 router.post('/upload', async (request) => {
     if (!getEnableR2()) return returnJSON(403, 'R2 Upload Disabled')
+
+    const cookie = Cookies.parse(request.headers.get('Cookie') || '')
+    const { valid, role } = await checkAuth(cookie, '')
+
+    let turnstileSetCookie = null
+    if (isTurnstileEnabled() && !(valid && role === 'edit')) {
+        const formDataClone = await request.clone().formData().catch(() => null)
+        const bodyToken = formDataClone?.get('cf-turnstile-response') || null
+        const turnstileCheck = await verifyTurnstileAccess(request, bodyToken)
+        if (!turnstileCheck.ok) {
+            return returnJSON(403, 'Turnstile verification required', {
+                status: 403,
+                needTurnstile: true,
+                reason: turnstileCheck.reason,
+            })
+        }
+        if (turnstileCheck.setCookieHeader) {
+            turnstileSetCookie = turnstileCheck.setCookieHeader
+        }
+    }
+
     try {
         const formData = await request.formData()
         const image = formData.get('image')
@@ -1241,7 +1263,8 @@ router.post('/upload', async (request) => {
         })
         const url = getR2Domain() ? `${getR2Domain()}/${filename}` : `/img/${filename}`
 
-        return returnJSON(0, url)
+        const responseHeaders = turnstileSetCookie ? { 'Set-Cookie': turnstileSetCookie } : {}
+        return returnJSON(0, url, responseHeaders)
     } catch (e) {
         return returnJSON(500, e.message)
     }
@@ -4284,6 +4307,17 @@ router.post('/:path/transcribe', async (request, context = {}) => {
         return returnJSON(10002, 'Password auth failed!', { status: 401 })
     }
 
+    if (isTurnstileEnabled() && !(valid && role === 'edit')) {
+        const turnstileCheck = await verifyTurnstileAccess(request)
+        if (!turnstileCheck.ok) {
+            return returnJSON(403, 'Turnstile verification required', {
+                status: 403,
+                needTurnstile: true,
+                reason: turnstileCheck.reason,
+            })
+        }
+    }
+
     return handleAudioTranscription(request, context)
 })
 
@@ -4296,6 +4330,17 @@ router.post('/:path/ai-format', async (request, { env }) => {
 
     if (metadata && (metadata.pw || metadata.vpw) && (!valid || role !== 'edit')) {
         return returnJSON(10002, 'Password auth failed!', { status: 401 })
+    }
+
+    if (isTurnstileEnabled() && !(valid && role === 'edit')) {
+        const turnstileCheck = await verifyTurnstileAccess(request)
+        if (!turnstileCheck.ok) {
+            return returnJSON(403, 'Turnstile verification required', {
+                status: 403,
+                needTurnstile: true,
+                reason: turnstileCheck.reason,
+            })
+        }
     }
 
     const aiBinding = resolveAiBinding(env)
@@ -4412,6 +4457,22 @@ router.post('/:path', async request => {
     const formData = await request.formData();
     const content = formData.get('t')
 
+    let turnstileSetCookie = null
+    if (isTurnstileEnabled() && !(valid && role === 'edit')) {
+        const bodyToken = formData.get('cf-turnstile-response') || null
+        const turnstileCheck = await verifyTurnstileAccess(request, bodyToken)
+        if (!turnstileCheck.ok) {
+            return returnJSON(403, 'Turnstile verification required', {
+                status: 403,
+                needTurnstile: true,
+                reason: turnstileCheck.reason,
+            })
+        }
+        if (turnstileCheck.setCookieHeader) {
+            turnstileSetCookie = turnstileCheck.setCookieHeader
+        }
+    }
+
     const editorFormat = resolveEditorFormat(metadata, content)
     if (editorFormat === 'block') {
         try {
@@ -4454,7 +4515,8 @@ router.post('/:path', async request => {
             await syncShareMappings(path, nextMeta, metadata).catch(() => {})
         }
 
-        return returnJSON(0)
+        const responseHeaders = turnstileSetCookie ? { 'Set-Cookie': turnstileSetCookie } : {}
+        return returnJSON(0, null, responseHeaders)
     } catch (error) {
         console.error('Save Error:', error)
         return returnJSON(10001, `KV insert fail: ${error.message}`)

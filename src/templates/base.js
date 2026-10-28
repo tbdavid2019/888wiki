@@ -370,8 +370,10 @@ ${getMarkdownCss()}
     <link rel="apple-touch-icon" href="${PUBLIC_ICON_PNG_URL}" />
     ${flowTrackerScript}
     ${gaScript}
+    ${ext.turnstileSiteKey ? `<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>` : ''}
 </head>
 <body class="${ext.sharePath && !isEdit ? `share-view share-font-${initialShareFont}${isEmbed ? ' share-embed' : ''}${ext.autoToc ? ' is-toc-pinned' : ''}` : ''}">
+    ${ext.turnstileSiteKey ? `<div id="cf-turnstile-container" style="display:none;position:fixed;bottom:12px;right:12px;z-index:99999;"></div>` : ''}
     <div class="note-container">
         <div class="stack">
             <div class="layer_1">
@@ -1408,12 +1410,89 @@ ${getMarkdownCss()}
             previewDevice: initialEditorPreviewDevice || ext.previewDevice || '',
             splitDirection: ext.splitDirection || '',
         },
+        turnstileSiteKey: ext.turnstileSiteKey || '',
+        turnstileEnabled: ext.turnstileEnabled === true,
         appName: APP_NAME,
         lang,
         title: title || '',
         i18n: getLangText(lang),
     }).replace(/</g, '\\u003c')}
     window.APP_STATE = APP_STATE
+
+    let turnstileWidgetId = null
+    let currentTurnstileToken = ''
+    let pendingTurnstileResolvers = []
+
+    function hasTurnstileClearance() {
+        return typeof document !== 'undefined' && typeof document.cookie === 'string' && document.cookie.indexOf('cf_turnstile_cleared=') !== -1
+    }
+
+    function initTurnstileWidget() {
+        if (!APP_STATE.turnstileSiteKey || !window.turnstile) return
+        const container = document.getElementById('cf-turnstile-container')
+        if (!container || turnstileWidgetId !== null) return
+
+        try {
+            turnstileWidgetId = window.turnstile.render('#cf-turnstile-container', {
+                sitekey: APP_STATE.turnstileSiteKey,
+                size: 'flexible',
+                callback: function(token) {
+                    currentTurnstileToken = token
+                    if (container) container.style.display = 'none'
+                    while (pendingTurnstileResolvers.length > 0) {
+                        const res = pendingTurnstileResolvers.shift()
+                        res(token)
+                    }
+                },
+                'error-callback': function() {
+                    currentTurnstileToken = ''
+                    if (container) container.style.display = 'block'
+                    while (pendingTurnstileResolvers.length > 0) {
+                        const res = pendingTurnstileResolvers.shift()
+                        res('')
+                    }
+                },
+                'expired-callback': function() {
+                    currentTurnstileToken = ''
+                    if (window.turnstile && turnstileWidgetId !== null) {
+                        try { window.turnstile.reset(turnstileWidgetId) } catch (e) {}
+                    }
+                },
+            })
+        } catch (err) {
+            console.warn('Turnstile init error:', err)
+        }
+    }
+
+    window.getTurnstileToken = function() {
+        if (!APP_STATE.turnstileSiteKey || hasTurnstileClearance()) return Promise.resolve('')
+        if (currentTurnstileToken) return Promise.resolve(currentTurnstileToken)
+        if (!window.turnstile) return Promise.resolve('')
+
+        const container = document.getElementById('cf-turnstile-container')
+        if (container) container.style.display = 'block'
+
+        if (turnstileWidgetId === null) {
+            initTurnstileWidget()
+        } else {
+            try { window.turnstile.reset(turnstileWidgetId) } catch (e) {}
+        }
+
+        return new Promise(function(resolve) {
+            pendingTurnstileResolvers.push(resolve)
+            setTimeout(function() {
+                resolve(currentTurnstileToken || '')
+            }, 6000)
+        })
+    }
+
+    if (window.turnstile) {
+        initTurnstileWidget()
+    } else {
+        window.addEventListener('load', function() {
+            setTimeout(initTurnstileWidget, 500)
+        })
+    }
 
     const syncRealtimeDocumentTitle = (text) => {
         if (typeof text !== 'string') return
@@ -2512,12 +2591,27 @@ ${getMarkdownCss()}
             $loading.style.display = 'inline-block'
             showSaveStatus(APP_STATE.lang === 'zh-TW' ? '雲端同步中...' : 'Syncing...', false, 'syncing')
             window.dispatchEvent(new CustomEvent('canvas:syncing'))
-            saveInFlight = fetchJson('', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({ t: content }),
-            })
+            const bodyParams = { t: content }
+            saveInFlight = (async () => {
+                if (APP_STATE.turnstileSiteKey && !hasTurnstileClearance()) {
+                    const token = await window.getTurnstileToken?.().catch(() => '')
+                    if (token) bodyParams['cf-turnstile-response'] = token
+                }
+                return fetchJson('', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams(bodyParams),
+                })
+            })()
                 .then(res => {
+                    if (res.needTurnstile) {
+                        const container = document.getElementById('cf-turnstile-container')
+                        if (container) container.style.display = 'block'
+                        if (window.turnstile && turnstileWidgetId !== null) {
+                            try { window.turnstile.reset(turnstileWidgetId) } catch (e) {}
+                        }
+                        throw new Error(getI18n('turnstileRequired') || (APP_STATE.lang === 'zh-TW' ? '請完成安全驗證以繼續保存。' : 'Please complete security verification to proceed.'))
+                    }
                     if (res.err !== 0) throw new Error(res.msg || 'save failed')
                     if ($textarea.value === content) savedContent = content
                     APP_STATE.updateAt = Math.floor(Date.now() / 1000)
@@ -4571,7 +4665,19 @@ ${getMarkdownCss()}
             if (!window.ENABLE_R2) throw new Error(APP_STATE.lang === 'zh-TW' ? '圖片上傳目前未啟用。' : 'Image upload is currently disabled.');
             const formData = new FormData();
             formData.append('image', file);
+            if (APP_STATE.turnstileSiteKey && !hasTurnstileClearance()) {
+                const token = await window.getTurnstileToken?.().catch(() => '');
+                if (token) formData.append('cf-turnstile-response', token);
+            }
             const response = await fetchJson('/upload', { method: 'POST', body: formData });
+            if (response?.needTurnstile) {
+                const container = document.getElementById('cf-turnstile-container');
+                if (container) container.style.display = 'block';
+                if (window.turnstile && turnstileWidgetId !== null) {
+                    try { window.turnstile.reset(turnstileWidgetId); } catch (e) {}
+                }
+                throw new Error(getI18n('turnstileRequired') || (APP_STATE.lang === 'zh-TW' ? '請完成安全驗證以繼續保存。' : 'Please complete security verification to proceed.'));
+            }
             if (response?.err !== 0 || !response?.data) throw new Error(response?.msg || (APP_STATE.lang === 'zh-TW' ? '圖片上傳失敗。' : 'Image upload failed.'));
             return response.data;
         };
