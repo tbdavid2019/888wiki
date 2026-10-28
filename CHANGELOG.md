@@ -2,16 +2,20 @@
 
 ## [2026-10-28]
 
-- **🛡️ 接入 Cloudflare Turnstile 機器人防禦與 Clearance Cookie 機制（Cloudflare Turnstile Bot Defense & Siteverify Protection）**：
+- **🛡️ 接入 Cloudflare Turnstile 機器人防禦、降階可用（Graceful Fallback）與 Clearance Cookie 機制**：
+  - **全方位降階可用與高可用容錯機制（Fail-Open & Graceful Degradation）**：
+    - **上游驗證異常自動放行**：後端 [`src/turnstile.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/turnstile.mjs) 之 `verifyTurnstileToken` 內建 5 秒逾時防護；若 Cloudflare Siteverify 出現 HTTP 5xx 故障或網路中斷，自動降階放行（Fail-Open），防止外部依賴故障導致整站儲存癱瘓。
+    - **客戶端腳本攔截與網路逾時容錯**：前端 [`src/templates/base.js`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/base.js) 針對 Turnstile 腳本加入 `onerror` 與 4 秒超時偵測，當使用者環境啟用廣告攔截器（如 uBlock Origin）或腳本阻斷時，自動降級標記並送出 `x-turnstile-fallback: 1` / `cf_turnstile_fallback: 1` 訊號，後端核驗放行並頒發 Clearance Cookie，確保編輯與圖片上傳絕不被卡死。
+    - **正式金鑰與配置整合**：於 [`wrangler.toml`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/wrangler.toml) 配置 `david888.com` 專屬之 Turnstile Site Key（`0x4AAAAAAEvqf7unH6MrhIv2`），透過 Cloudflare Secrets 綁定 Secret Key，並透過 `SCN_TURNSTILE_FAIL_OPEN`（預設 1）控制自動降階可用策略。
   - **前端 Turnstile 按需掛載與自動容錯**：
-    - 在 HTML 模板 [`src/templates/base.js`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/base.js) 引入 Turnstile Explicit API 與懸浮容器，支援 `window.getTurnstileToken()`。
+    - 在 HTML 模板引入 Turnstile Explicit API 與懸浮容器，支援 `window.getTurnstileToken()`。
     - **智慧 Clearance 免驗機制**：初次驗證通過後，伺服器核發 2 小時有效之安全 `cf_turnstile_cleared` Cookie，日常編輯與自動存檔（Autosave）不跳出驗證挑戰，兼顧極致流暢度與高強度防護。
     - **高風險前端操作防堵**：未持有效授權或憑證時，筆記儲存（`POST /:path`）、圖床與媒體上傳（`POST /upload`）、AI 格式化（`POST /:path/ai-format`）與音訊轉錄（`POST /:path/transcribe`）強制檢驗 Turnstile Token。
   - **後端 Canonical Siteverify 驗證模組**：
     - 新增 [`src/turnstile.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/turnstile.mjs)，原生實作 `verifyTurnstileToken`、`createTurnstileClearanceToken` 與 `verifyTurnstileAccess`，透過 Cloudflare `challenges.cloudflare.com/turnstile/v0/siteverify` 端點進行二次驗證。
     - **API 端友善豁免**：`/api/*`、`/mcp`、搜尋引擎與 Agent 探索端點豁免 Turnstile，確保自動化生態與 CLI/MCP 工具穩定運行。
     - **平滑相容**：當未配置 `SCN_TURNSTILE_SITE_KEY` 或 `SCN_TURNSTILE_SECRET` 時自動降級放行，不影響既有本機測試與無憑證環境。
-  - **測試防護**：新增 [`test/turnstile.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/turnstile.test.mjs) 10 項完整單元測試，總測試數達 553 項通過。
+  - **測試防護**：擴增 [`test/turnstile.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/turnstile.test.mjs) 至 16 項完整單元測試（涵蓋 HTTP 500/502 容錯、網路逾時、降階信號與嚴格拒絕模式），全專案總測試數達 559 項全數通過（`0 failures, 0 errors`）。
 
 - **🔒 全面修復 Dependabot 安全通報與依賴項升級（Dependabot Security Alerts Resolution & Zero-Vulnerability Milestone）**：
   - **32 項 Dependabot 安全漏洞與 17 項 `npm audit` 漏洞全數歸零（0 vulnerabilities）**：

@@ -214,6 +214,7 @@ test('Turnstile: returnPage enriches HTML template with Turnstile script and wid
 
     const html = await response.text()
     assert.ok(html.includes('https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'))
+    assert.ok(html.includes('onerror="window.__turnstileDegraded = true; window.__turnstileScriptFailed = true;"'))
     assert.ok(html.includes('id="cf-turnstile-container"'))
     assert.ok(html.includes('"turnstileSiteKey":"0x4AAAAAAABBBBBBBB"'))
     assert.ok(html.includes('"turnstileEnabled":true'))
@@ -221,6 +222,152 @@ test('Turnstile: returnPage enriches HTML template with Turnstile script and wid
     // Cleanup
     delete globalThis.SCN_TURNSTILE_SITE_KEY
     delete globalThis.SCN_TURNSTILE_SECRET
+})
+
+test('Turnstile: verifyTurnstileToken fails open on upstream HTTP 500/502 when fail-open is enabled', async () => {
+    globalThis.SCN_TURNSTILE_SITE_KEY = '0x4AAAAAAABBBBBBBB'
+    globalThis.SCN_TURNSTILE_SECRET = '0x4AAAAAAASSSSSSSS'
+    delete globalThis.SCN_TURNSTILE_FAIL_OPEN
+
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = async (url) => {
+        if (String(url).includes('siteverify')) {
+            return new Response('Cloudflare 502 Bad Gateway', { status: 502 })
+        }
+        return originalFetch(url)
+    }
+
+    const result = await verifyTurnstileToken('valid-looking-token', '1.2.3.4')
+    assert.equal(result.ok, true)
+    assert.equal(result.fallback, true)
+    assert.equal(result.reason, 'upstream_http_502')
+
+    // Restore fetch and cleanup
+    globalThis.fetch = originalFetch
+    delete globalThis.SCN_TURNSTILE_SITE_KEY
+    delete globalThis.SCN_TURNSTILE_SECRET
+})
+
+test('Turnstile: verifyTurnstileToken fails open on network timeout/error when fail-open is enabled', async () => {
+    globalThis.SCN_TURNSTILE_SITE_KEY = '0x4AAAAAAABBBBBBBB'
+    globalThis.SCN_TURNSTILE_SECRET = '0x4AAAAAAASSSSSSSS'
+    delete globalThis.SCN_TURNSTILE_FAIL_OPEN
+
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = async (url) => {
+        if (String(url).includes('siteverify')) {
+            throw new Error('Upstream timeout connection reset')
+        }
+        return originalFetch(url)
+    }
+
+    const result = await verifyTurnstileToken('valid-looking-token', '1.2.3.4')
+    assert.equal(result.ok, true)
+    assert.equal(result.fallback, true)
+    assert.match(result.reason, /Upstream timeout/)
+
+    // Restore fetch and cleanup
+    globalThis.fetch = originalFetch
+    delete globalThis.SCN_TURNSTILE_SITE_KEY
+    delete globalThis.SCN_TURNSTILE_SECRET
+})
+
+test('Turnstile: verifyTurnstileToken strictly rejects on upstream failure when SCN_TURNSTILE_FAIL_OPEN is "0"', async () => {
+    globalThis.SCN_TURNSTILE_SITE_KEY = '0x4AAAAAAABBBBBBBB'
+    globalThis.SCN_TURNSTILE_SECRET = '0x4AAAAAAASSSSSSSS'
+    globalThis.SCN_TURNSTILE_FAIL_OPEN = '0'
+
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = async (url) => {
+        if (String(url).includes('siteverify')) {
+            return new Response('Cloudflare 500 Internal Server Error', { status: 500 })
+        }
+        return originalFetch(url)
+    }
+
+    const result = await verifyTurnstileToken('valid-looking-token', '1.2.3.4')
+    assert.equal(result.ok, false)
+    assert.equal(result.reason, 'siteverify_http_500')
+
+    // Restore fetch and cleanup
+    globalThis.fetch = originalFetch
+    delete globalThis.SCN_TURNSTILE_SITE_KEY
+    delete globalThis.SCN_TURNSTILE_SECRET
+    delete globalThis.SCN_TURNSTILE_FAIL_OPEN
+})
+
+test('Turnstile: verifyTurnstileAccess admits requests with x-turnstile-fallback header and sets clearance cookie', async () => {
+    globalThis.SCN_SECRET = 'test-secret'
+    globalThis.SCN_TURNSTILE_SITE_KEY = 'site-key'
+    globalThis.SCN_TURNSTILE_SECRET = 'secret-key'
+    delete globalThis.SCN_TURNSTILE_FAIL_OPEN
+
+    const req = new Request('https://wiki.david888.com/my-note', {
+        method: 'POST',
+        headers: {
+            'x-turnstile-fallback': '1',
+            'cf-connecting-ip': '5.6.7.8',
+        },
+    })
+
+    const access = await verifyTurnstileAccess(req)
+    assert.equal(access.ok, true)
+    assert.equal(access.fallback, true)
+    assert.ok(access.setCookieHeader.includes('cf_turnstile_cleared='))
+
+    // Cleanup
+    delete globalThis.SCN_TURNSTILE_SITE_KEY
+    delete globalThis.SCN_TURNSTILE_SECRET
+    delete globalThis.SCN_SECRET
+})
+
+test('Turnstile: verifyTurnstileAccess admits requests with options.fallback set', async () => {
+    globalThis.SCN_SECRET = 'test-secret'
+    globalThis.SCN_TURNSTILE_SITE_KEY = 'site-key'
+    globalThis.SCN_TURNSTILE_SECRET = 'secret-key'
+    delete globalThis.SCN_TURNSTILE_FAIL_OPEN
+
+    const req = new Request('https://wiki.david888.com/my-note', {
+        method: 'POST',
+        headers: {
+            'cf-connecting-ip': '5.6.7.8',
+        },
+    })
+
+    const access = await verifyTurnstileAccess(req, null, { fallback: true })
+    assert.equal(access.ok, true)
+    assert.equal(access.fallback, true)
+    assert.ok(access.setCookieHeader.includes('cf_turnstile_cleared='))
+
+    // Cleanup
+    delete globalThis.SCN_TURNSTILE_SITE_KEY
+    delete globalThis.SCN_TURNSTILE_SECRET
+    delete globalThis.SCN_SECRET
+})
+
+test('Turnstile: verifyTurnstileAccess rejects fallback when SCN_TURNSTILE_FAIL_OPEN is "0"', async () => {
+    globalThis.SCN_SECRET = 'test-secret'
+    globalThis.SCN_TURNSTILE_SITE_KEY = 'site-key'
+    globalThis.SCN_TURNSTILE_SECRET = 'secret-key'
+    globalThis.SCN_TURNSTILE_FAIL_OPEN = '0'
+
+    const req = new Request('https://wiki.david888.com/my-note', {
+        method: 'POST',
+        headers: {
+            'x-turnstile-fallback': '1',
+            'cf-connecting-ip': '5.6.7.8',
+        },
+    })
+
+    const access = await verifyTurnstileAccess(req)
+    assert.equal(access.ok, false)
+    assert.equal(access.needTurnstile, true)
+
+    // Cleanup
+    delete globalThis.SCN_TURNSTILE_SITE_KEY
+    delete globalThis.SCN_TURNSTILE_SECRET
+    delete globalThis.SCN_SECRET
+    delete globalThis.SCN_TURNSTILE_FAIL_OPEN
 })
 
 test('Turnstile: returnPage omits Turnstile script when not configured', async () => {

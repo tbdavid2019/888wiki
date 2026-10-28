@@ -370,7 +370,7 @@ ${getMarkdownCss()}
     <link rel="apple-touch-icon" href="${PUBLIC_ICON_PNG_URL}" />
     ${flowTrackerScript}
     ${gaScript}
-    ${ext.turnstileSiteKey ? `<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>` : ''}
+    ${ext.turnstileSiteKey ? `<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer onerror="window.__turnstileDegraded = true; window.__turnstileScriptFailed = true;"></script>` : ''}
 </head>
 <body class="${ext.sharePath && !isEdit ? `share-view share-font-${initialShareFont}${isEmbed ? ' share-embed' : ''}${ext.autoToc ? ' is-toc-pinned' : ''}` : ''}">
     ${ext.turnstileSiteKey ? `<div id="cf-turnstile-container" style="display:none;position:fixed;bottom:12px;right:12px;z-index:99999;"></div>` : ''}
@@ -1427,6 +1427,10 @@ ${getMarkdownCss()}
         return typeof document !== 'undefined' && typeof document.cookie === 'string' && document.cookie.indexOf('cf_turnstile_cleared=') !== -1
     }
 
+    function isTurnstileDegraded() {
+        return Boolean(window.__turnstileDegraded || window.__turnstileScriptFailed)
+    }
+
     function initTurnstileWidget() {
         if (!APP_STATE.turnstileSiteKey || !window.turnstile) return
         const container = document.getElementById('cf-turnstile-container')
@@ -1444,9 +1448,11 @@ ${getMarkdownCss()}
                         res(token)
                     }
                 },
-                'error-callback': function() {
+                'error-callback': function(errCode) {
+                    console.warn('Turnstile widget error, degrading gracefully:', errCode)
+                    window.__turnstileDegraded = true
                     currentTurnstileToken = ''
-                    if (container) container.style.display = 'block'
+                    if (container) container.style.display = 'none'
                     while (pendingTurnstileResolvers.length > 0) {
                         const res = pendingTurnstileResolvers.shift()
                         res('')
@@ -1460,14 +1466,19 @@ ${getMarkdownCss()}
                 },
             })
         } catch (err) {
-            console.warn('Turnstile init error:', err)
+            console.warn('Turnstile init error, degrading gracefully:', err)
+            window.__turnstileDegraded = true
         }
     }
 
     window.getTurnstileToken = function() {
         if (!APP_STATE.turnstileSiteKey || hasTurnstileClearance()) return Promise.resolve('')
+        if (isTurnstileDegraded()) return Promise.resolve('')
         if (currentTurnstileToken) return Promise.resolve(currentTurnstileToken)
-        if (!window.turnstile) return Promise.resolve('')
+        if (!window.turnstile) {
+            window.__turnstileDegraded = true
+            return Promise.resolve('')
+        }
 
         const container = document.getElementById('cf-turnstile-container')
         if (container) container.style.display = 'block'
@@ -1481,8 +1492,11 @@ ${getMarkdownCss()}
         return new Promise(function(resolve) {
             pendingTurnstileResolvers.push(resolve)
             setTimeout(function() {
+                if (!currentTurnstileToken) {
+                    window.__turnstileDegraded = true
+                }
                 resolve(currentTurnstileToken || '')
-            }, 6000)
+            }, 4000)
         })
     }
 
@@ -2595,11 +2609,19 @@ ${getMarkdownCss()}
             saveInFlight = (async () => {
                 if (APP_STATE.turnstileSiteKey && !hasTurnstileClearance()) {
                     const token = await window.getTurnstileToken?.().catch(() => '')
-                    if (token) bodyParams['cf-turnstile-response'] = token
+                    if (token) {
+                        bodyParams['cf-turnstile-response'] = token
+                    } else if (isTurnstileDegraded()) {
+                        bodyParams['cf_turnstile_fallback'] = '1'
+                    }
+                }
+                const headers = { 'Content-Type': 'application/x-www-form-urlencoded' }
+                if (isTurnstileDegraded() || bodyParams['cf_turnstile_fallback'] === '1') {
+                    headers['x-turnstile-fallback'] = '1'
                 }
                 return fetchJson('', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    headers: headers,
                     body: new URLSearchParams(bodyParams),
                 })
             })()
@@ -4667,7 +4689,11 @@ ${getMarkdownCss()}
             formData.append('image', file);
             if (APP_STATE.turnstileSiteKey && !hasTurnstileClearance()) {
                 const token = await window.getTurnstileToken?.().catch(() => '');
-                if (token) formData.append('cf-turnstile-response', token);
+                if (token) {
+                    formData.append('cf-turnstile-response', token);
+                } else if (isTurnstileDegraded()) {
+                    formData.append('cf_turnstile_fallback', '1');
+                }
             }
             const response = await fetchJson('/upload', { method: 'POST', body: formData });
             if (response?.needTurnstile) {

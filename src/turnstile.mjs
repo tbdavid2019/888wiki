@@ -1,6 +1,6 @@
 import jwt from '@tsndr/cloudflare-worker-jwt'
 import { Cookies } from './cookie_compat.mjs'
-import { getTurnstileSecret, isTurnstileEnabled, getSecret } from './constant.js'
+import { getTurnstileSecret, isTurnstileEnabled, isTurnstileFailOpen, getSecret } from './constant.js'
 
 export const TURNSTILE_CLEARANCE_COOKIE_NAME = 'cf_turnstile_cleared'
 export const TURNSTILE_CLEARANCE_MAX_AGE_SECONDS = 7200 // 2 hours
@@ -9,7 +9,7 @@ export const TURNSTILE_CLEARANCE_MAX_AGE_SECONDS = 7200 // 2 hours
  * Verify Cloudflare Turnstile token via siteverify API
  * @param {string} token - The cf-turnstile-response token from client
  * @param {string} [remoteip] - Client IP from cf-connecting-ip
- * @returns {Promise<{ ok: boolean, reason?: string, outcome?: object, skipped?: boolean }>}
+ * @returns {Promise<{ ok: boolean, reason?: string, outcome?: object, skipped?: boolean, fallback?: boolean }>}
  */
 export async function verifyTurnstileToken(token, remoteip = '') {
     if (!isTurnstileEnabled()) {
@@ -39,10 +39,15 @@ export async function verifyTurnstileToken(token, remoteip = '') {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
             body,
-            signal: AbortSignal.timeout(10000),
+            signal: AbortSignal.timeout(5000),
         })
 
         if (!res.ok) {
+            // Upstream outage / 5xx error: fail-open if configured so note saving is never blocked
+            if (res.status >= 500 && isTurnstileFailOpen()) {
+                console.warn(`[Turnstile Fallback] siteverify upstream HTTP ${res.status}, failing open`)
+                return { ok: true, fallback: true, reason: `upstream_http_${res.status}` }
+            }
             return { ok: false, reason: `siteverify_http_${res.status}` }
         }
 
@@ -58,6 +63,11 @@ export async function verifyTurnstileToken(token, remoteip = '') {
         }
     } catch (err) {
         console.warn('Turnstile siteverify error:', err?.message || err)
+        // Upstream network error or timeout: fail-open if configured
+        if (isTurnstileFailOpen()) {
+            console.warn('[Turnstile Fallback] siteverify network error / timeout, failing open:', err?.message || err)
+            return { ok: true, fallback: true, reason: err?.message || 'siteverify_network_error' }
+        }
         return { ok: false, reason: err?.message || 'siteverify_network_error' }
     }
 }
@@ -125,9 +135,10 @@ export async function verifyTurnstileClearanceCookie(request) {
  * Unified verification for incoming requests (checks cookie clearance first, then token header/body)
  * @param {Request} request
  * @param {string} [explicitToken]
- * @returns {Promise<{ ok: boolean, reason?: string, setCookieHeader?: string, skipped?: boolean, cleared?: boolean, verified?: boolean, needTurnstile?: boolean }>}
+ * @param {{ fallback?: boolean }} [options]
+ * @returns {Promise<{ ok: boolean, reason?: string, setCookieHeader?: string, skipped?: boolean, cleared?: boolean, verified?: boolean, fallback?: boolean, needTurnstile?: boolean }>}
  */
-export async function verifyTurnstileAccess(request, explicitToken = null) {
+export async function verifyTurnstileAccess(request, explicitToken = null, options = {}) {
     if (!isTurnstileEnabled()) {
         return { ok: true, skipped: true }
     }
@@ -138,13 +149,36 @@ export async function verifyTurnstileAccess(request, explicitToken = null) {
         return { ok: true, cleared: true }
     }
 
-    // 2. Extract token from header or parameter
+    const clientIp = request.headers.get('cf-connecting-ip') || ''
+
+    // 2. Check if client explicitly signaled degraded fallback
+    const clientFallback = Boolean(
+        options?.fallback === true ||
+        request.headers.get('x-turnstile-fallback') === '1' ||
+        request.headers.get('x-turnstile-degraded') === '1' ||
+        explicitToken === '__fallback__'
+    )
+
+    if (clientFallback && isTurnstileFailOpen()) {
+        console.warn('[Turnstile Fallback] Client requested graceful fallback from IP:', clientIp)
+        const clearanceToken = await createTurnstileClearanceToken(clientIp)
+        let setCookieHeader = null
+        if (clearanceToken) {
+            setCookieHeader = `${TURNSTILE_CLEARANCE_COOKIE_NAME}=${clearanceToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${TURNSTILE_CLEARANCE_MAX_AGE_SECONDS}`
+        }
+        return {
+            ok: true,
+            fallback: true,
+            verified: true,
+            setCookieHeader,
+        }
+    }
+
+    // 3. Extract token from header or parameter
     const token = explicitToken ||
         request.headers.get('cf-turnstile-response') ||
         request.headers.get('x-turnstile-token') ||
         ''
-
-    const clientIp = request.headers.get('cf-connecting-ip') || ''
 
     if (!token) {
         return {
@@ -154,7 +188,7 @@ export async function verifyTurnstileAccess(request, explicitToken = null) {
         }
     }
 
-    // 3. Verify token with Cloudflare
+    // 4. Verify token with Cloudflare siteverify
     const result = await verifyTurnstileToken(token, clientIp)
     if (!result.ok) {
         return {
@@ -164,7 +198,7 @@ export async function verifyTurnstileAccess(request, explicitToken = null) {
         }
     }
 
-    // 4. Generate new clearance cookie
+    // 5. Generate new clearance cookie
     const clearanceToken = await createTurnstileClearanceToken(clientIp)
     let setCookieHeader = null
     if (clearanceToken) {
@@ -174,6 +208,7 @@ export async function verifyTurnstileAccess(request, explicitToken = null) {
     return {
         ok: true,
         verified: true,
+        fallback: result.fallback || false,
         setCookieHeader,
     }
 }

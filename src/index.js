@@ -1228,7 +1228,8 @@ router.post('/upload', async (request) => {
     if (isTurnstileEnabled() && !(valid && role === 'edit')) {
         const formDataClone = await request.clone().formData().catch(() => null)
         const bodyToken = formDataClone?.get('cf-turnstile-response') || null
-        const turnstileCheck = await verifyTurnstileAccess(request, bodyToken)
+        const bodyFallback = formDataClone?.get('cf_turnstile_fallback') === '1'
+        const turnstileCheck = await verifyTurnstileAccess(request, bodyToken, { fallback: bodyFallback })
         if (!turnstileCheck.ok) {
             return returnJSON(403, 'Turnstile verification required', {
                 status: 403,
@@ -4460,7 +4461,8 @@ router.post('/:path', async request => {
     let turnstileSetCookie = null
     if (isTurnstileEnabled() && !(valid && role === 'edit')) {
         const bodyToken = formData.get('cf-turnstile-response') || null
-        const turnstileCheck = await verifyTurnstileAccess(request, bodyToken)
+        const bodyFallback = formData.get('cf_turnstile_fallback') === '1'
+        const turnstileCheck = await verifyTurnstileAccess(request, bodyToken, { fallback: bodyFallback })
         if (!turnstileCheck.ok) {
             return returnJSON(403, 'Turnstile verification required', {
                 status: 403,

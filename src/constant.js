@@ -44,6 +44,11 @@ export const isTurnstileEnabled = () => {
     if (flag === '0' || flag === 'false') return false
     return Boolean(getTurnstileSiteKey() && getTurnstileSecret())
 }
+export const isTurnstileFailOpen = () => {
+    const flag = readRuntimeVar('SCN_TURNSTILE_FAIL_OPEN')
+    if (flag === '0' || flag === 'false') return false
+    return true
+}
 const WEBTALK_DEFAULTS = {
     scriptUrl: 'https://webtalk.david888.com/webtalk.js',
     scope: 'meta',
