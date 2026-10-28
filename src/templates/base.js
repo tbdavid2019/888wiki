@@ -1424,7 +1424,22 @@ ${getMarkdownCss()}
     let pendingTurnstileResolvers = []
 
     function hasTurnstileClearance() {
-        return typeof document !== 'undefined' && typeof document.cookie === 'string' && document.cookie.indexOf('cf_turnstile_cleared=') !== -1
+        if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('cf_turnstile_cleared') === '1') {
+            return true
+        }
+        return typeof document !== 'undefined' && typeof document.cookie === 'string' && (document.cookie.indexOf('cf_turnstile_cleared=') !== -1 || document.cookie.indexOf('cf_turnstile_ok=') !== -1)
+    }
+
+    function markTurnstileCleared() {
+        try {
+            if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('cf_turnstile_cleared', '1')
+        } catch (e) {}
+    }
+
+    function clearTurnstileClearance() {
+        try {
+            if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('cf_turnstile_cleared')
+        } catch (e) {}
     }
 
     function isTurnstileDegraded() {
@@ -1443,8 +1458,9 @@ ${getMarkdownCss()}
                 callback: function(token) {
                     currentTurnstileToken = token
                     if (container) container.style.display = 'none'
-                    while (pendingTurnstileResolvers.length > 0) {
-                        const res = pendingTurnstileResolvers.shift()
+                    const resolvers = pendingTurnstileResolvers.slice()
+                    pendingTurnstileResolvers = []
+                    for (const res of resolvers) {
                         res(token)
                     }
                 },
@@ -1453,8 +1469,9 @@ ${getMarkdownCss()}
                     window.__turnstileDegraded = true
                     currentTurnstileToken = ''
                     if (container) container.style.display = 'none'
-                    while (pendingTurnstileResolvers.length > 0) {
-                        const res = pendingTurnstileResolvers.shift()
+                    const resolvers = pendingTurnstileResolvers.slice()
+                    pendingTurnstileResolvers = []
+                    for (const res of resolvers) {
                         res('')
                     }
                 },
@@ -1474,11 +1491,12 @@ ${getMarkdownCss()}
     window.getTurnstileToken = function() {
         if (!APP_STATE.turnstileSiteKey || hasTurnstileClearance()) return Promise.resolve('')
         if (isTurnstileDegraded()) return Promise.resolve('')
-        if (currentTurnstileToken) return Promise.resolve(currentTurnstileToken)
-        if (!window.turnstile) {
-            window.__turnstileDegraded = true
-            return Promise.resolve('')
+        if (currentTurnstileToken) {
+            const tok = currentTurnstileToken
+            currentTurnstileToken = ''
+            return Promise.resolve(tok)
         }
+        if (!window.turnstile) return Promise.resolve('')
 
         const container = document.getElementById('cf-turnstile-container')
         if (container) container.style.display = 'block'
@@ -1492,10 +1510,11 @@ ${getMarkdownCss()}
         return new Promise(function(resolve) {
             pendingTurnstileResolvers.push(resolve)
             setTimeout(function() {
-                if (!currentTurnstileToken) {
-                    window.__turnstileDegraded = true
-                }
-                resolve(currentTurnstileToken || '')
+                const idx = pendingTurnstileResolvers.indexOf(resolve)
+                if (idx !== -1) pendingTurnstileResolvers.splice(idx, 1)
+                const tok = currentTurnstileToken || ''
+                currentTurnstileToken = ''
+                resolve(tok)
             }, 4000)
         })
     }
@@ -2611,13 +2630,11 @@ ${getMarkdownCss()}
                     const token = await window.getTurnstileToken?.().catch(() => '')
                     if (token) {
                         bodyParams['cf-turnstile-response'] = token
-                    } else if (isTurnstileDegraded()) {
-                        bodyParams['cf_turnstile_fallback'] = '1'
                     }
                 }
                 const headers = { 'Content-Type': 'application/x-www-form-urlencoded' }
-                if (isTurnstileDegraded() || bodyParams['cf_turnstile_fallback'] === '1') {
-                    headers['x-turnstile-fallback'] = '1'
+                if (bodyParams['cf-turnstile-response']) {
+                    headers['cf-turnstile-response'] = bodyParams['cf-turnstile-response']
                 }
                 return fetchJson('', {
                     method: 'POST',
@@ -2627,6 +2644,7 @@ ${getMarkdownCss()}
             })()
                 .then(res => {
                     if (res.needTurnstile) {
+                        clearTurnstileClearance()
                         const container = document.getElementById('cf-turnstile-container')
                         if (container) container.style.display = 'block'
                         if (window.turnstile && turnstileWidgetId !== null) {
@@ -2635,6 +2653,7 @@ ${getMarkdownCss()}
                         throw new Error(getI18n('turnstileRequired') || (APP_STATE.lang === 'zh-TW' ? '請完成安全驗證以繼續保存。' : 'Please complete security verification to proceed.'))
                     }
                     if (res.err !== 0) throw new Error(res.msg || 'save failed')
+                    markTurnstileCleared()
                     if ($textarea.value === content) savedContent = content
                     APP_STATE.updateAt = Math.floor(Date.now() / 1000)
                     syncPublicationStatus()
@@ -3013,13 +3032,29 @@ ${getMarkdownCss()}
             if ($editorAiTranslateBtn) $editorAiTranslateBtn.disabled = true
 
             try {
+                const headers = { 'Content-Type': 'application/json' };
+                if (APP_STATE.turnstileSiteKey && !hasTurnstileClearance()) {
+                    const token = await window.getTurnstileToken?.().catch(() => '');
+                    if (token) headers['cf-turnstile-response'] = token;
+                }
                 const res = await fetchJson('/' + encodeURIComponent(APP_STATE.path || '') + '/ai-format', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers,
                     body: JSON.stringify({ text: rawText, mode, instruction, selectionStart, selectionEnd, targetLanguage, bilingual })
                 }, 130000)
 
+                if (res?.needTurnstile) {
+                    clearTurnstileClearance();
+                    const container = document.getElementById('cf-turnstile-container');
+                    if (container) container.style.display = 'block';
+                    if (window.turnstile && turnstileWidgetId !== null) {
+                        try { window.turnstile.reset(turnstileWidgetId); } catch (e) {}
+                    }
+                    throw new Error(getI18n('turnstileRequired') || (APP_STATE.lang === 'zh-TW' ? '請完成安全驗證以繼續。' : 'Please complete security verification to proceed.'));
+                }
+
                 if (res.err === 0 && res.data?.result) {
+                    markTurnstileCleared();
                     if (res.data.scope === 'selection' && hasSelection) {
                         $textarea.value = rawText.slice(0, selectionStart) + res.data.result + rawText.slice(selectionEnd)
                         const nextCursor = selectionStart + res.data.result.length
@@ -4691,12 +4726,11 @@ ${getMarkdownCss()}
                 const token = await window.getTurnstileToken?.().catch(() => '');
                 if (token) {
                     formData.append('cf-turnstile-response', token);
-                } else if (isTurnstileDegraded()) {
-                    formData.append('cf_turnstile_fallback', '1');
                 }
             }
             const response = await fetchJson('/upload', { method: 'POST', body: formData });
             if (response?.needTurnstile) {
+                clearTurnstileClearance();
                 const container = document.getElementById('cf-turnstile-container');
                 if (container) container.style.display = 'block';
                 if (window.turnstile && turnstileWidgetId !== null) {
@@ -4705,6 +4739,7 @@ ${getMarkdownCss()}
                 throw new Error(getI18n('turnstileRequired') || (APP_STATE.lang === 'zh-TW' ? '請完成安全驗證以繼續保存。' : 'Please complete security verification to proceed.'));
             }
             if (response?.err !== 0 || !response?.data) throw new Error(response?.msg || (APP_STATE.lang === 'zh-TW' ? '圖片上傳失敗。' : 'Image upload failed.'));
+            markTurnstileCleared();
             return response.data;
         };
         window.uploadImageToR2 = uploadImageToR2;

@@ -1223,16 +1223,19 @@ router.post('/upload', async (request) => {
 
     const cookie = Cookies.parse(request.headers.get('Cookie') || '')
     const { valid, role } = await checkAuth(cookie, '')
+    const isAuthedUser = Boolean((valid && role === 'edit') || (cookie?.auth && (await jwt.verify(cookie.auth, getSecret()).catch(() => false))) || cookie?.admin_session)
 
     let turnstileSetCookie = null
-    if (isTurnstileEnabled() && !(valid && role === 'edit')) {
-        const formDataClone = await request.clone().formData().catch(() => null)
-        const bodyToken = formDataClone?.get('cf-turnstile-response') || null
-        const bodyFallback = formDataClone?.get('cf_turnstile_fallback') === '1'
-        const turnstileCheck = await verifyTurnstileAccess(request, bodyToken, { fallback: bodyFallback })
+    if (isTurnstileEnabled() && !isAuthedUser) {
+        const headerToken = request.headers.get('cf-turnstile-response') || request.headers.get('x-turnstile-token')
+        let bodyToken = headerToken
+        if (!bodyToken) {
+            const formDataClone = await request.clone().formData().catch(() => null)
+            bodyToken = formDataClone?.get('cf-turnstile-response') || null
+        }
+        const turnstileCheck = await verifyTurnstileAccess(request, bodyToken)
         if (!turnstileCheck.ok) {
-            return returnJSON(403, 'Turnstile verification required', {
-                status: 403,
+            return returnJSON(403, 'Turnstile verification required', { status: 403 }, {
                 needTurnstile: true,
                 reason: turnstileCheck.reason,
             })
@@ -4090,6 +4093,16 @@ router.post('/:path/setting', async request => {
             const { value, metadata } = await queryNote(path)
             const { valid, role } = await checkAuth(cookie, path)
 
+            if (typeof content === 'string' && isTurnstileEnabled() && !(valid && role === 'edit')) {
+                const turnstileCheck = await verifyTurnstileAccess(request)
+                if (!turnstileCheck.ok) {
+                    return returnJSON(403, 'Turnstile verification required', { status: 403 }, {
+                        needTurnstile: true,
+                        reason: turnstileCheck.reason,
+                    })
+                }
+            }
+
             if ((!metadata.pw && !metadata.vpw) || (valid && role === 'edit')) {
                 try {
                     const resolvedFormat = resolveEditorFormat(metadata, content)
@@ -4311,8 +4324,7 @@ router.post('/:path/transcribe', async (request, context = {}) => {
     if (isTurnstileEnabled() && !(valid && role === 'edit')) {
         const turnstileCheck = await verifyTurnstileAccess(request)
         if (!turnstileCheck.ok) {
-            return returnJSON(403, 'Turnstile verification required', {
-                status: 403,
+            return returnJSON(403, 'Turnstile verification required', { status: 403 }, {
                 needTurnstile: true,
                 reason: turnstileCheck.reason,
             })
@@ -4333,14 +4345,17 @@ router.post('/:path/ai-format', async (request, { env }) => {
         return returnJSON(10002, 'Password auth failed!', { status: 401 })
     }
 
+    let turnstileSetCookie = null
     if (isTurnstileEnabled() && !(valid && role === 'edit')) {
         const turnstileCheck = await verifyTurnstileAccess(request)
         if (!turnstileCheck.ok) {
-            return returnJSON(403, 'Turnstile verification required', {
-                status: 403,
+            return returnJSON(403, 'Turnstile verification required', { status: 403 }, {
                 needTurnstile: true,
                 reason: turnstileCheck.reason,
             })
+        }
+        if (turnstileCheck.setCookieHeader) {
+            turnstileSetCookie = turnstileCheck.setCookieHeader
         }
     }
 
@@ -4426,6 +4441,9 @@ router.post('/:path/ai-format', async (request, { env }) => {
             if (mode === 'format' && !preservesFormatLanguage(formatSource, resultText)) {
                 return returnJSON(40006, 'AI formatting changed the document language. The original content was kept unchanged.', { status: 422 })
             }
+            if (turnstileSetCookie) {
+                return returnJSON(0, { result: resultText, scope: hasSelection ? 'selection' : 'document', modelUsed: model }, { 'Set-Cookie': turnstileSetCookie })
+            }
             return returnJSON(0, { result: resultText, scope: hasSelection ? 'selection' : 'document', modelUsed: model })
         }
         return returnJSON(50003, `AI service returned an empty response for model ${model}`)
@@ -4461,11 +4479,9 @@ router.post('/:path', async request => {
     let turnstileSetCookie = null
     if (isTurnstileEnabled() && !(valid && role === 'edit')) {
         const bodyToken = formData.get('cf-turnstile-response') || null
-        const bodyFallback = formData.get('cf_turnstile_fallback') === '1'
-        const turnstileCheck = await verifyTurnstileAccess(request, bodyToken, { fallback: bodyFallback })
+        const turnstileCheck = await verifyTurnstileAccess(request, bodyToken)
         if (!turnstileCheck.ok) {
-            return returnJSON(403, 'Turnstile verification required', {
-                status: 403,
+            return returnJSON(403, 'Turnstile verification required', { status: 403 }, {
                 needTurnstile: true,
                 reason: turnstileCheck.reason,
             })

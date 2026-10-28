@@ -2,10 +2,17 @@
 
 ## [2026-10-28]
 
+- **🛡️ 雙審查機制落地與安全強化（Dual Code Review Hardening: OpenCode & Codex）**：
+  - **P1 安全修正：移除 Git 配置中的明文 Secret Key**：自 [`wrangler.toml`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/wrangler.toml) 與 [`wrangler.owner.toml`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/wrangler.owner.toml) 的 `[vars]` 移除 `SCN_TURNSTILE_SECRET`，改由 Cloudflare Secrets / [`.dev.vars`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/.dev.vars) 安全注入，徹底杜絕敏感金鑰外洩風險。
+  - **P1 安全修正：移除客戶端單方聲明的 Fallback 繞過漏洞**：移除後端 `x-turnstile-fallback: 1` / `options.fallback` 等由客戶端單方送出的假冒放行路徑；嚴格鎖定降階可用（Fail-Open）僅限 Cloudflare 官方 upstream Siteverify 出現 5xx 故障或網路連線逾時，徹底堵死惡意爬蟲藉由偽造 fallback 標頭繞過驗證之安全隱患。
+  - **P1 缺陷修正：`returnJSON` 正確於 JSON 本體回傳 `needTurnstile`**：重構 [`src/helper.js`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/helper.js) 的 `returnJSON` 簽章與響應格式，確保 `needTurnstile: true` 與 `reason` 穩定注入 JSON Response Body 而非 HTTP 標頭，使前端 `fetchJson` 能即時捕捉 403 驗證要求並精確彈出挑戰。
+  - **P2 安全強化：`POST /:path/setting` 筆記設定與內容更新防護**：於 [`src/index.js`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/index.js) 補足未認證訪客更新筆記內容（Content Overwrite）時之 Turnstile 驗證校驗，防止機器人繞過主儲存路由竄改公開筆記。
+  - **P2 體驗與效能優化：Clearance Cookie 前端感知與單次 Token 防複用**：為 `cf_turnstile_cleared` Cookie 移除 `HttpOnly` 限制（內容僅含無狀態安全 JWT 簽名）並加上 `Secure`，使前端腳本能透過 `hasTurnstileClearance()` / `sessionStorage` 進行零延遲免驗快取判定；同時在 Token 派發後即刻清除暫存，防範 Turnstile Single-Use Token 衝突與逾時回呼洩漏。
+  - **全套單元測試擴增至 560 項全數通過**：更新 [`test/turnstile.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/turnstile.test.mjs)（17 項）與全專案 560 項單元測試（`0 failures, 0 errors`）。
+
 - **🛡️ 接入 Cloudflare Turnstile 機器人防禦、降階可用（Graceful Fallback）與 Clearance Cookie 機制**：
   - **全方位降階可用與高可用容錯機制（Fail-Open & Graceful Degradation）**：
     - **上游驗證異常自動放行**：後端 [`src/turnstile.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/turnstile.mjs) 之 `verifyTurnstileToken` 內建 5 秒逾時防護；若 Cloudflare Siteverify 出現 HTTP 5xx 故障或網路中斷，自動降階放行（Fail-Open），防止外部依賴故障導致整站儲存癱瘓。
-    - **客戶端腳本攔截與網路逾時容錯**：前端 [`src/templates/base.js`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/base.js) 針對 Turnstile 腳本加入 `onerror` 與 4 秒超時偵測，當使用者環境啟用廣告攔截器（如 uBlock Origin）或腳本阻斷時，自動降級標記並送出 `x-turnstile-fallback: 1` / `cf_turnstile_fallback: 1` 訊號，後端核驗放行並頒發 Clearance Cookie，確保編輯與圖片上傳絕不被卡死。
     - **正式金鑰與配置整合**：於 [`wrangler.toml`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/wrangler.toml) 配置 `david888.com` 專屬之 Turnstile Site Key（`0x4AAAAAAEvqf7unH6MrhIv2`），透過 Cloudflare Secrets 綁定 Secret Key，並透過 `SCN_TURNSTILE_FAIL_OPEN`（預設 1）控制自動降階可用策略。
   - **前端 Turnstile 按需掛載與自動容錯**：
     - 在 HTML 模板引入 Turnstile Explicit API 與懸浮容器，支援 `window.getTurnstileToken()`。
@@ -15,7 +22,6 @@
     - 新增 [`src/turnstile.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/turnstile.mjs)，原生實作 `verifyTurnstileToken`、`createTurnstileClearanceToken` 與 `verifyTurnstileAccess`，透過 Cloudflare `challenges.cloudflare.com/turnstile/v0/siteverify` 端點進行二次驗證。
     - **API 端友善豁免**：`/api/*`、`/mcp`、搜尋引擎與 Agent 探索端點豁免 Turnstile，確保自動化生態與 CLI/MCP 工具穩定運行。
     - **平滑相容**：當未配置 `SCN_TURNSTILE_SITE_KEY` 或 `SCN_TURNSTILE_SECRET` 時自動降級放行，不影響既有本機測試與無憑證環境。
-  - **測試防護**：擴增 [`test/turnstile.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/turnstile.test.mjs) 至 16 項完整單元測試（涵蓋 HTTP 500/502 容錯、網路逾時、降階信號與嚴格拒絕模式），全專案總測試數達 559 項全數通過（`0 failures, 0 errors`）。
 
 - **🔒 全面修復 Dependabot 安全通報與依賴項升級（Dependabot Security Alerts Resolution & Zero-Vulnerability Milestone）**：
   - **32 項 Dependabot 安全漏洞與 17 項 `npm audit` 漏洞全數歸零（0 vulnerabilities）**：

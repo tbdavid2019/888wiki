@@ -151,30 +151,7 @@ export async function verifyTurnstileAccess(request, explicitToken = null, optio
 
     const clientIp = request.headers.get('cf-connecting-ip') || ''
 
-    // 2. Check if client explicitly signaled degraded fallback
-    const clientFallback = Boolean(
-        options?.fallback === true ||
-        request.headers.get('x-turnstile-fallback') === '1' ||
-        request.headers.get('x-turnstile-degraded') === '1' ||
-        explicitToken === '__fallback__'
-    )
-
-    if (clientFallback && isTurnstileFailOpen()) {
-        console.warn('[Turnstile Fallback] Client requested graceful fallback from IP:', clientIp)
-        const clearanceToken = await createTurnstileClearanceToken(clientIp)
-        let setCookieHeader = null
-        if (clearanceToken) {
-            setCookieHeader = `${TURNSTILE_CLEARANCE_COOKIE_NAME}=${clearanceToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${TURNSTILE_CLEARANCE_MAX_AGE_SECONDS}`
-        }
-        return {
-            ok: true,
-            fallback: true,
-            verified: true,
-            setCookieHeader,
-        }
-    }
-
-    // 3. Extract token from header or parameter
+    // 2. Extract token from header or parameter
     const token = explicitToken ||
         request.headers.get('cf-turnstile-response') ||
         request.headers.get('x-turnstile-token') ||
@@ -188,7 +165,7 @@ export async function verifyTurnstileAccess(request, explicitToken = null, optio
         }
     }
 
-    // 4. Verify token with Cloudflare siteverify
+    // 3. Verify token with Cloudflare siteverify (fails open on upstream 5xx or timeout if isTurnstileFailOpen())
     const result = await verifyTurnstileToken(token, clientIp)
     if (!result.ok) {
         return {
@@ -198,11 +175,11 @@ export async function verifyTurnstileAccess(request, explicitToken = null, optio
         }
     }
 
-    // 5. Generate new clearance cookie
+    // 4. Generate new clearance cookie
     const clearanceToken = await createTurnstileClearanceToken(clientIp)
     let setCookieHeader = null
     if (clearanceToken) {
-        setCookieHeader = `${TURNSTILE_CLEARANCE_COOKIE_NAME}=${clearanceToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${TURNSTILE_CLEARANCE_MAX_AGE_SECONDS}`
+        setCookieHeader = `${TURNSTILE_CLEARANCE_COOKIE_NAME}=${clearanceToken}; Path=/; SameSite=Lax; Max-Age=${TURNSTILE_CLEARANCE_MAX_AGE_SECONDS}; Secure`
     }
 
     return {

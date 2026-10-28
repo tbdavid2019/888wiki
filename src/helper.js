@@ -34,7 +34,7 @@ export function returnPage(type, data, headers = {}) {
         ...(data?.ext || {}),
         gaMeasurementId: data?.ext?.gaMeasurementId ?? getGaMeasurementId(),
         noteHistoryEnabled: data?.ext?.noteHistoryEnabled ?? getNoteHistoryConfig().enabled,
-        turnstileSiteKey: data?.ext?.turnstileSiteKey ?? getTurnstileSiteKey(),
+        turnstileSiteKey: isTurnstileEnabled() ? (data?.ext?.turnstileSiteKey ?? getTurnstileSiteKey()) : '',
         turnstileEnabled: data?.ext?.turnstileEnabled ?? isTurnstileEnabled(),
     }
 
@@ -47,16 +47,19 @@ export function returnPage(type, data, headers = {}) {
     });
 }
 
-export function returnJSON(code, data, headers = {}) {
+export function returnJSON(code, data, headers = {}, extra = {}) {
     const { status: requestedStatus, ...responseHeaders } = headers
     const successTempl = {
         err: 0,
         msg: 'ok',
-        ...data && { data },
+        ...(data !== undefined && data !== null ? { data } : {}),
+        ...extra,
     }
     const errTempl = {
         err: code,
-        msg: JSON.stringify(data),
+        msg: typeof data === 'string' ? data : (data?.msg || data?.message || JSON.stringify(data)),
+        ...(data !== undefined && data !== null && typeof data === 'object' ? data : {}),
+        ...extra,
     }
     const ret = code ? errTempl : successTempl
     let fallbackStatus = 400

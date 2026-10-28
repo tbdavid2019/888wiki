@@ -296,60 +296,11 @@ test('Turnstile: verifyTurnstileToken strictly rejects on upstream failure when 
     delete globalThis.SCN_TURNSTILE_FAIL_OPEN
 })
 
-test('Turnstile: verifyTurnstileAccess admits requests with x-turnstile-fallback header and sets clearance cookie', async () => {
+test('Turnstile: verifyTurnstileAccess rejects requests that only carry x-turnstile-fallback header', async () => {
     globalThis.SCN_SECRET = 'test-secret'
     globalThis.SCN_TURNSTILE_SITE_KEY = 'site-key'
     globalThis.SCN_TURNSTILE_SECRET = 'secret-key'
     delete globalThis.SCN_TURNSTILE_FAIL_OPEN
-
-    const req = new Request('https://wiki.david888.com/my-note', {
-        method: 'POST',
-        headers: {
-            'x-turnstile-fallback': '1',
-            'cf-connecting-ip': '5.6.7.8',
-        },
-    })
-
-    const access = await verifyTurnstileAccess(req)
-    assert.equal(access.ok, true)
-    assert.equal(access.fallback, true)
-    assert.ok(access.setCookieHeader.includes('cf_turnstile_cleared='))
-
-    // Cleanup
-    delete globalThis.SCN_TURNSTILE_SITE_KEY
-    delete globalThis.SCN_TURNSTILE_SECRET
-    delete globalThis.SCN_SECRET
-})
-
-test('Turnstile: verifyTurnstileAccess admits requests with options.fallback set', async () => {
-    globalThis.SCN_SECRET = 'test-secret'
-    globalThis.SCN_TURNSTILE_SITE_KEY = 'site-key'
-    globalThis.SCN_TURNSTILE_SECRET = 'secret-key'
-    delete globalThis.SCN_TURNSTILE_FAIL_OPEN
-
-    const req = new Request('https://wiki.david888.com/my-note', {
-        method: 'POST',
-        headers: {
-            'cf-connecting-ip': '5.6.7.8',
-        },
-    })
-
-    const access = await verifyTurnstileAccess(req, null, { fallback: true })
-    assert.equal(access.ok, true)
-    assert.equal(access.fallback, true)
-    assert.ok(access.setCookieHeader.includes('cf_turnstile_cleared='))
-
-    // Cleanup
-    delete globalThis.SCN_TURNSTILE_SITE_KEY
-    delete globalThis.SCN_TURNSTILE_SECRET
-    delete globalThis.SCN_SECRET
-})
-
-test('Turnstile: verifyTurnstileAccess rejects fallback when SCN_TURNSTILE_FAIL_OPEN is "0"', async () => {
-    globalThis.SCN_SECRET = 'test-secret'
-    globalThis.SCN_TURNSTILE_SITE_KEY = 'site-key'
-    globalThis.SCN_TURNSTILE_SECRET = 'secret-key'
-    globalThis.SCN_TURNSTILE_FAIL_OPEN = '0'
 
     const req = new Request('https://wiki.david888.com/my-note', {
         method: 'POST',
@@ -362,12 +313,94 @@ test('Turnstile: verifyTurnstileAccess rejects fallback when SCN_TURNSTILE_FAIL_
     const access = await verifyTurnstileAccess(req)
     assert.equal(access.ok, false)
     assert.equal(access.needTurnstile, true)
+    assert.equal(access.reason, 'Turnstile verification token required')
 
     // Cleanup
     delete globalThis.SCN_TURNSTILE_SITE_KEY
     delete globalThis.SCN_TURNSTILE_SECRET
     delete globalThis.SCN_SECRET
+})
+
+test('Turnstile: verifyTurnstileAccess admits upstream failure when fail-open is enabled and sets clearance cookie', async () => {
+    globalThis.SCN_SECRET = 'test-secret'
+    globalThis.SCN_TURNSTILE_SITE_KEY = 'site-key'
+    globalThis.SCN_TURNSTILE_SECRET = 'secret-key'
     delete globalThis.SCN_TURNSTILE_FAIL_OPEN
+
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = async (url) => {
+        if (String(url).includes('siteverify')) {
+            return new Response('Cloudflare 500 Internal Server Error', { status: 500 })
+        }
+        return originalFetch(url)
+    }
+
+    const req = new Request('https://wiki.david888.com/my-note', {
+        method: 'POST',
+        headers: {
+            'cf-turnstile-response': 'client-token-attempt',
+            'cf-connecting-ip': '5.6.7.8',
+        },
+    })
+
+    const access = await verifyTurnstileAccess(req)
+    assert.equal(access.ok, true)
+    assert.equal(access.fallback, true)
+    assert.ok(access.setCookieHeader.includes('cf_turnstile_cleared='))
+
+    // Restore fetch and cleanup
+    globalThis.fetch = originalFetch
+    delete globalThis.SCN_TURNSTILE_SITE_KEY
+    delete globalThis.SCN_TURNSTILE_SECRET
+    delete globalThis.SCN_SECRET
+})
+
+test('Turnstile: verifyTurnstileAccess rejects upstream failure when SCN_TURNSTILE_FAIL_OPEN is "0"', async () => {
+    globalThis.SCN_SECRET = 'test-secret'
+    globalThis.SCN_TURNSTILE_SITE_KEY = 'site-key'
+    globalThis.SCN_TURNSTILE_SECRET = 'secret-key'
+    globalThis.SCN_TURNSTILE_FAIL_OPEN = '0'
+
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = async (url) => {
+        if (String(url).includes('siteverify')) {
+            return new Response('Cloudflare 500 Internal Server Error', { status: 500 })
+        }
+        return originalFetch(url)
+    }
+
+    const req = new Request('https://wiki.david888.com/my-note', {
+        method: 'POST',
+        headers: {
+            'cf-turnstile-response': 'client-token-attempt',
+            'cf-connecting-ip': '5.6.7.8',
+        },
+    })
+
+    const access = await verifyTurnstileAccess(req)
+    assert.equal(access.ok, false)
+    assert.equal(access.needTurnstile, true)
+
+    // Restore fetch and cleanup
+    globalThis.fetch = originalFetch
+    delete globalThis.SCN_TURNSTILE_SITE_KEY
+    delete globalThis.SCN_TURNSTILE_SECRET
+    delete globalThis.SCN_SECRET
+    delete globalThis.SCN_TURNSTILE_FAIL_OPEN
+})
+
+test('Turnstile: returnJSON returns extra properties like needTurnstile and reason in response JSON body', async () => {
+    const { returnJSON } = await import('../src/helper.js')
+    const res = returnJSON(403, 'Turnstile verification required', { status: 403 }, {
+        needTurnstile: true,
+        reason: 'missing_token',
+    })
+    assert.equal(res.status, 403)
+    const body = await res.json()
+    assert.equal(body.err, 403)
+    assert.equal(body.msg, 'Turnstile verification required')
+    assert.equal(body.needTurnstile, true)
+    assert.equal(body.reason, 'missing_token')
 })
 
 test('Turnstile: returnPage omits Turnstile script when not configured', async () => {
