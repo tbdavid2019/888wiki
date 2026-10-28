@@ -1,5 +1,22 @@
 # Changelog
 
+## [2026-10-28]
+
+- **🔒 全面修復 Dependabot 安全通報與依賴項升級（Dependabot Security Alerts Resolution & Zero-Vulnerability Milestone）**：
+  - **32 項 Dependabot 安全漏洞與 17 項 `npm audit` 漏洞全數歸零（0 vulnerabilities）**：
+    - **`dompurify` (Critical / High / Low: GHSA-p98j-92pf-mc4p, GHSA-6688-9rhm-gjv2, GHSA-cg2g-xh64-v4q7, GHSA-mrv2-3pqr-j5jr, GHSA-c6gr-qvv4-5v3f)**：透過 `overrides` 升級至 `3.4.17`，修復 SAFE_FOR_TEMPLATES bypass、IN_PLACE detached subtree event handlers armed 與 SMIL href 等安全缺陷（Alerts #22, #25, #27, #28, #29）。
+    - **`undici` (High / Medium / Low: GHSA-xjj6-f33q-929c, GHSA-4qv8-2p9j-2685, GHSA-f72v-6w45-q472, GHSA-pmjh-fq2x-6v4x 等 13 項通報)**：升級至 `7.30.1`，修復 DoS、SRI 繞過、TLS 憑證驗證繞過與 WebSocket 連線中斷異常等問題（Alerts #12-#21, #30-#32）。
+    - **`nanoid` (High / Medium: GHSA-xwg4-73v4-xw9w, GHSA-2v37-7h3g-55p8, GHSA-28wg-ghj8-5hjv, GHSA-mwcw-c2x4-8c55)**：全域升級至安全版本 `5.1.16`，徹底消除負數/零長度死循環與整數溢位弱點（Alerts #1, #2, #6, #7, #8, #9, #10, #11）。
+    - **`sharp` (High: GHSA-wq5f-xc86-pv6w / CVE-2026-96889)**：升級至 `0.35.5`，修復內嵌 librsvg 程式庫之重大安全漏洞（Alert #26）。
+    - **`source-map-js` (High: GHSA-68fv-2mgg-jv7q)**：升級至 `1.2.2`，修復 indexed source-map 區塊偏移造成的 Event Loop 阻斷服務攻擊漏洞（Alert #23）。
+    - **`lodash-es` (High / Medium: GHSA-r5fr-rjxr-66jc, GHSA-f23m-r3pf-42rh, GHSA-xxjr-mmjv-4gpg)**：升級至 `4.18.1`，修復 `_.template` 程式碼注入與 `_.unset` / `_.omit` 原型污染（Alerts #3, #4, #5）。
+    - **`katex` (Low: GHSA-238p-pmpm-9mq7 / CVE-2026-103923)**：透過 overrides 升級至安全修復版本 `0.18.10`，防範原型污染繞過 trust 限制（Alert #24）。
+    - **`wrangler`**：開發依賴升級至 `^4.154.0`，原生搭載包含最新 sharp 0.35.5 與 undici 7.30.1 之 miniflare 引擎。
+  - **嚴格遵循 AGENTS.md 避坑規範**：
+    - 使用 `--legacy-peer-deps` 執行套件更新，防範 npm 10 回溯求解死循環。
+    - 完整重新編譯 Whiteboard / Block / Canvas 等島嶼前端 Bundle，確保 `static/js/whiteboard-editor.bundle.mjs` 正常運作。
+    - 通過全套 543 項單元測試（`0 failures, 0 errors`）。
+
 ## [2026-10-24]
 
 - **🛡️ 依賴安裝避坑防護與工程規範落地（Dependency Installation Safeguard `.npmrc` & AGENTS Guidelines）**：
