@@ -3493,9 +3493,9 @@ html[data-ui-theme="dark"] .share-menu-trigger.is-published {
 }
 .autosave-rail-switch[disabled],
 .autosave-rail-switch.is-disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    pointer-events: none;
+    opacity: 0.65;
+    cursor: pointer;
+    pointer-events: auto;
 }
 .share-font-switch.is-checked .footer-rail-thumb {
     transform: translateX(34px);

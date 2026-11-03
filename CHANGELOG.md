@@ -9,7 +9,10 @@
     - **草稿狀態（未發布）**：儲存選單主項目顯示為 **「發布並同步至雲端」**（副標：「首次儲存需發布以建立雲端連結」），同步徽章懸浮提示為 **「本機已即時保存；尚未發布至雲端 (點擊發布並同步)」**，快捷鍵 ⌘S 提示「💾 已儲存至本地快取 (點擊同步可發布至雲端)」。
     - **已發布狀態**：儲存選單主項目自動切換為 **「立即同步至雲端」**（副標：「儲存當前修改並寫入雲端」），同步徽章提示自動適配為 **「雲端已同步。點擊立即同步最新修改」**。
   - **自動儲存與空筆記防護**：若在草稿狀態下嘗試切換自動儲存開關，亦自動引導開啟發布設定對話框；若筆記完全空白時點擊同步，貼心提示「請先輸入筆記內容後再發布並同步」，杜絕無效空內容發布。
-  - **全套單元測試增至 564 項全數通過**：於 [`test/floating-controls-ui.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/floating-controls-ui.test.mjs) 與 [`test/public-save-policy.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/public-save-policy.test.mjs) 補足聯合膠囊容器結構、草稿/發布標籤動態切換、以及未發布主動引導流程之自動化測試。
+  - **雙審查（OpenCode + Codex）品質落地與重大修復（Dual Review Hardening）**：
+    - **P2 缺陷修復：草稿狀態自動儲存開關點擊無效問題**：解決 `.autosave-rail-switch[disabled]` 原生被 CSS `pointer-events: none` 阻擋而無法觸發點擊事件之問題；移除 `pointer-events: none` 改用 `aria-disabled="true"`，並為父層容器 `.dropdown-item-toggle` 增加委派監聽，確保草稿狀態下點擊開關或文字行皆能順暢喚起發布對話框。
+    - **P3 體驗優化：儲存按鈕無障礙屬性與同步狀態即時同步**：於 `syncShareStateUI()` 補足動態發布後 `#save-note-btn` 的 `title`、`data-tooltip` 與 `aria-label` 更新（自動切換「發布並同步」與「儲存文章」），並即時將 `$syncStatusBadge.dataset.status` 同步為 `'cloud-synced'`。
+  - **全套單元測試增至 565 項全數通過**：於 [`test/floating-controls-ui.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/floating-controls-ui.test.mjs) 與 [`test/public-save-policy.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/public-save-policy.test.mjs) 補足聯合膠囊容器結構、草稿/發布標籤動態切換、以及未發布主動引導流程之自動化測試。
 
 - **🛡️ Turnstile 人機驗證體驗重構與互動挑戰彈窗修正（Interactive Turnstile Modal & Verification Flow Fix）**：
   - **修復 Turnstile 驗證介面隱匿無法作答之重大缺陷**：解決使用者於編輯或發布時跳出「出錯了: Turnstile verification required」卻未見任何驗證介面之重大問題。將原本隱匿於頁面底角且預設 `display: none` 的容器重構為專屬的 **「🛡️ 安全驗證」對話框（`#turnstile-modal`）**，在需要人機驗證時居中呈現標準 300x65px Cloudflare Turnstile 挑戰，並配備動態狀態提示（「✓ 驗證成功，正在繼續...」）與取消操作。

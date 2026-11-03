@@ -4205,7 +4205,15 @@ ${getMarkdownCss()}
                     ? (isZh ? '儲存當前修改並寫入雲端' : 'Save current changes to cloud')
                     : (isZh ? '首次儲存需發布以建立雲端連結' : 'Publish note to enable cloud sync')
             }
+            const saveBtn = document.getElementById('save-note-btn')
+            if (saveBtn) {
+                const saveLabel = isPublished ? (isZh ? '儲存文章' : 'Save note') : (isZh ? '發布並同步' : 'Publish & Sync')
+                saveBtn.title = saveLabel
+                saveBtn.dataset.tooltip = saveLabel
+                saveBtn.setAttribute('aria-label', saveLabel)
+            }
             if ($syncStatusBadge) {
+                $syncStatusBadge.dataset.status = isPublished ? 'cloud-synced' : 'local'
                 const syncBadgeTooltip = isPublished
                     ? (isZh ? '雲端已同步。點擊立即同步最新修改' : 'Cloud synced. Click to sync latest changes')
                     : (isZh ? '本機已即時保存；尚未發布至雲端 (點擊發布並同步)' : 'Saved locally; not published to cloud yet (click to publish & sync)')
@@ -4215,8 +4223,8 @@ ${getMarkdownCss()}
             }
             syncShareMenuUI()
             if ($autosaveToggle) {
-                $autosaveToggle.disabled = !isPublished
                 $autosaveToggle.classList.toggle('is-disabled', !isPublished)
+                $autosaveToggle.setAttribute('aria-disabled', String(!isPublished))
                 setRailSwitchState($autosaveToggle, APP_STATE.autosave === true && isPublished)
             }
             syncPublicationStatus()
@@ -6222,7 +6230,11 @@ ${getMarkdownCss()}
                 }
             }
             $autosaveToggle.addEventListener('click', handleAutosaveToggle)
-            $autosaveToggle.addEventListener('change', handleAutosaveToggle)
+            $autosaveToggle.closest('.dropdown-item-toggle')?.addEventListener('click', e => {
+                if (e.target !== $autosaveToggle && !e.target.closest('#autosave-toggle')) {
+                    handleAutosaveToggle()
+                }
+            })
         }
 
         if ($textarea) {

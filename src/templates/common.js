@@ -911,12 +911,12 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                                         <span>${lang === 'zh-TW' ? '自動儲存 (10秒閒置)' : 'Autosave (10s idle)'}</span>
                                         ${RAIL_SWITCH({
                                             id: 'autosave-toggle', // id="autosave-toggle"
-                                            className: 'autosave-rail-switch',
+                                            className: 'autosave-rail-switch' + (share && shareId ? '' : ' is-disabled'),
                                             checked: autosave !== false && share === true,
-                                            disabled: share !== true,
+                                            disabled: false,
                                             ariaLabel: lang === 'zh-TW' ? '啟用文章自動儲存' : 'Enable note autosave',
-                                            checkedTitle: share ? (lang === 'zh-TW' ? '停止輸入 10 秒後自動儲存' : 'Save automatically after 10 seconds of inactivity') : (lang === 'zh-TW' ? '請先發布文章才能啟用 autosave' : 'Publish this note before enabling autosave'),
-                                            uncheckedTitle: share ? (lang === 'zh-TW' ? '停止輸入 10 秒後自動儲存' : 'Save automatically after 10 seconds of inactivity') : (lang === 'zh-TW' ? '請先發布文章才能啟用 autosave' : 'Publish this note before enabling autosave'),
+                                            checkedTitle: share ? (lang === 'zh-TW' ? '停止輸入 10 秒後自動儲存' : 'Save automatically after 10 seconds of inactivity') : (lang === 'zh-TW' ? '請先發布文章才能啟用 autosave (點擊開啟發布)' : 'Publish this note before enabling autosave (click to publish)'),
+                                            uncheckedTitle: share ? (lang === 'zh-TW' ? '停止輸入 10 秒後自動儲存' : 'Save automatically after 10 seconds of inactivity') : (lang === 'zh-TW' ? '請先發布文章才能啟用 autosave (點擊開啟發布)' : 'Publish this note before enabling autosave (click to publish)'),
                                             checkedText: lang === 'zh-TW' ? '自動' : 'Auto',
                                             uncheckedText: lang === 'zh-TW' ? '手動' : 'Manual',
                                             checkedValue: 'true',

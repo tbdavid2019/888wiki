@@ -328,6 +328,25 @@ test('publish and sync controls are unified into a joint capsule with dynamic dr
     assert.match(baseCssSource, /\.publish-sync-capsule-group\s*\.save-dropdown/)
 })
 
+test('autosave switch in draft mode allows pointer interaction and base.js synchronizes save button attributes', () => {
+    // Draft / unpublished note
+    const draftDoc = renderFooter({ isEdit: true, mode: 'md', share: false, shareId: '' })
+    const autosaveToggle = draftDoc.querySelector('#autosave-toggle')
+    assert.ok(autosaveToggle, '#autosave-toggle must exist')
+    assert.equal(autosaveToggle.classList.contains('is-disabled'), true, 'draft autosave switch should have is-disabled class')
+    assert.equal(autosaveToggle.disabled, false, 'draft autosave switch must not be HTML disabled so clicks can bubble')
+
+    // CSS must allow pointer events
+    assert.match(baseCssSource, /\.autosave-rail-switch\[disabled\],\s*\.autosave-rail-switch\.is-disabled\s*\{[\s\S]*?pointer-events:\s*auto;/)
+
+    // Template synchronization updates save-note-btn attributes and status dataset
+    assert.match(baseTemplateSource, /saveBtn\.title\s*=\s*saveLabel/)
+    assert.match(baseTemplateSource, /saveBtn\.dataset\.tooltip\s*=\s*saveLabel/)
+    assert.match(baseTemplateSource, /saveBtn\.setAttribute\('aria-label',\s*saveLabel\)/)
+    assert.match(baseTemplateSource, /\$syncStatusBadge\.dataset\.status\s*=\s*isPublished\s*\?\s*'cloud-synced'\s*:\s*'local'/)
+})
+
+
 
 
 
