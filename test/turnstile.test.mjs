@@ -10,6 +10,7 @@ import {
 } from '../src/turnstile.mjs'
 import { getTurnstileSiteKey, getTurnstileSecret, isTurnstileEnabled } from '../src/constant.js'
 import { returnPage } from '../src/helper.js'
+import worker from '../src/index.js'
 
 test('Turnstile: disabled by default when no environment keys exist', () => {
     delete globalThis.SCN_TURNSTILE_SITE_KEY
@@ -458,4 +459,107 @@ test('Turnstile: returnJSON appends multiple Set-Cookie headers properly', async
     assert.equal(cookies.length, 2)
     assert.equal(cookies[0], cookie1)
     assert.equal(cookies[1], cookie2)
+})
+
+test('Turnstile: POST /:path/setting with application/json; charset=utf-8 returns 403 without stream locked error when unauthenticated', async () => {
+    globalThis.SCN_TURNSTILE_SITE_KEY = '0x4AAAAAAABBBBBBBB'
+    globalThis.SCN_TURNSTILE_SECRET = '0x4AAAAAAASSSSSSSS'
+
+    const store = new Map()
+    const env = {
+        SCN_STORAGE_DRIVER: 'kv',
+        SCN_TURNSTILE_SITE_KEY: '0x4AAAAAAABBBBBBBB',
+        SCN_TURNSTILE_SECRET: '0x4AAAAAAASSSSSSSS',
+        NOTES: {
+            getWithMetadata: async (key) => store.get(key) || { value: '', metadata: {} },
+            put: async (key, value, { metadata } = {}) => { store.set(key, { value, metadata }) },
+            delete: async (key) => { store.delete(key) },
+        },
+    }
+    const ctx = { waitUntil: () => {} }
+
+    const req = new Request('https://wiki.david888.com/test-turnstile-note/setting', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+        },
+        body: JSON.stringify({
+            content: '# Unauthenticated content without turnstile token',
+            share: true,
+        }),
+    })
+
+    const res = await worker.fetch(req, env, ctx)
+    assert.equal(res.status, 403)
+    const data = await res.json()
+    assert.equal(data.err, 403)
+    assert.equal(data.needTurnstile, true)
+    assert.notEqual(data.msg, 'Setting Internal Error: This ReadableStream is currently locked to a reader')
+
+    delete globalThis.SCN_TURNSTILE_SITE_KEY
+    delete globalThis.SCN_TURNSTILE_SECRET
+})
+
+test('Turnstile: POST /:path/setting accepts cf-turnstile-response in JSON body without stream locked error', async () => {
+    globalThis.SCN_TURNSTILE_SITE_KEY = '0x4AAAAAAABBBBBBBB'
+    globalThis.SCN_TURNSTILE_SECRET = '0x4AAAAAAASSSSSSSS'
+    globalThis.SCN_SECRET = 'test-secret'
+
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = async (url, options) => {
+        if (String(url).includes('siteverify')) {
+            return new Response(JSON.stringify({
+                success: true,
+                challenge_ts: new Date().toISOString(),
+                hostname: 'wiki.david888.com',
+            }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+        }
+        return originalFetch(url, options)
+    }
+
+    const store = new Map()
+    store.set('test-turnstile-token-note', {
+        value: '# Initial',
+        metadata: { share: true },
+    })
+
+    const env = {
+        SCN_STORAGE_DRIVER: 'kv',
+        SCN_SECRET: 'test-secret',
+        SCN_TURNSTILE_SITE_KEY: '0x4AAAAAAABBBBBBBB',
+        SCN_TURNSTILE_SECRET: '0x4AAAAAAASSSSSSSS',
+        NOTES: {
+            getWithMetadata: async (key) => store.get(key) || { value: '', metadata: {} },
+            put: async (key, value, { metadata } = {}) => { store.set(key, { value, metadata }) },
+            delete: async (key) => { store.delete(key) },
+        },
+    }
+    const ctx = { waitUntil: () => {} }
+
+    const req = new Request('https://wiki.david888.com/test-turnstile-token-note/setting', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+        },
+        body: JSON.stringify({
+            content: '# Content with turnstile response in body',
+            share: true,
+            'cf-turnstile-response': 'valid-mock-turnstile-token',
+        }),
+    })
+
+    const res = await worker.fetch(req, env, ctx)
+    assert.equal(res.status, 200)
+    const data = await res.json()
+    assert.equal(data.err, 0)
+
+    // Verify Set-Cookie includes clearance cookie
+    const cookieHeader = res.headers.get('set-cookie') || ''
+    assert.ok(cookieHeader.includes('cf_turnstile_cleared='))
+
+    // Restore fetch and cleanup
+    globalThis.fetch = originalFetch
+    delete globalThis.SCN_TURNSTILE_SITE_KEY
+    delete globalThis.SCN_TURNSTILE_SECRET
+    delete globalThis.SCN_SECRET
 })

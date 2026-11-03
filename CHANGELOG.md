@@ -2,6 +2,21 @@
 
 ## [2026-11-03]
 
+- **🌐 底欄「發布與同步」極簡整合為單一按鈕與統一選單（Unified Publish & Sync Single Toolbar Button & Dropdown）**：
+  - **徹底告別底欄雙按鈕割裂感**：響應使用者明確要求「將底欄發布與同步真正整合為 1 個按鈕」，移除以往相鄰並列的 `[ 🌐 ▾ | ☁️ 🟢 | ▾ ]` 雙觸發按鈕結構，全面整合成單一無縫的 **「發布與同步」旗艦按鈕（`#share-menu-btn` / `.publish-sync-dropdown`）**，在底欄直覺呈現 `[ ☁️ 🟢 已發布 ▾ ]`（已發布）或 `[ ☁️ ⚪ 發布 ▾ ]`（草稿），徹底告別多餘的分段隔線與繁雜感。
+  - **單一整合下拉選單（Single Unified Dropdown Menu）**：點擊單一按鈕即展開完整而有序的統一控制中心：
+    - **已發布狀態**：頂層依序呈現「儲存與同步」（「立即同步至雲端」⌘S、10秒自動儲存開關）、「檢視閱讀模式」（打開分享頁面、簡報播放、書本閱讀）、「快速複製連結」、「版本與紀錄」（D1 版本修訂與本機分享紀錄）、「安全與存取保護」（Seal 與存取密碼鎖）、「分享設定」（公開索引、段落註解）及危險區域（取消發布）。
+    - **未發布草稿狀態**：頂層呈現「發布與同步」（「發布此筆記至雲端」主按鈕、「發布並同步至雲端」⌘S 按鈕、未發布自動儲存防護開關）、「版本與紀錄」、「安全與存取保護」及「發布預設設定」。
+  - **響應式極簡自適應（Mobile Responsive Clean Design）**：在手機與狹窄螢幕（`max-width: 640px`）環境下自動折疊文字標籤，保持優雅極簡的 `[ ☁️ 🟢 ▾ ]` 單一緊湊圖示按鈕，絕不佔用寶貴底欄空間。
+
+- **⚡ 修復 Cloudflare Workers 流鎖定 500 錯誤（Fix ReadableStream Locked to Reader Error）**：
+  - **徹底解決 `ReadableStream is currently locked to a reader`**：修復 `src/index.js` 在 `/:path/setting`、`/upload` 與 `POST /api/shares/:shareId/reveal` 路由中，因多次呼叫 `request.clone()` 或在請求本體已被讀取後再度呼叫 `request.clone().json()` / `request.formData()` 導致 Cloudflare Workers V8 執行環境拋出 `TypeError: This ReadableStream is currently locked to a reader` 的 500 錯誤。
+  - **單次讀取與重用流（Read Body Exactly Once & Reuse）**：
+    - `/:path/setting`：擴充 Content-Type 檢測支援 `application/json; charset=utf-8`，單次執行 `await request.json().catch(() => ({}))` 並將所有設定欄位自單一 `body` 物件解構；Turnstile 驗證直接自已解析的 `body` 提取 Token，徹底移除路由內所有 `request.clone()`。
+    - `/upload`：未認證且啟用 Turnstile 時，先安全讀取 `formData`，後續圖片上傳邏輯直接重用已解析之 `formData`，全面消除 `request.clone().formData()`。
+    - `POST /api/shares/:shareId/reveal`：將 `request.clone().json()` 替換為標準單次 `request.json()`。
+  - **測試套件全面通過**：於 [`test/turnstile.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/turnstile.test.mjs) 新增對 `application/json; charset=utf-8` 與 Body Token 的無流鎖定回歸測試，全專案 567 項測試全數通過（`0 failures, 0 errors`）。
+
 - **🌐 整合「發布與同步」聯合膠囊控制組與未發布智慧導引（Unified Publish & Sync Joint Capsule & Smart Onboarding）**：
   - **解決未發布筆記點擊同步的體驗死胡同**：以往未發布文章若點擊底欄雲端同步圖示（`☁️ 🟢`）或選單「立即同步至雲端」時，僅跳出「文章尚未發布，請先發布後再儲存」之阻斷提示，導致初次使用的一般用戶困惑茫然不知何處發布。現在當筆記處於未發布草稿狀態時，點擊雲端同步徽章、選單項目或按鈕，系統會自動呼叫 **發布並同步對話框（`openPublishOptions()`）**，引導使用者一鍵完成發布並即刻啟用雲端同步、版本歷史與公開分享。
   - **按鈕整合為「發布與同步」聯合膠囊控制組（Joint Capsule Group）**：將原本相鄰分散的「🌐 發布選項」與「☁️ 儲存同步」兩個獨立控制元件，融合為統一的無縫分段膠囊（`.publish-sync-capsule-group`），左側承載發布/分享選單，中右側承載雲端同步狀態徽章與儲存歷史選單，視覺風格緊湊俐落，告別分裂零散感。

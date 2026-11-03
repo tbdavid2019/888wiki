@@ -1226,12 +1226,13 @@ router.post('/upload', async (request) => {
     const isAuthedUser = Boolean((valid && role === 'edit') || (cookie?.auth && (await jwt.verify(cookie.auth, getSecret()).catch(() => false))) || cookie?.admin_session)
 
     let turnstileSetCookie = null
+    let formData = null
     if (isTurnstileEnabled() && !isAuthedUser) {
         const headerToken = request.headers.get('cf-turnstile-response') || request.headers.get('x-turnstile-token')
         let bodyToken = headerToken
         if (!bodyToken) {
-            const formDataClone = await request.clone().formData().catch(() => null)
-            bodyToken = formDataClone?.get('cf-turnstile-response') || null
+            formData = await request.formData().catch(() => null)
+            bodyToken = formData?.get('cf-turnstile-response') || null
         }
         const turnstileCheck = await verifyTurnstileAccess(request, bodyToken)
         if (!turnstileCheck.ok) {
@@ -1246,7 +1247,9 @@ router.post('/upload', async (request) => {
     }
 
     try {
-        const formData = await request.formData()
+        if (!formData) {
+            formData = await request.formData()
+        }
         const image = formData.get('image')
         if (!image) return returnJSON(400, 'No image found')
 
@@ -2394,7 +2397,7 @@ router.post('/api/shares/:shareId/reveal', async request => {
     const headerPw = authHeader ? authHeader.replace('Bearer ', '').trim() : null
     let bodyPw = null
     try {
-        const body = await request.clone().json().catch(() => ({}))
+        const body = await request.json().catch(() => ({}))
         bodyPw = body?.pw || null
     } catch {}
     const providedPw = queryPw || headerPw || bodyPw
@@ -4081,14 +4084,16 @@ router.post('/:path/pw', async request => {
 router.post('/:path/setting', async request => {
     const { path } = request.params
     try {
-        if (request.headers.get('Content-Type') === 'application/json') {
+        const contentType = request.headers.get('Content-Type') || ''
+        if (contentType.includes('application/json')) {
             const cookie = Cookies.parse(request.headers.get('Cookie') || '')
+            const body = await request.json().catch(() => ({}))
             const {
                 mode, shareMode, shareExpiresIn, shareBurnAfterReading,
                 shareUnlockIn, shareUnlockAt, sharePulseInterval, sharePulseMinutes,
                 shareMaxViews, removeSeal, sealMode, sealUnlockAt, sealMaxViews, sealPulseMinutes,
-            } = await request.clone().json().catch(() => ({}))
-            const { share, theme, title, width, shareFont, publicIndex, content, autosave, annotationsEnabled } = await request.json()
+                share, theme, title, width, shareFont, publicIndex, content, autosave, annotationsEnabled,
+            } = body
 
             const { value, metadata } = await queryNote(path)
             const { valid, role } = await checkAuth(cookie, path)
@@ -4096,11 +4101,7 @@ router.post('/:path/setting', async request => {
             let turnstileSetCookie = null
             if (typeof content === 'string' && isTurnstileEnabled() && !(valid && role === 'edit')) {
                 const headerToken = request.headers.get('cf-turnstile-response') || request.headers.get('x-turnstile-token')
-                let bodyToken = headerToken
-                if (!bodyToken) {
-                    const jsonClone = await request.clone().json().catch(() => ({}))
-                    bodyToken = jsonClone?.['cf-turnstile-response'] || jsonClone?.turnstileToken || null
-                }
+                const bodyToken = headerToken || body?.['cf-turnstile-response'] || body?.turnstileToken || null
                 const turnstileCheck = await verifyTurnstileAccess(request, bodyToken)
                 if (!turnstileCheck.ok) {
                     return returnJSON(403, 'Turnstile verification required', { status: 403 }, {

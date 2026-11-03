@@ -2640,30 +2640,31 @@ ${getMarkdownCss()}
         let saveQueued = false
         let allowUnload = false
         const hasUnsavedChanges = () => Boolean($textarea && $textarea.value !== savedContent)
-        const $syncStatusBadge = document.querySelector('#sync-status-badge')
-        const $syncStatusText = $syncStatusBadge?.querySelector('.sync-status-text')
+        const $syncStatusBadge = document.querySelector('#share-menu-btn') || document.querySelector('#sync-status-badge')
+        const $syncStatusText = document.querySelector('.sync-status-text')
 
         const showSaveStatus = (message, isError = false, statusType = 'local') => {
             if ($loading) {
                 $loading.setAttribute('aria-label', message)
                 $loading.dataset.saveStatus = isError ? 'error' : 'saved'
             }
-            if ($syncStatusBadge && $syncStatusText) {
-                $syncStatusText.textContent = message
-                $syncStatusBadge.dataset.status = isError ? 'error' : statusType
+            const effectiveStatus = isError ? 'error' : statusType
+            if ($syncStatusBadge) {
+                $syncStatusBadge.dataset.status = effectiveStatus
                 const actionHint = APP_STATE.isPublished
-                    ? (APP_STATE.lang === 'zh-TW' ? ' (點擊立即同步至雲端)' : ' (Click to sync to cloud)')
+                    ? (APP_STATE.lang === 'zh-TW' ? ' (點擊展開設定)' : ' (Click for options)')
                     : (APP_STATE.lang === 'zh-TW' ? ' (點擊發布並同步)' : ' (Click to publish & sync)')
                 const tooltipText = message + actionHint
                 $syncStatusBadge.title = tooltipText
                 $syncStatusBadge.dataset.tooltip = tooltipText
             }
-        }
-
-        if ($syncStatusBadge) {
-            $syncStatusBadge.addEventListener('click', () => {
-                saveCurrentNote()
-            })
+            const innerBadge = document.querySelector('#sync-status-badge')
+            if (innerBadge && innerBadge !== $syncStatusBadge) {
+                innerBadge.dataset.status = effectiveStatus
+            }
+            if ($syncStatusText) {
+                $syncStatusText.textContent = message
+            }
         }
 
         const getSaveBlockedMessage = () => APP_STATE.lang === 'zh-TW'
@@ -4187,11 +4188,26 @@ ${getMarkdownCss()}
             const isZh = APP_STATE.lang === 'zh-TW'
             if (shareBtn) {
                 shareBtn.classList.toggle('is-published', isPublished)
+                const shareTooltip = isPublished
+                    ? (isZh ? '已發布 (雲端已同步，點擊展開設定)' : 'Cloud synced (click for options)')
+                    : (isZh ? '草稿筆記 (點擊發布並同步)' : 'Draft note (click to publish & sync)')
+                shareBtn.title = shareTooltip
+                shareBtn.dataset.tooltip = shareTooltip
             }
             if (shareBtnLabel) {
                 shareBtnLabel.textContent = isPublished
                     ? (isZh ? '已發布' : 'Live')
                     : (isZh ? '發布' : 'Publish')
+            }
+            const sharePublishBtn = document.getElementById('share-publish-menu-btn')
+            if (sharePublishBtn) {
+                sharePublishBtn.style.display = isPublished ? 'none' : ''
+            }
+            const saveSyncMenuLabel = document.getElementById('save-sync-menu-label')
+            if (saveSyncMenuLabel) {
+                saveSyncMenuLabel.textContent = isPublished
+                    ? (isZh ? '儲存與同步' : 'Save & Sync')
+                    : (isZh ? '發布與同步' : 'Publish & Sync')
             }
             const saveBtnTitle = document.getElementById('save-note-btn-title')
             const saveBtnSubtitle = document.getElementById('save-note-btn-subtitle')
@@ -4215,11 +4231,17 @@ ${getMarkdownCss()}
             if ($syncStatusBadge) {
                 $syncStatusBadge.dataset.status = isPublished ? 'cloud-synced' : 'local'
                 const syncBadgeTooltip = isPublished
-                    ? (isZh ? '雲端已同步。點擊立即同步最新修改' : 'Cloud synced. Click to sync latest changes')
-                    : (isZh ? '本機已即時保存；尚未發布至雲端 (點擊發布並同步)' : 'Saved locally; not published to cloud yet (click to publish & sync)')
+                    ? (isZh ? '已發布 (雲端已同步，點擊展開設定)' : 'Cloud synced (click for options)')
+                    : (isZh ? '草稿筆記 (點擊發布並同步)' : 'Draft note (click to publish & sync)')
                 $syncStatusBadge.title = syncBadgeTooltip
                 $syncStatusBadge.dataset.tooltip = syncBadgeTooltip
                 $syncStatusBadge.setAttribute('aria-label', isPublished ? (isZh ? '雲端同步狀態' : 'Cloud sync status') : (isZh ? '尚未發布至雲端 (點擊發布並同步)' : 'Not published to cloud (click to publish & sync)'))
+                const innerBadge = document.querySelector('#sync-status-badge')
+                if (innerBadge && innerBadge !== $syncStatusBadge) {
+                    innerBadge.dataset.status = isPublished ? 'cloud-synced' : 'local'
+                    innerBadge.title = syncBadgeTooltip
+                    innerBadge.dataset.tooltip = syncBadgeTooltip
+                }
             }
             syncShareMenuUI()
             if ($autosaveToggle) {

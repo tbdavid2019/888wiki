@@ -63,7 +63,7 @@ test('publishing remembers one unified set of choices and applies it atomically'
     assert.doesNotMatch(baseTemplateSource, /const promptEnableAutosave = async/)
     assert.doesNotMatch(baseTemplateSource, /if \(!wasPublished\) await promptEnableAutosave\(\)/)
     assert.doesNotMatch(baseTemplateSource, /APP_STATE\.isEdit && APP_STATE\.isPublished[\s\S]*cf-notepad-from-share/)
-    assert.match(indexSource, /const \{ share, theme, (?:title, )?width, shareFont, publicIndex, content, autosave, annotationsEnabled \}/)
+    assert.match(indexSource, /const\s*\{\s*[\s\S]*?share,\s*theme,\s*(?:title,\s*)?width,\s*shareFont,\s*publicIndex,\s*content,\s*autosave,\s*annotationsEnabled[\s\S]*?\}\s*=\s*(?:body|await request\.json\(\))/)
     assert.match(indexSource, /autosave !== undefined && \{ autosave: autosave === true \}/)
 })
 
@@ -73,7 +73,7 @@ test('markdown export prefers the note title for the downloaded filename', () =>
 
 test('publishing can persist the current editor content in the same request', () => {
     assert.match(baseTemplateSource, /body: JSON\.stringify\(\{[\s\S]*share: true,[\s\S]*content:/)
-    assert.match(indexSource, /const \{ share, theme, (?:title, )?width, shareFont, publicIndex, content, autosave, annotationsEnabled \}/)
+    assert.match(indexSource, /const\s*\{\s*[\s\S]*?share,\s*theme,\s*(?:title,\s*)?width,\s*shareFont,\s*publicIndex,\s*content,\s*autosave,\s*annotationsEnabled[\s\S]*?\}\s*=\s*(?:body|await request\.json\(\))/)
     assert.match(indexSource, /typeof content === 'string'/)
 })
 

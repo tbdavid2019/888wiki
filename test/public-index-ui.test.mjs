@@ -20,7 +20,7 @@ test('x-ai theme keeps every heading level visible on the dark preview canvas', 
 })
 
 test('setting route persists publicIndex metadata and clears it on unpublish', () => {
-    assert.match(indexSource, /const\s+\{\s*share,\s*theme,\s*(?:title,\s*)?width,\s*shareFont,\s*publicIndex,\s*content,\s*autosave,\s*annotationsEnabled\s*\}\s*=\s*await request\.json\(\)/)
+    assert.match(indexSource, /const\s*\{\s*[\s\S]*?share,\s*theme,\s*(?:title,\s*)?width,\s*shareFont,\s*publicIndex,\s*content,\s*autosave,\s*annotationsEnabled[\s\S]*?\}\s*=\s*(?:body|await request\.json\(\))/)
     assert.match(indexSource, /publicIndex !== undefined && \{ publicIndex: publicIndex === true \}/)
     assert.match(indexSource, /if \(share === false\) \{\s*nextMetadata\.publicIndex = false/s)
 })

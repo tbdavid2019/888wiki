@@ -23,7 +23,7 @@ test('API writes persist a validated width and default it when omitted', () => {
 })
 
 test('setting route persists share, theme, width, share font, publicIndex, autosave, and annotation metadata', () => {
-    assert.match(indexSource, /const\s+\{\s*share,\s*theme,\s*(?:title,\s*)?width,\s*shareFont,\s*publicIndex,\s*content,\s*autosave,\s*annotationsEnabled\s*\}\s*=\s*await request\.json\(\)/)
+    assert.match(indexSource, /const\s*\{\s*[\s\S]*?share,\s*theme,\s*(?:title,\s*)?width,\s*shareFont,\s*publicIndex,\s*content,\s*autosave,\s*annotationsEnabled[\s\S]*?\}\s*=\s*(?:body|await request\.json\(\))/)
     assert.match(indexSource, /\.\.\.normalizedWidth !== undefined && \{ width: normalizedWidth \}/)
     assert.match(indexSource, /\.\.\.shareFont !== undefined && \{ shareFont \}/)
     assert.match(indexSource, /\.\.\.autosave !== undefined && \{ autosave: autosave === true \}/)

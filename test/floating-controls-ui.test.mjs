@@ -346,6 +346,19 @@ test('autosave switch in draft mode allows pointer interaction and base.js synch
     assert.match(baseTemplateSource, /\$syncStatusBadge\.dataset\.status\s*=\s*isPublished\s*\?\s*'cloud-synced'\s*:\s*'local'/)
 })
 
+test('share-dropdown container is not hidden by save-dropdown style rules', () => {
+    const editDoc = renderFooter({ isEdit: true, mode: 'md' })
+    const shareDropdown = editDoc.querySelector('#share-dropdown')
+    assert.ok(shareDropdown, '#share-dropdown must exist')
+    assert.equal(shareDropdown.classList.contains('share-dropdown'), true)
+    assert.equal(shareDropdown.classList.contains('save-dropdown'), false, '#share-dropdown must not have save-dropdown class to avoid display:none collision')
+    assert.equal(shareDropdown.classList.contains('publish-sync-dropdown'), true)
+    const saveDropdown = editDoc.querySelector('#save-dropdown')
+    assert.ok(saveDropdown, '#save-dropdown must exist')
+    assert.equal(saveDropdown.classList.contains('save-dropdown'), true)
+    assert.match(baseCssSource, /\.publish-sync-capsule-group\s*\.save-dropdown:not\(\.share-dropdown\)/)
+})
+
 
 
 

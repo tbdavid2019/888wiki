@@ -769,14 +769,54 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
             <div class="footer-section footer-section-edit">
                 <div class="footer-section-body">
                     ${isEdit ? `
-                        <div class="footer-control-group publish-sync-capsule-group" id="publish-sync-group">
-                            <div class="dropdown-container share-dropdown" id="share-dropdown">
-                                <button type="button" id="share-menu-btn" class="toolbar-icon-button dropdown-trigger share-menu-trigger opt-share ${share && shareId ? 'is-published' : ''}" data-tooltip="${lang === 'zh-TW' ? '發布與分享選項' : 'Publish & Share options'}" title="${lang === 'zh-TW' ? '發布與分享選項' : 'Publish & Share options'}" aria-label="${lang === 'zh-TW' ? '發布與分享選項' : 'Publish & Share options'}" aria-haspopup="menu" aria-expanded="false">
-                                    <span class="share-button-icon">${SVG_ICONS.globe}</span>
+                        <div class="footer-control-group publish-sync-capsule-group publish-sync-dropdown" id="publish-sync-group">
+                            <div class="dropdown-container share-dropdown publish-sync-dropdown" id="share-dropdown">
+                                <button type="button" id="share-menu-btn" class="toolbar-icon-button dropdown-trigger share-menu-trigger sync-status-badge opt-share ${share && shareId ? 'is-published' : ''}" data-status="${share && shareId ? 'synced' : 'local'}" data-tooltip="${share && shareId ? (lang === 'zh-TW' ? '已發布 (雲端已同步，點擊展開設定)' : 'Cloud synced (click for options)') : (lang === 'zh-TW' ? '草稿筆記 (點擊發布並同步)' : 'Draft note (click to publish & sync)')}" title="${share && shareId ? (lang === 'zh-TW' ? '已發布 (雲端已同步，點擊展開設定)' : 'Cloud synced (click for options)') : (lang === 'zh-TW' ? '草稿筆記 (點擊發布並同步)' : 'Draft note (click to publish & sync)')}" aria-label="${lang === 'zh-TW' ? '雲端發布與同步' : 'Publish & Sync'}" aria-haspopup="menu" aria-expanded="false">
+                                    <span id="sync-status-badge" class="sync-status-badge-inline" data-status="${share && shareId ? 'synced' : 'local'}" data-tooltip="${share && shareId ? (lang === 'zh-TW' ? '已發布 (雲端已同步，點擊展開設定)' : 'Cloud synced (click for options)') : (lang === 'zh-TW' ? '草稿筆記 (點擊發布並同步)' : 'Draft note (click to publish & sync)')}">
+                                        <span class="sync-status-icon">${SVG_ICONS.cloud}</span>
+                                        <span class="sync-status-dot"></span>
+                                        <span class="sync-status-text sr-only">${share && shareId ? (lang === 'zh-TW' ? '雲端已同步' : 'Cloud synced') : (lang === 'zh-TW' ? '本機已存' : 'Saved locally')}</span>
+                                    </span>
                                     <span class="toolbar-button-label" id="share-btn-label">${share && shareId ? (lang === 'zh-TW' ? '已發布' : 'Live') : (lang === 'zh-TW' ? '發布' : 'Publish')}</span>
                                     <span class="toolbar-button-caret" aria-hidden="true">▾</span>
                                 </button>
-                                <div class="dropdown-menu share-dropdown-menu" role="menu">
+                                <div id="save-dropdown" class="save-dropdown save-dropdown-alias sr-only" style="display:none;" aria-hidden="true"></div>
+                                <div class="dropdown-menu share-dropdown-menu save-dropdown-menu" role="menu">
+                                    <div class="dropdown-menu-label" id="save-sync-menu-label">${share && shareId ? (lang === 'zh-TW' ? '儲存與同步' : 'Save & Sync') : (lang === 'zh-TW' ? '發布與同步' : 'Publish & Sync')}</div>
+                                    <div class="dropdown-group-card">
+                                        <button type="button" class="dropdown-item dropdown-item-rich share-publish-menu-btn" id="share-publish-menu-btn" ${share && shareId ? 'style="display:none;"' : ''}>
+                                            ${SVG_ICONS.globe}
+                                            <span class="dropdown-item-copy">
+                                                <strong>${lang === 'zh-TW' ? '發布此筆記至雲端' : 'Publish Note to Cloud'}</strong>
+                                                <small>${lang === 'zh-TW' ? '產生公開閱讀與簡報連結，並開啟即時同步' : 'Generate public share links & enable live sync'}</small>
+                                            </span>
+                                        </button>
+                                        <button type="button" id="save-note-btn" class="dropdown-item dropdown-item-rich" data-tooltip="${share && shareId ? (lang === 'zh-TW' ? '儲存文章' : 'Save note') : (lang === 'zh-TW' ? '發布並同步' : 'Publish & Sync')}" title="${share && shareId ? (lang === 'zh-TW' ? '儲存文章' : 'Save note') : (lang === 'zh-TW' ? '發布並同步' : 'Publish & Sync')}" aria-label="${share && shareId ? (lang === 'zh-TW' ? '儲存文章' : 'Save note') : (lang === 'zh-TW' ? '發布並同步' : 'Publish & Sync')}">
+                                            ${SVG_ICONS.save}
+                                            <span class="dropdown-item-copy">
+                                                <strong id="save-note-btn-title">${share && shareId ? (lang === 'zh-TW' ? '立即同步至雲端' : 'Sync to Cloud Now') : (lang === 'zh-TW' ? '發布並同步至雲端' : 'Publish & Sync to Cloud')}</strong>
+                                                <small id="save-note-btn-subtitle">${share && shareId ? (lang === 'zh-TW' ? '儲存當前修改並寫入雲端' : 'Save current changes to cloud') : (lang === 'zh-TW' ? '首次儲存需發布以建立雲端連結' : 'Publish note to enable cloud sync')}</small>
+                                            </span>
+                                            <span class="toolbar-button-label" style="display:none;">${lang === 'zh-TW' ? '儲存' : 'Save'}</span>
+                                            <kbd class="dropdown-shortcut">⌘S</kbd>
+                                        </button>
+                                        <div class="dropdown-item-toggle">
+                                            <span>${lang === 'zh-TW' ? '自動儲存 (10秒閒置)' : 'Autosave (10s idle)'}</span>
+                                            ${RAIL_SWITCH({
+                                                id: 'autosave-toggle', // id="autosave-toggle"
+                                                className: 'autosave-rail-switch' + (share && shareId ? '' : ' is-disabled'),
+                                                checked: autosave !== false && share === true,
+                                                disabled: false,
+                                                ariaLabel: lang === 'zh-TW' ? '啟用文章自動儲存' : 'Enable note autosave',
+                                                checkedTitle: share ? (lang === 'zh-TW' ? '停止輸入 10 秒後自動儲存' : 'Save automatically after 10 seconds of inactivity') : (lang === 'zh-TW' ? '請先發布文章才能啟用 autosave (點擊開啟發布)' : 'Publish this note before enabling autosave (click to publish)'),
+                                                uncheckedTitle: share ? (lang === 'zh-TW' ? '停止輸入 10 秒後自動儲存' : 'Save automatically after 10 seconds of inactivity') : (lang === 'zh-TW' ? '請先發布文章才能啟用 autosave (點擊開啟發布)' : 'Publish this note before enabling autosave (click to publish)'),
+                                                checkedText: lang === 'zh-TW' ? '自動' : 'Auto',
+                                                uncheckedText: lang === 'zh-TW' ? '手動' : 'Manual',
+                                                checkedValue: 'true',
+                                                uncheckedValue: 'false',
+                                            })}
+                                        </div>
+                                    </div>
                                     <div class="share-menu-published" ${share && shareId ? '' : 'hidden'}>
                                         <div class="dropdown-menu-label">${lang === 'zh-TW' ? '檢視閱讀模式' : 'View & Reader Modes'}</div>
                                         <div class="dropdown-group-card">
@@ -826,6 +866,27 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                                                 </span>
                                             </button>
                                         </div>
+                                        <div class="dropdown-menu-label">${lang === 'zh-TW' ? '版本與紀錄' : 'History & Records'}</div>
+                                        <div class="dropdown-group-card">
+                                            ${showNoteHistory ? `
+                                                <button type="button" id="note-history-btn" class="toolbar-icon-button note-history-trigger dropdown-item dropdown-item-rich" data-tooltip="${t.historyTitle}" aria-haspopup="dialog" aria-expanded="false" title="${t.historyTitle}" aria-label="${t.historyTitle}">
+                                                    ${SVG_ICONS.history}
+                                                    <span class="dropdown-item-copy">
+                                                        <strong>${t.historyTitle}</strong>
+                                                        <small>${lang === 'zh-TW' ? '檢視歷史修訂版本與還原' : 'View past revisions & restore'}</small>
+                                                    </span>
+                                                    <span class="sr-only">${t.historyTitle}</span>
+                                                </button>
+                                            ` : ''}
+                                            <button type="button" id="share-history-btn" class="toolbar-icon-button share-history-trigger dropdown-item dropdown-item-rich" data-tooltip="${t.recentSharesTitle}" title="${lang === 'zh-TW' ? '最近分享紀錄' : 'Recent shares'}" aria-label="${lang === 'zh-TW' ? '最近分享紀錄' : 'Recent shares'}" aria-haspopup="dialog" aria-expanded="false">
+                                                ${SVG_ICONS.shareHistory}
+                                                <span class="dropdown-item-copy">
+                                                    <strong>${t.recentSharesTitle}</strong>
+                                                    <small>${lang === 'zh-TW' ? '瀏覽本機建立過的所有發布連結' : 'Recent shares on this browser'}</small>
+                                                </span>
+                                                <span class="sr-only">${t.recentSharesTitle}</span>
+                                            </button>
+                                        </div>
                                         ${SECURITY_CONTROLS_RENDER({ lang, pw, vpw, suffix: '' })}
                                         <div class="dropdown-menu-label">${lang === 'zh-TW' ? '分享設定' : 'Share Settings'}</div>
                                         <div class="dropdown-group-card">
@@ -852,14 +913,25 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                                         </div>
                                     </div>
                                     <div class="share-menu-unpublished" ${share && shareId ? 'hidden' : ''}>
-                                        <div class="dropdown-menu-label">${lang === 'zh-TW' ? '發布選項' : 'Publish Options'}</div>
+                                        <div class="dropdown-menu-label">${lang === 'zh-TW' ? '版本與紀錄' : 'History & Records'}</div>
                                         <div class="dropdown-group-card">
-                                            <button type="button" class="dropdown-item dropdown-item-rich share-publish-menu-btn" id="share-publish-menu-btn">
-                                                ${SVG_ICONS.globe}
+                                            ${showNoteHistory ? `
+                                                <button type="button" id="note-history-btn-draft" class="toolbar-icon-button note-history-trigger dropdown-item dropdown-item-rich" data-tooltip="${t.historyTitle}" aria-haspopup="dialog" aria-expanded="false" title="${t.historyTitle}" aria-label="${t.historyTitle}">
+                                                    ${SVG_ICONS.history}
+                                                    <span class="dropdown-item-copy">
+                                                        <strong>${t.historyTitle}</strong>
+                                                        <small>${lang === 'zh-TW' ? '檢視歷史修訂版本與還原' : 'View past revisions & restore'}</small>
+                                                    </span>
+                                                    <span class="sr-only">${t.historyTitle}</span>
+                                                </button>
+                                            ` : ''}
+                                            <button type="button" id="share-history-btn-draft" class="toolbar-icon-button share-history-trigger dropdown-item dropdown-item-rich" data-tooltip="${t.recentSharesTitle}" title="${lang === 'zh-TW' ? '最近分享紀錄' : 'Recent shares'}" aria-label="${lang === 'zh-TW' ? '最近分享紀錄' : 'Recent shares'}" aria-haspopup="dialog" aria-expanded="false">
+                                                ${SVG_ICONS.shareHistory}
                                                 <span class="dropdown-item-copy">
-                                                    <strong>${lang === 'zh-TW' ? '發布此筆記' : 'Publish Note'}</strong>
-                                                    <small>${lang === 'zh-TW' ? '產生公開閱讀與簡報連結' : 'Generate public share & presentation links'}</small>
+                                                    <strong>${t.recentSharesTitle}</strong>
+                                                    <small>${lang === 'zh-TW' ? '瀏覽本機建立過的所有發布連結' : 'Recent shares on this browser'}</small>
                                                 </span>
+                                                <span class="sr-only">${t.recentSharesTitle}</span>
                                             </button>
                                         </div>
                                         ${SECURITY_CONTROLS_RENDER({ lang, pw, vpw, suffix: '-draft' })}
@@ -884,69 +956,6 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                                     </div>
                                 </div>
                             </div>
-                            <div class="dropdown-container save-dropdown" id="save-dropdown">
-                                <div class="save-control-group save-capsule-group" aria-label="${lang === 'zh-TW' ? '儲存設定' : 'Save settings'}">
-                                    <button type="button" id="sync-status-badge" class="sync-status-badge" data-status="${share && shareId ? 'synced' : 'local'}" data-tooltip="${share && shareId ? (lang === 'zh-TW' ? '雲端已同步。點擊立即同步最新修改' : 'Cloud synced. Click to sync latest changes') : (lang === 'zh-TW' ? '本機已即時保存；尚未發布至雲端 (點擊發布並同步)' : 'Saved locally; not published to cloud yet (click to publish & sync)')}" title="${share && shareId ? (lang === 'zh-TW' ? '雲端已同步。點擊立即同步最新修改' : 'Cloud synced. Click to sync latest changes') : (lang === 'zh-TW' ? '本機已即時保存；尚未發布至雲端 (點擊發布並同步)' : 'Saved locally; not published to cloud yet (click to publish & sync)')}" aria-label="${lang === 'zh-TW' ? '同步狀態' : 'Sync status'}">
-                                        <span class="sync-status-icon">${SVG_ICONS.cloud}</span>
-                                        <span class="sync-status-dot"></span>
-                                        <span class="sync-status-text sr-only">${share && shareId ? (lang === 'zh-TW' ? '雲端已同步' : 'Cloud synced') : (lang === 'zh-TW' ? '本機已存' : 'Saved locally')}</span>
-                                    </button>
-                                    <button type="button" id="save-menu-trigger-btn" class="toolbar-icon-button dropdown-trigger save-menu-trigger" data-tooltip="${lang === 'zh-TW' ? '儲存與歷史選項' : 'Save & history options'}" title="${lang === 'zh-TW' ? '儲存與歷史選項' : 'Save & history options'}" aria-label="${lang === 'zh-TW' ? '儲存與歷史選項' : 'Save & history options'}" aria-haspopup="menu" aria-expanded="false">
-                                        <span class="toolbar-button-caret" aria-hidden="true">▾</span>
-                                    </button>
-                                </div>
-                                <div class="dropdown-menu save-dropdown-menu" role="menu">
-                                    <div class="dropdown-menu-label">${lang === 'zh-TW' ? '儲存與同步' : 'Save & Sync'}</div>
-                                    <div class="dropdown-group-card">
-                                        <button type="button" id="save-note-btn" class="dropdown-item dropdown-item-rich" data-tooltip="${share && shareId ? (lang === 'zh-TW' ? '儲存文章' : 'Save note') : (lang === 'zh-TW' ? '發布並同步' : 'Publish & Sync')}" title="${share && shareId ? (lang === 'zh-TW' ? '儲存文章' : 'Save note') : (lang === 'zh-TW' ? '發布並同步' : 'Publish & Sync')}" aria-label="${share && shareId ? (lang === 'zh-TW' ? '儲存文章' : 'Save note') : (lang === 'zh-TW' ? '發布並同步' : 'Publish & Sync')}">
-                                            ${SVG_ICONS.save}
-                                            <span class="dropdown-item-copy">
-                                                <strong id="save-note-btn-title">${share && shareId ? (lang === 'zh-TW' ? '立即同步至雲端' : 'Sync to Cloud Now') : (lang === 'zh-TW' ? '發布並同步至雲端' : 'Publish & Sync to Cloud')}</strong>
-                                                <small id="save-note-btn-subtitle">${share && shareId ? (lang === 'zh-TW' ? '儲存當前修改並寫入雲端' : 'Save current changes to cloud') : (lang === 'zh-TW' ? '首次儲存需發布以建立雲端連結' : 'Publish note to enable cloud sync')}</small>
-                                            </span>
-                                            <span class="toolbar-button-label" style="display:none;">${lang === 'zh-TW' ? '儲存' : 'Save'}</span>
-                                            <kbd class="dropdown-shortcut">⌘S</kbd>
-                                        </button>
-                                    <div class="dropdown-item-toggle">
-                                        <span>${lang === 'zh-TW' ? '自動儲存 (10秒閒置)' : 'Autosave (10s idle)'}</span>
-                                        ${RAIL_SWITCH({
-                                            id: 'autosave-toggle', // id="autosave-toggle"
-                                            className: 'autosave-rail-switch' + (share && shareId ? '' : ' is-disabled'),
-                                            checked: autosave !== false && share === true,
-                                            disabled: false,
-                                            ariaLabel: lang === 'zh-TW' ? '啟用文章自動儲存' : 'Enable note autosave',
-                                            checkedTitle: share ? (lang === 'zh-TW' ? '停止輸入 10 秒後自動儲存' : 'Save automatically after 10 seconds of inactivity') : (lang === 'zh-TW' ? '請先發布文章才能啟用 autosave (點擊開啟發布)' : 'Publish this note before enabling autosave (click to publish)'),
-                                            uncheckedTitle: share ? (lang === 'zh-TW' ? '停止輸入 10 秒後自動儲存' : 'Save automatically after 10 seconds of inactivity') : (lang === 'zh-TW' ? '請先發布文章才能啟用 autosave (點擊開啟發布)' : 'Publish this note before enabling autosave (click to publish)'),
-                                            checkedText: lang === 'zh-TW' ? '自動' : 'Auto',
-                                            uncheckedText: lang === 'zh-TW' ? '手動' : 'Manual',
-                                            checkedValue: 'true',
-                                            uncheckedValue: 'false',
-                                        })}
-                                    </div>
-                                </div>
-                                <div class="dropdown-menu-label">${lang === 'zh-TW' ? '版本與紀錄' : 'History & Records'}</div>
-                                <div class="dropdown-group-card">
-                                    ${showNoteHistory ? `
-                                        <button type="button" id="note-history-btn" class="toolbar-icon-button note-history-trigger dropdown-item dropdown-item-rich" data-tooltip="${t.historyTitle}" aria-haspopup="dialog" aria-expanded="false" title="${t.historyTitle}" aria-label="${t.historyTitle}">
-                                            ${SVG_ICONS.history}
-                                            <span class="dropdown-item-copy">
-                                                <strong>${t.historyTitle}</strong>
-                                                <small>${lang === 'zh-TW' ? '檢視歷史修訂版本與還原' : 'View past revisions & restore'}</small>
-                                            </span>
-                                            <span class="sr-only">${t.historyTitle}</span>
-                                        </button>
-                                    ` : ''}
-                                    <button type="button" id="share-history-btn" class="toolbar-icon-button share-history-trigger dropdown-item dropdown-item-rich" data-tooltip="${t.recentSharesTitle}" title="${lang === 'zh-TW' ? '最近分享紀錄' : 'Recent shares'}" aria-label="${lang === 'zh-TW' ? '最近分享紀錄' : 'Recent shares'}" aria-haspopup="dialog" aria-expanded="false">
-                                        ${SVG_ICONS.shareHistory}
-                                        <span class="dropdown-item-copy">
-                                            <strong>${t.recentSharesTitle}</strong>
-                                            <small>${lang === 'zh-TW' ? '瀏覽本機建立過的所有發布連結' : 'Recent shares on this browser'}</small>
-                                        </span>
-                                        <span class="sr-only">${t.recentSharesTitle}</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
                         </div>
                         ${!isEdit || isBlockEditor || mode === 'md' ? `
                             ${THEME_DROPDOWN_MENU(lang, theme, getThemeLabel)}
