@@ -3193,9 +3193,12 @@ html[data-ui-theme="dark"] .share-menu-trigger.is-published {
 .publish-sync-dropdown .share-menu-trigger {
     display: inline-flex !important;
     align-items: center !important;
+    justify-content: center !important;
+    width: auto !important;
+    min-width: 38px !important;
     height: 28px !important;
-    padding: 0 8px !important;
-    gap: 5px;
+    padding: 0 6px !important;
+    gap: 3px !important;
     border: 1px solid var(--toolbar-border, #e6dfd8) !important;
     border-radius: var(--toolbar-radius, 6px) !important;
     background: var(--toolbar-bg, #faf9f5) !important;
@@ -3204,6 +3207,8 @@ html[data-ui-theme="dark"] .share-menu-trigger.is-published {
     font-weight: 500;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
     cursor: pointer;
+    box-sizing: border-box !important;
+    white-space: nowrap !important;
     transition: border-color 0.16s ease, color 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease;
 }
 .publish-sync-capsule-group .share-menu-trigger:hover,
@@ -3224,28 +3229,44 @@ html[data-ui-theme="dark"] .share-menu-trigger.is-published {
 .publish-sync-dropdown .save-dropdown-alias {
     display: none !important;
 }
+.publish-sync-dropdown #sync-status-badge,
+.sync-status-badge-inline {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    line-height: 1 !important;
+    flex-shrink: 0 !important;
+}
 .publish-sync-dropdown .sync-status-icon,
 .share-menu-trigger .sync-status-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     color: inherit;
+    line-height: 1 !important;
 }
 .publish-sync-dropdown .sync-status-icon svg,
 .share-menu-trigger .sync-status-icon svg {
-    width: 14px;
-    height: 14px;
+    width: 14px !important;
+    height: 14px !important;
+    display: block !important;
 }
 .publish-sync-dropdown .sync-status-dot,
 .share-menu-trigger .sync-status-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    margin-left: -2px;
-    margin-right: 2px;
-    flex-shrink: 0;
-    background: #64748b;
-    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.6);
+    width: 6px !important;
+    height: 6px !important;
+    border-radius: 50% !important;
+    margin-left: -2px !important;
+    margin-right: 1px !important;
+    flex-shrink: 0 !important;
+    display: inline-block !important;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.6) !important;
 }
 .publish-sync-dropdown .share-menu-trigger[data-status="synced"] .sync-status-dot,
 .publish-sync-dropdown .share-menu-trigger[data-status="cloud-synced"] .sync-status-dot,
@@ -3270,6 +3291,22 @@ html[data-ui-theme="dark"] .share-menu-trigger.is-published {
 .share-menu-trigger[data-status="error"] .sync-status-dot {
     background: #ef4444;
 }
+.publish-sync-dropdown .toolbar-button-caret,
+.share-menu-trigger .toolbar-button-caret {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 9px !important;
+    line-height: 1 !important;
+    opacity: 0.75 !important;
+    flex-shrink: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.publish-sync-dropdown .toolbar-button-label,
+.publish-sync-capsule-group .toolbar-button-label {
+    display: none !important;
+}
 @media (max-width: 640px) {
     .publish-sync-dropdown .toolbar-button-label,
     .publish-sync-capsule-group .toolbar-button-label {
@@ -3278,7 +3315,7 @@ html[data-ui-theme="dark"] .share-menu-trigger.is-published {
     .publish-sync-dropdown .share-menu-trigger,
     .publish-sync-capsule-group .share-menu-trigger {
         padding: 0 6px !important;
-        gap: 4px;
+        gap: 3px !important;
     }
 }
 .save-dropdown {

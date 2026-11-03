@@ -359,7 +359,16 @@ test('share-dropdown container is not hidden by save-dropdown style rules', () =
     assert.match(baseCssSource, /\.publish-sync-capsule-group\s*\.save-dropdown:not\(\.share-dropdown\)/)
 })
 
+test('share-menu-trigger has auto width and minimum width to prevent square button clamping and caret overflow', () => {
+    const editDoc = renderFooter({ isEdit: true, mode: 'md' })
+    const shareBtn = editDoc.querySelector('#share-menu-btn')
+    assert.ok(shareBtn, '#share-menu-btn must exist in edit mode footer')
+    assert.ok(shareBtn.querySelector('.sync-status-badge-inline'), 'inline badge must be inside #share-menu-btn')
+    assert.ok(shareBtn.querySelector('.toolbar-button-caret'), 'caret must be inside #share-menu-btn')
 
-
-
+    // CSS rules must override square toolbar-icon-button (28px) with width: auto !important and min-width: 38px !important
+    assert.match(baseCssSource, /\.publish-sync-dropdown\s*\.share-menu-trigger[\s\S]*?width:\s*auto\s*!important/)
+    assert.match(baseCssSource, /\.publish-sync-dropdown\s*\.share-menu-trigger[\s\S]*?min-width:\s*38px\s*!important/)
+    assert.match(baseCssSource, /\.publish-sync-dropdown\s*\.toolbar-button-caret[\s\S]*?font-size:\s*9px\s*!important/)
+})
 

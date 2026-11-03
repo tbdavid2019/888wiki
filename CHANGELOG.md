@@ -2,6 +2,12 @@
 
 ## [2026-11-03]
 
+- **🎨 修復底欄「發布與同步」圖示按鈕跑版與箭頭溢出缺陷（Fix Share & Sync Toolbar Button Layout & Caret Overflow）**：
+  - **根因分析與徹底修正**：修復 `#share-menu-btn` 因繼承通用 `.toolbar-icon-button` 之 `width: var(--toolbar-height)`（28px 正方形）設定，導致按鈕內部雲端圖示（14px）與同步狀態圓點（6px）佔滿內部空間後，下拉三角形箭頭（`▾`）被推擠溢出按鈕右邊框、懸浮於按鈕與色盤按鈕之間的「跑版」視覺缺陷。
+  - **精確邊界與彈性自適應寬度（Fluid Width & Clean Encapsulation）**：於 `src/styles/base.css.js` 為 `.share-menu-trigger` 配置 `width: auto !important` 與 `min-width: 38px !important`，搭配緊湊內距（`padding: 0 6px !important`）與微間距（`gap: 3px !important`），並為 `.sync-status-badge-inline`、`.sync-status-icon`（14px）、`.sync-status-dot`（6px）與 `.toolbar-button-caret`（9px 居中緊湊對齊）建立高優先級的 flex 佈局規則，確保 `[ ☁️ 🟢 ▾ ]` 完整優雅包裹於按鈕內。
+  - **自動化防護測試**：於 [`test/floating-controls-ui.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/floating-controls-ui.test.mjs) 新增樣式防護測試，嚴格校驗自適應寬度與箭頭規範，杜絕任何正方形寬度覆蓋回歸。
+
+
 - **🌐 底欄「發布與同步」極簡整合為單一按鈕與統一選單（Unified Publish & Sync Single Toolbar Button & Dropdown）**：
   - **徹底告別底欄雙按鈕割裂感**：響應使用者明確要求「將底欄發布與同步真正整合為 1 個按鈕」，移除以往相鄰並列的 `[ 🌐 ▾ | ☁️ 🟢 | ▾ ]` 雙觸發按鈕結構，全面整合成單一無縫的 **「發布與同步」旗艦按鈕（`#share-menu-btn` / `.publish-sync-dropdown`）**，在底欄直覺呈現 `[ ☁️ 🟢 已發布 ▾ ]`（已發布）或 `[ ☁️ ⚪ 發布 ▾ ]`（草稿），徹底告別多餘的分段隔線與繁雜感。
   - **單一整合下拉選單（Single Unified Dropdown Menu）**：點擊單一按鈕即展開完整而有序的統一控制中心：
