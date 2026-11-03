@@ -769,7 +769,7 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
             <div class="footer-section footer-section-edit">
                 <div class="footer-section-body">
                     ${isEdit ? `
-                        <div class="footer-control-group">
+                        <div class="footer-control-group publish-sync-capsule-group" id="publish-sync-group">
                             <div class="dropdown-container share-dropdown" id="share-dropdown">
                                 <button type="button" id="share-menu-btn" class="toolbar-icon-button dropdown-trigger share-menu-trigger opt-share ${share && shareId ? 'is-published' : ''}" data-tooltip="${lang === 'zh-TW' ? '發布與分享選項' : 'Publish & Share options'}" title="${lang === 'zh-TW' ? '發布與分享選項' : 'Publish & Share options'}" aria-label="${lang === 'zh-TW' ? '發布與分享選項' : 'Publish & Share options'}" aria-haspopup="menu" aria-expanded="false">
                                     <span class="share-button-icon">${SVG_ICONS.globe}</span>
@@ -884,30 +884,29 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="dropdown-container save-dropdown" id="save-dropdown">
-                            <div class="save-control-group save-capsule-group" aria-label="${lang === 'zh-TW' ? '儲存設定' : 'Save settings'}">
-                                <button type="button" id="sync-status-badge" class="sync-status-badge" data-status="local" data-tooltip="${lang === 'zh-TW' ? '本機已即時保存 (0ms)。點擊立即同步至雲端' : 'Saved locally (0ms). Click to sync to cloud'}" title="${lang === 'zh-TW' ? '本機已即時保存 (0ms)。點擊立即同步至雲端' : 'Saved locally (0ms). Click to sync to cloud'}" aria-label="${lang === 'zh-TW' ? '同步狀態' : 'Sync status'}">
-                                    <span class="sync-status-icon">${SVG_ICONS.cloud}</span>
-                                    <span class="sync-status-dot"></span>
-                                    <span class="sync-status-text sr-only">${lang === 'zh-TW' ? '本機已存' : 'Saved locally'}</span>
-                                </button>
-                                <button type="button" id="save-menu-trigger-btn" class="toolbar-icon-button dropdown-trigger save-menu-trigger" data-tooltip="${lang === 'zh-TW' ? '儲存與歷史選項' : 'Save & history options'}" title="${lang === 'zh-TW' ? '儲存與歷史選項' : 'Save & history options'}" aria-label="${lang === 'zh-TW' ? '儲存與歷史選項' : 'Save & history options'}" aria-haspopup="menu" aria-expanded="false">
-                                    <span class="toolbar-button-caret" aria-hidden="true">▾</span>
-                                </button>
-                            </div>
-                            <div class="dropdown-menu save-dropdown-menu" role="menu">
-                                <div class="dropdown-menu-label">${lang === 'zh-TW' ? '儲存與同步' : 'Save & Sync'}</div>
-                                <div class="dropdown-group-card">
-                                    <button type="button" id="save-note-btn" class="dropdown-item dropdown-item-rich" data-tooltip="${lang === 'zh-TW' ? '儲存文章' : 'Save note'}" title="${lang === 'zh-TW' ? '儲存文章' : 'Save note'}" aria-label="${lang === 'zh-TW' ? '儲存文章' : 'Save note'}">
-                                        ${SVG_ICONS.save}
-                                        <span class="dropdown-item-copy">
-                                            <strong>${lang === 'zh-TW' ? '立即同步至雲端' : 'Sync to Cloud Now'}</strong>
-                                            <small>${lang === 'zh-TW' ? '儲存當前修改並寫入雲端' : 'Save current changes to cloud'}</small>
-                                        </span>
-                                        <span class="toolbar-button-label" style="display:none;">${lang === 'zh-TW' ? '儲存' : 'Save'}</span>
-                                        <kbd class="dropdown-shortcut">⌘S</kbd>
+                            <div class="dropdown-container save-dropdown" id="save-dropdown">
+                                <div class="save-control-group save-capsule-group" aria-label="${lang === 'zh-TW' ? '儲存設定' : 'Save settings'}">
+                                    <button type="button" id="sync-status-badge" class="sync-status-badge" data-status="${share && shareId ? 'synced' : 'local'}" data-tooltip="${share && shareId ? (lang === 'zh-TW' ? '雲端已同步。點擊立即同步最新修改' : 'Cloud synced. Click to sync latest changes') : (lang === 'zh-TW' ? '本機已即時保存；尚未發布至雲端 (點擊發布並同步)' : 'Saved locally; not published to cloud yet (click to publish & sync)')}" title="${share && shareId ? (lang === 'zh-TW' ? '雲端已同步。點擊立即同步最新修改' : 'Cloud synced. Click to sync latest changes') : (lang === 'zh-TW' ? '本機已即時保存；尚未發布至雲端 (點擊發布並同步)' : 'Saved locally; not published to cloud yet (click to publish & sync)')}" aria-label="${lang === 'zh-TW' ? '同步狀態' : 'Sync status'}">
+                                        <span class="sync-status-icon">${SVG_ICONS.cloud}</span>
+                                        <span class="sync-status-dot"></span>
+                                        <span class="sync-status-text sr-only">${share && shareId ? (lang === 'zh-TW' ? '雲端已同步' : 'Cloud synced') : (lang === 'zh-TW' ? '本機已存' : 'Saved locally')}</span>
                                     </button>
+                                    <button type="button" id="save-menu-trigger-btn" class="toolbar-icon-button dropdown-trigger save-menu-trigger" data-tooltip="${lang === 'zh-TW' ? '儲存與歷史選項' : 'Save & history options'}" title="${lang === 'zh-TW' ? '儲存與歷史選項' : 'Save & history options'}" aria-label="${lang === 'zh-TW' ? '儲存與歷史選項' : 'Save & history options'}" aria-haspopup="menu" aria-expanded="false">
+                                        <span class="toolbar-button-caret" aria-hidden="true">▾</span>
+                                    </button>
+                                </div>
+                                <div class="dropdown-menu save-dropdown-menu" role="menu">
+                                    <div class="dropdown-menu-label">${lang === 'zh-TW' ? '儲存與同步' : 'Save & Sync'}</div>
+                                    <div class="dropdown-group-card">
+                                        <button type="button" id="save-note-btn" class="dropdown-item dropdown-item-rich" data-tooltip="${share && shareId ? (lang === 'zh-TW' ? '儲存文章' : 'Save note') : (lang === 'zh-TW' ? '發布並同步' : 'Publish & Sync')}" title="${share && shareId ? (lang === 'zh-TW' ? '儲存文章' : 'Save note') : (lang === 'zh-TW' ? '發布並同步' : 'Publish & Sync')}" aria-label="${share && shareId ? (lang === 'zh-TW' ? '儲存文章' : 'Save note') : (lang === 'zh-TW' ? '發布並同步' : 'Publish & Sync')}">
+                                            ${SVG_ICONS.save}
+                                            <span class="dropdown-item-copy">
+                                                <strong id="save-note-btn-title">${share && shareId ? (lang === 'zh-TW' ? '立即同步至雲端' : 'Sync to Cloud Now') : (lang === 'zh-TW' ? '發布並同步至雲端' : 'Publish & Sync to Cloud')}</strong>
+                                                <small id="save-note-btn-subtitle">${share && shareId ? (lang === 'zh-TW' ? '儲存當前修改並寫入雲端' : 'Save current changes to cloud') : (lang === 'zh-TW' ? '首次儲存需發布以建立雲端連結' : 'Publish note to enable cloud sync')}</small>
+                                            </span>
+                                            <span class="toolbar-button-label" style="display:none;">${lang === 'zh-TW' ? '儲存' : 'Save'}</span>
+                                            <kbd class="dropdown-shortcut">⌘S</kbd>
+                                        </button>
                                     <div class="dropdown-item-toggle">
                                         <span>${lang === 'zh-TW' ? '自動儲存 (10秒閒置)' : 'Autosave (10s idle)'}</span>
                                         ${RAIL_SWITCH({
@@ -947,6 +946,7 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                                     </button>
                                 </div>
                             </div>
+                        </div>
                         </div>
                         ${!isEdit || isBlockEditor || mode === 'md' ? `
                             ${THEME_DROPDOWN_MENU(lang, theme, getThemeLabel)}

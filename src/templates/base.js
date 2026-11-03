@@ -2651,7 +2651,10 @@ ${getMarkdownCss()}
             if ($syncStatusBadge && $syncStatusText) {
                 $syncStatusText.textContent = message
                 $syncStatusBadge.dataset.status = isError ? 'error' : statusType
-                const tooltipText = message + (APP_STATE.lang === 'zh-TW' ? ' (點擊立即同步至雲端)' : ' (Click to sync to cloud)')
+                const actionHint = APP_STATE.isPublished
+                    ? (APP_STATE.lang === 'zh-TW' ? ' (點擊立即同步至雲端)' : ' (Click to sync to cloud)')
+                    : (APP_STATE.lang === 'zh-TW' ? ' (點擊發布並同步)' : ' (Click to publish & sync)')
+                const tooltipText = message + actionHint
                 $syncStatusBadge.title = tooltipText
                 $syncStatusBadge.dataset.tooltip = tooltipText
             }
@@ -2680,7 +2683,13 @@ ${getMarkdownCss()}
             window.canvasBridge?.flush?.()
             if (!$textarea) return false
             if (!APP_STATE.isPublished) {
-                if (showBlocked) window.showToast?.(getSaveBlockedMessage())
+                if (showBlocked) {
+                    if (typeof openPublishOptions === 'function') {
+                        openPublishOptions()
+                    } else {
+                        window.showToast?.(getSaveBlockedMessage())
+                    }
+                }
                 return false
             }
             try {
@@ -4184,6 +4193,26 @@ ${getMarkdownCss()}
                     ? (isZh ? '已發布' : 'Live')
                     : (isZh ? '發布' : 'Publish')
             }
+            const saveBtnTitle = document.getElementById('save-note-btn-title')
+            const saveBtnSubtitle = document.getElementById('save-note-btn-subtitle')
+            if (saveBtnTitle) {
+                saveBtnTitle.textContent = isPublished
+                    ? (isZh ? '立即同步至雲端' : 'Sync to Cloud Now')
+                    : (isZh ? '發布並同步至雲端' : 'Publish & Sync to Cloud')
+            }
+            if (saveBtnSubtitle) {
+                saveBtnSubtitle.textContent = isPublished
+                    ? (isZh ? '儲存當前修改並寫入雲端' : 'Save current changes to cloud')
+                    : (isZh ? '首次儲存需發布以建立雲端連結' : 'Publish note to enable cloud sync')
+            }
+            if ($syncStatusBadge) {
+                const syncBadgeTooltip = isPublished
+                    ? (isZh ? '雲端已同步。點擊立即同步最新修改' : 'Cloud synced. Click to sync latest changes')
+                    : (isZh ? '本機已即時保存；尚未發布至雲端 (點擊發布並同步)' : 'Saved locally; not published to cloud yet (click to publish & sync)')
+                $syncStatusBadge.title = syncBadgeTooltip
+                $syncStatusBadge.dataset.tooltip = syncBadgeTooltip
+                $syncStatusBadge.setAttribute('aria-label', isPublished ? (isZh ? '雲端同步狀態' : 'Cloud sync status') : (isZh ? '尚未發布至雲端 (點擊發布並同步)' : 'Not published to cloud (click to publish & sync)'))
+            }
             syncShareMenuUI()
             if ($autosaveToggle) {
                 $autosaveToggle.disabled = !isPublished
@@ -4353,7 +4382,10 @@ ${getMarkdownCss()}
 
         const openPublishOptions = () => {
             if (!$publishNudgeModal || APP_STATE.isPublished || !APP_STATE.isEdit) return;
-            if (!$textarea || !$textarea.value.trim()) return;
+            if (!$textarea || !$textarea.value.trim()) {
+                window.showToast?.(APP_STATE.lang === 'zh-TW' ? '請先輸入筆記內容後再發布並同步' : 'Please enter note content before publishing & syncing')
+                return;
+            }
             const preferences = loadPublishPreferences()
             $publishPreferenceInputs.forEach(input => {
                 input.checked = preferences[input.dataset.publishPreference] !== false
@@ -6168,7 +6200,11 @@ ${getMarkdownCss()}
         if ($autosaveToggle) {
             const handleAutosaveToggle = async () => {
                 if (!APP_STATE.isPublished) {
-                    window.showToast?.(getSaveBlockedMessage())
+                    if (typeof openPublishOptions === 'function') {
+                        openPublishOptions()
+                    } else {
+                        window.showToast?.(getSaveBlockedMessage())
+                    }
                     return
                 }
                 const previousValue = APP_STATE.autosave === true
@@ -6464,7 +6500,7 @@ ${getMarkdownCss()}
                     if (APP_STATE.isPublished) {
                         saveCurrentNote({ showBlocked: false });
                     } else {
-                        window.showToast?.(APP_STATE.lang === 'zh-TW' ? '💾 已儲存至本地快取 (IndexedDB)' : '💾 Saved to local cache (IndexedDB)');
+                        window.showToast?.(APP_STATE.lang === 'zh-TW' ? '💾 已儲存至本地快取 (點擊同步可發布至雲端)' : '💾 Saved to local cache (click Sync to publish to cloud)');
                     }
                 } else {
                     const $exportMd = document.getElementById('export-md-btn') || document.getElementById('share-export-md');

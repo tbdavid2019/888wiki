@@ -81,3 +81,8 @@ test('ordinary content saves are guarded by the published state', () => {
     assert.match(indexSource, /canPersistNoteContent\(metadata\)/)
     assert.match(indexSource, /return returnJSON\(10005, getSaveBlockedMessage\(getI18n\(request\)\)\)/)
 })
+
+test('manual sync or save on unpublished notes opens publish options instead of dead-end rejection', () => {
+    assert.match(baseTemplateSource, /if \(!APP_STATE\.isPublished\) \{\s*if \(showBlocked\) \{\s*if \(typeof openPublishOptions === 'function'\) \{\s*openPublishOptions\(\)/)
+})
+

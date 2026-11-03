@@ -2,6 +2,15 @@
 
 ## [2026-11-03]
 
+- **🌐 整合「發布與同步」聯合膠囊控制組與未發布智慧導引（Unified Publish & Sync Joint Capsule & Smart Onboarding）**：
+  - **解決未發布筆記點擊同步的體驗死胡同**：以往未發布文章若點擊底欄雲端同步圖示（`☁️ 🟢`）或選單「立即同步至雲端」時，僅跳出「文章尚未發布，請先發布後再儲存」之阻斷提示，導致初次使用的一般用戶困惑茫然不知何處發布。現在當筆記處於未發布草稿狀態時，點擊雲端同步徽章、選單項目或按鈕，系統會自動呼叫 **發布並同步對話框（`openPublishOptions()`）**，引導使用者一鍵完成發布並即刻啟用雲端同步、版本歷史與公開分享。
+  - **按鈕整合為「發布與同步」聯合膠囊控制組（Joint Capsule Group）**：將原本相鄰分散的「🌐 發布選項」與「☁️ 儲存同步」兩個獨立控制元件，融合為統一的無縫分段膠囊（`.publish-sync-capsule-group`），左側承載發布/分享選單，中右側承載雲端同步狀態徽章與儲存歷史選單，視覺風格緊湊俐落，告別分裂零散感。
+  - **動態狀態與文案智能適配（Dynamic State & Label Adaptation）**：
+    - **草稿狀態（未發布）**：儲存選單主項目顯示為 **「發布並同步至雲端」**（副標：「首次儲存需發布以建立雲端連結」），同步徽章懸浮提示為 **「本機已即時保存；尚未發布至雲端 (點擊發布並同步)」**，快捷鍵 ⌘S 提示「💾 已儲存至本地快取 (點擊同步可發布至雲端)」。
+    - **已發布狀態**：儲存選單主項目自動切換為 **「立即同步至雲端」**（副標：「儲存當前修改並寫入雲端」），同步徽章提示自動適配為 **「雲端已同步。點擊立即同步最新修改」**。
+  - **自動儲存與空筆記防護**：若在草稿狀態下嘗試切換自動儲存開關，亦自動引導開啟發布設定對話框；若筆記完全空白時點擊同步，貼心提示「請先輸入筆記內容後再發布並同步」，杜絕無效空內容發布。
+  - **全套單元測試增至 564 項全數通過**：於 [`test/floating-controls-ui.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/floating-controls-ui.test.mjs) 與 [`test/public-save-policy.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/public-save-policy.test.mjs) 補足聯合膠囊容器結構、草稿/發布標籤動態切換、以及未發布主動引導流程之自動化測試。
+
 - **🛡️ Turnstile 人機驗證體驗重構與互動挑戰彈窗修正（Interactive Turnstile Modal & Verification Flow Fix）**：
   - **修復 Turnstile 驗證介面隱匿無法作答之重大缺陷**：解決使用者於編輯或發布時跳出「出錯了: Turnstile verification required」卻未見任何驗證介面之重大問題。將原本隱匿於頁面底角且預設 `display: none` 的容器重構為專屬的 **「🛡️ 安全驗證」對話框（`#turnstile-modal`）**，在需要人機驗證時居中呈現標準 300x65px Cloudflare Turnstile 挑戰，並配備動態狀態提示（「✓ 驗證成功，正在繼續...」）與取消操作。
   - **發布筆記（`publishCurrentNote`）支援 Turnstile 挑戰與自動重試**：修正發布筆記呼叫 `/:path/setting` 時未索取 Token 且遇 403 直接拋錯中斷之問題。現在發布流程會無縫索取 Token，並在伺服器回傳 `needTurnstile: true` 時自動彈出驗證視窗，使用者完成後自動接續發布。

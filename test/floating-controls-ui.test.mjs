@@ -300,5 +300,34 @@ test('save capsule uses compact cloud icon badge and positions theme/dark-mode/w
     assert.ok(printBtn, '#toolbar-print-btn must exist in edit section')
 })
 
+test('publish and sync controls are unified into a joint capsule with dynamic draft/published labels', () => {
+    // Draft / unpublished note
+    const draftDoc = renderFooter({ isEdit: true, mode: 'md', share: false, shareId: '' })
+    const capsuleGroup = draftDoc.querySelector('.publish-sync-capsule-group')
+    assert.ok(capsuleGroup, '.publish-sync-capsule-group container must exist')
+    assert.ok(capsuleGroup.querySelector('#share-dropdown'), '#share-dropdown must be inside capsule group')
+    assert.ok(capsuleGroup.querySelector('#save-dropdown'), '#save-dropdown must be inside capsule group')
+
+    // Draft labels & tooltips
+    const draftSaveBtnTitle = draftDoc.querySelector('#save-note-btn-title')
+    assert.ok(draftSaveBtnTitle, '#save-note-btn-title must exist')
+    assert.match(draftSaveBtnTitle.textContent, /發布並同步/)
+    const draftBadge = draftDoc.querySelector('#sync-status-badge')
+    assert.match(draftBadge?.dataset.tooltip || '', /點擊發布並同步/)
+
+    // Published note
+    const liveDoc = renderFooter({ isEdit: true, mode: 'md', share: true, shareId: 'live-id' })
+    const liveSaveBtnTitle = liveDoc.querySelector('#save-note-btn-title')
+    assert.match(liveSaveBtnTitle.textContent, /立即同步至雲端/)
+    const liveBadge = liveDoc.querySelector('#sync-status-badge')
+    assert.match(liveBadge?.dataset.tooltip || '', /雲端已同步/)
+
+    // CSS integration assertions
+    assert.match(baseCssSource, /\.publish-sync-capsule-group\s*\{/)
+    assert.match(baseCssSource, /\.publish-sync-capsule-group\s*\.share-dropdown/)
+    assert.match(baseCssSource, /\.publish-sync-capsule-group\s*\.save-dropdown/)
+})
+
+
 
 

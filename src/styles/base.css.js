@@ -3159,6 +3159,73 @@ html[data-ui-theme="dark"] .share-menu-trigger.is-published {
     from { opacity: 0.4; transform: scale(0.8); }
     to { opacity: 1; transform: scale(1.2); }
 }
+/* Publish & Sync Joint Capsule Group */
+.publish-sync-capsule-group {
+    display: inline-flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    height: 28px !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    border: 1px solid var(--toolbar-border, #e6dfd8);
+    border-radius: var(--toolbar-radius, 6px);
+    background: var(--toolbar-bg, #faf9f5);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    position: relative;
+    overflow: visible;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+.publish-sync-capsule-group:hover,
+.publish-sync-capsule-group:focus-within,
+.publish-sync-capsule-group:has(.dropdown-container.show) {
+    border-color: var(--toolbar-accent, #cc785c);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+.publish-sync-capsule-group .dropdown-container {
+    position: relative;
+    display: inline-flex;
+    align-items: stretch;
+    height: 100%;
+}
+.publish-sync-capsule-group .share-dropdown {
+    border-top-left-radius: inherit;
+    border-bottom-left-radius: inherit;
+}
+.publish-sync-capsule-group .share-menu-trigger {
+    border: none !important;
+    border-radius: 0 !important;
+    border-top-left-radius: inherit !important;
+    border-bottom-left-radius: inherit !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    height: 100% !important;
+    padding: 0 8px !important;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--toolbar-text, #252320);
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+.publish-sync-capsule-group .share-menu-trigger:hover,
+.publish-sync-capsule-group .share-dropdown.show .share-menu-trigger {
+    background: color-mix(in srgb, var(--toolbar-bg, #faf9f5) 86%, var(--toolbar-accent, #cc785c)) !important;
+    color: var(--toolbar-accent, #cc785c);
+}
+.publish-sync-capsule-group .save-dropdown {
+    border-left: 1px solid color-mix(in srgb, var(--toolbar-border, #e6dfd8) 80%, transparent);
+    border-top-right-radius: inherit;
+    border-bottom-right-radius: inherit;
+}
+.publish-sync-capsule-group .save-control-group.save-capsule-group {
+    border: none !important;
+    border-radius: 0 !important;
+    border-top-right-radius: inherit !important;
+    border-bottom-right-radius: inherit !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    height: 100% !important;
+}
 .save-dropdown {
     position: relative;
     display: inline-flex;
