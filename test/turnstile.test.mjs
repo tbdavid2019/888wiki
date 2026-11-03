@@ -417,6 +417,45 @@ test('Turnstile: returnPage omits Turnstile script when not configured', async (
     const html = await response.text()
     assert.equal(html.includes('https://challenges.cloudflare.com/turnstile/v0/api.js'), false)
     assert.equal(html.includes('id="cf-turnstile-container"'), false)
+    assert.equal(html.includes('id="turnstile-modal"'), false)
     assert.ok(html.includes('"turnstileSiteKey":""'))
     assert.ok(html.includes('"turnstileEnabled":false'))
+})
+
+test('Turnstile: returnPage renders turnstile-modal and cf-turnstile-container when configured', async () => {
+    globalThis.SCN_TURNSTILE_SITE_KEY = '0x4AAAAAAABBBBBBBB'
+    globalThis.SCN_TURNSTILE_SECRET = '0x4AAAAAAASSSSSSSS'
+
+    const response = returnPage('HTML', {
+        title: 'Turnstile Modal Note',
+        content: '# Hello Modal',
+        path: 'turnstile-modal-test',
+        ext: { share: true },
+    })
+
+    const html = await response.text()
+    assert.ok(html.includes('id="turnstile-modal"'))
+    assert.ok(html.includes('class="modal turnstile-modal"'))
+    assert.ok(html.includes('id="cf-turnstile-container"'))
+    assert.ok(html.includes('class="cf-turnstile-slot"'))
+    assert.ok(html.includes('window.promptTurnstileVerification = openTurnstileVerificationModal'))
+
+    delete globalThis.SCN_TURNSTILE_SITE_KEY
+    delete globalThis.SCN_TURNSTILE_SECRET
+})
+
+test('Turnstile: returnJSON appends multiple Set-Cookie headers properly', async () => {
+    const { returnJSON } = await import('../src/helper.js')
+    const cookie1 = 'cf_turnstile_cleared=token123; Path=/; Secure'
+    const cookie2 = 'auth_author=author456; Path=/; HttpOnly'
+
+    const res = returnJSON(0, { ok: true }, {
+        'Set-Cookie': [cookie1, cookie2],
+    })
+
+    assert.equal(res.status, 200)
+    const cookies = res.headers.getSetCookie ? res.headers.getSetCookie() : [res.headers.get('set-cookie')]
+    assert.equal(cookies.length, 2)
+    assert.equal(cookies[0], cookie1)
+    assert.equal(cookies[1], cookie2)
 })

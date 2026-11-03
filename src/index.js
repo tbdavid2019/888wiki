@@ -4093,13 +4093,23 @@ router.post('/:path/setting', async request => {
             const { value, metadata } = await queryNote(path)
             const { valid, role } = await checkAuth(cookie, path)
 
+            let turnstileSetCookie = null
             if (typeof content === 'string' && isTurnstileEnabled() && !(valid && role === 'edit')) {
-                const turnstileCheck = await verifyTurnstileAccess(request)
+                const headerToken = request.headers.get('cf-turnstile-response') || request.headers.get('x-turnstile-token')
+                let bodyToken = headerToken
+                if (!bodyToken) {
+                    const jsonClone = await request.clone().json().catch(() => ({}))
+                    bodyToken = jsonClone?.['cf-turnstile-response'] || jsonClone?.turnstileToken || null
+                }
+                const turnstileCheck = await verifyTurnstileAccess(request, bodyToken)
                 if (!turnstileCheck.ok) {
                     return returnJSON(403, 'Turnstile verification required', { status: 403 }, {
                         needTurnstile: true,
                         reason: turnstileCheck.reason,
                     })
+                }
+                if (turnstileCheck.setCookieHeader) {
+                    turnstileSetCookie = turnstileCheck.setCookieHeader
                 }
             }
 
@@ -4283,19 +4293,21 @@ router.post('/:path/setting', async request => {
                     }
 
                     const authorCookie = await createAuthorCookie(path)
+                    const responseCookies = [authorCookie, turnstileSetCookie].filter(Boolean)
+                    const responseHeaders = responseCookies.length > 0 ? { 'Set-Cookie': responseCookies } : {}
                     if (nextMetadata.share === true) {
                         await syncShareMappings(path, nextMetadata, metadata)
                         const shareId = await getShareIdForPath(path, nextMetadata)
                         if (shareId && (shareExpiresIn !== undefined || share === true)) {
                             await driverSetShareStatus(shareId, null)
                         }
-                        return returnJSON(0, shareId, { 'Set-Cookie': authorCookie })
+                        return returnJSON(0, shareId, responseHeaders)
                     }
                     if (share === false) {
                         await syncShareMappings(path, nextMetadata, metadata)
                     }
 
-                    return returnJSON(0, null, { 'Set-Cookie': authorCookie })
+                    return returnJSON(0, null, responseHeaders)
                 } catch (error) {
                     console.error(error)
                     throw error
@@ -4321,17 +4333,26 @@ router.post('/:path/transcribe', async (request, context = {}) => {
         return returnJSON(10002, 'Password auth failed!', { status: 401 })
     }
 
+    let turnstileSetCookie = null
     if (isTurnstileEnabled() && !(valid && role === 'edit')) {
-        const turnstileCheck = await verifyTurnstileAccess(request)
+        const headerToken = request.headers.get('cf-turnstile-response') || request.headers.get('x-turnstile-token')
+        const turnstileCheck = await verifyTurnstileAccess(request, headerToken)
         if (!turnstileCheck.ok) {
             return returnJSON(403, 'Turnstile verification required', { status: 403 }, {
                 needTurnstile: true,
                 reason: turnstileCheck.reason,
             })
         }
+        if (turnstileCheck.setCookieHeader) {
+            turnstileSetCookie = turnstileCheck.setCookieHeader
+        }
     }
 
-    return handleAudioTranscription(request, context)
+    const transcribeResponse = await handleAudioTranscription(request, context)
+    if (turnstileSetCookie && transcribeResponse instanceof Response) {
+        transcribeResponse.headers.append('Set-Cookie', turnstileSetCookie)
+    }
+    return transcribeResponse
 })
 
 router.post('/:path/ai-format', async (request, { env }) => {

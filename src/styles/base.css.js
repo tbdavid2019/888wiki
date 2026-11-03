@@ -908,7 +908,88 @@ html[data-ui-theme="dark"] .editor-pref-lang-btn.is-active {
 }
 .app-dialog-cancel { background: var(--modal-surface, #f6f8fa); color: var(--modal-text, #24292f); border: 1px solid var(--modal-border, #d0d7de); }
 .app-dialog-cancel:hover { background: var(--modal-surface-hover, #eef1f4); }
-.app-dialog-modal .modal-mask, .import-options-modal .modal-mask, .file-drop-modal .modal-mask, .image-ocr-modal .modal-mask { z-index: 1000; }
+.app-dialog-modal .modal-mask, .import-options-modal .modal-mask, .file-drop-modal .modal-mask, .image-ocr-modal .modal-mask, .turnstile-modal .modal-mask { z-index: 1000; }
+.turnstile-modal-content {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1001;
+    width: min(440px, calc(100vw - 32px));
+    padding: 24px;
+    border: 1px solid var(--modal-border, #d0d7de);
+    border-radius: 12px;
+    background: var(--modal-bg, #ffffff);
+    color: var(--modal-text, #24292f);
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    box-sizing: border-box;
+}
+.turnstile-modal-header {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+.turnstile-modal-icon {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    background: var(--modal-surface, #f2f4f7);
+    font-size: 20px;
+    flex-shrink: 0;
+}
+.turnstile-modal-titles h3 {
+    margin: 0 0 4px 0;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--modal-text, #24292f);
+}
+.turnstile-modal-titles p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--modal-muted, #57606a);
+}
+.turnstile-modal-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 70px;
+    padding: 6px 0;
+}
+.cf-turnstile-slot {
+    min-height: 65px;
+    min-width: 300px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+.turnstile-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+.turnstile-status-hint {
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+    margin-top: 6px;
+    min-height: 18px;
+}
+.turnstile-modal-cancel {
+    background: var(--modal-surface, #f6f8fa);
+    color: var(--modal-text, #24292f);
+    border: 1px solid var(--modal-border, #d0d7de);
+}
+.turnstile-modal-cancel:hover {
+    background: var(--modal-surface-hover, #eef1f4);
+}
 .import-action-cancel, .import-action-insert { background: var(--modal-surface, #f6f8fa); color: var(--modal-text, #24292f); border: 1px solid var(--modal-border, #d0d7de); }
 .import-action-cancel:hover, .import-action-insert:hover { background: var(--modal-surface-hover, #eef1f4); }
 

@@ -373,7 +373,27 @@ ${getMarkdownCss()}
     ${ext.turnstileSiteKey ? `<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer onerror="window.__turnstileDegraded = true; window.__turnstileScriptFailed = true;"></script>` : ''}
 </head>
 <body class="${ext.sharePath && !isEdit ? `share-view share-font-${initialShareFont}${isEmbed ? ' share-embed' : ''}${ext.autoToc ? ' is-toc-pinned' : ''}` : ''}">
-    ${ext.turnstileSiteKey ? `<div id="cf-turnstile-container" style="display:none;position:fixed;bottom:12px;right:12px;z-index:99999;"></div>` : ''}
+    ${ext.turnstileSiteKey ? `
+    <div id="turnstile-modal" class="modal turnstile-modal" role="dialog" aria-modal="true" aria-labelledby="turnstile-modal-title" aria-describedby="turnstile-modal-desc" aria-hidden="true" style="display:none;">
+        <div class="modal-mask" data-modal-close></div>
+        <div class="turnstile-modal-content">
+            <button type="button" class="close-btn turnstile-modal-close" data-modal-close aria-label="${lang === 'zh-TW' ? '關閉' : 'Close'}">×</button>
+            <div class="turnstile-modal-header">
+                <div class="turnstile-modal-icon" aria-hidden="true">🛡️</div>
+                <div class="turnstile-modal-titles">
+                    <h3 id="turnstile-modal-title">${lang === 'zh-TW' ? '安全驗證' : 'Security Verification'}</h3>
+                    <p id="turnstile-modal-desc">${lang === 'zh-TW' ? '為保護筆記並防止機器人濫用，請完成下方人機驗證：' : 'To protect notes from spam bots, please complete the verification below:'}</p>
+                </div>
+            </div>
+            <div class="turnstile-modal-body">
+                <div id="cf-turnstile-container" class="cf-turnstile-slot"></div>
+                <div id="turnstile-status-hint" class="turnstile-status-hint" aria-live="polite"></div>
+            </div>
+            <div class="turnstile-modal-actions">
+                <button type="button" class="opt-button turnstile-modal-cancel" data-modal-close>${lang === 'zh-TW' ? '取消' : 'Cancel'}</button>
+            </div>
+        </div>
+    </div>` : ''}
     <div class="note-container">
         <div class="stack">
             <div class="layer_1">
@@ -1446,85 +1466,143 @@ ${getMarkdownCss()}
         return Boolean(window.__turnstileDegraded || window.__turnstileScriptFailed)
     }
 
-    function initTurnstileWidget() {
-        if (!APP_STATE.turnstileSiteKey || !window.turnstile) return
-        const container = document.getElementById('cf-turnstile-container')
-        if (!container || turnstileWidgetId !== null) return
-
-        try {
-            turnstileWidgetId = window.turnstile.render('#cf-turnstile-container', {
-                sitekey: APP_STATE.turnstileSiteKey,
-                size: 'flexible',
-                callback: function(token) {
-                    currentTurnstileToken = token
-                    if (container) container.style.display = 'none'
-                    const resolvers = pendingTurnstileResolvers.slice()
-                    pendingTurnstileResolvers = []
-                    for (const res of resolvers) {
-                        res(token)
-                    }
-                },
-                'error-callback': function(errCode) {
-                    console.warn('Turnstile widget error, degrading gracefully:', errCode)
-                    window.__turnstileDegraded = true
-                    currentTurnstileToken = ''
-                    if (container) container.style.display = 'none'
-                    const resolvers = pendingTurnstileResolvers.slice()
-                    pendingTurnstileResolvers = []
-                    for (const res of resolvers) {
-                        res('')
-                    }
-                },
-                'expired-callback': function() {
-                    currentTurnstileToken = ''
-                    if (window.turnstile && turnstileWidgetId !== null) {
-                        try { window.turnstile.reset(turnstileWidgetId) } catch (e) {}
-                    }
-                },
-            })
-        } catch (err) {
-            console.warn('Turnstile init error, degrading gracefully:', err)
-            window.__turnstileDegraded = true
+    function onTurnstileResolved(token) {
+        const resolvers = pendingTurnstileResolvers.slice()
+        pendingTurnstileResolvers = []
+        for (const res of resolvers) {
+            res(token)
         }
     }
 
-    window.getTurnstileToken = function() {
-        if (!APP_STATE.turnstileSiteKey || hasTurnstileClearance()) return Promise.resolve('')
-        if (isTurnstileDegraded()) return Promise.resolve('')
+    function renderTurnstileWidgetInContainer() {
+        if (!APP_STATE.turnstileSiteKey || !window.turnstile) return null
+        const container = document.getElementById('cf-turnstile-container')
+        if (!container) return null
+
+        if (turnstileWidgetId === null) {
+            try {
+                turnstileWidgetId = window.turnstile.render('#cf-turnstile-container', {
+                    sitekey: APP_STATE.turnstileSiteKey,
+                    theme: 'auto',
+                    size: 'normal',
+                    callback: function(token) {
+                        currentTurnstileToken = token
+                        onTurnstileResolved(token)
+                    },
+                    'error-callback': function(errCode) {
+                        console.warn('Turnstile widget error:', errCode)
+                        window.__turnstileDegraded = true
+                        currentTurnstileToken = ''
+                        onTurnstileResolved('')
+                    },
+                    'expired-callback': function() {
+                        currentTurnstileToken = ''
+                        if (window.turnstile && turnstileWidgetId !== null) {
+                            try { window.turnstile.reset(turnstileWidgetId) } catch (e) {}
+                        }
+                    },
+                })
+            } catch (err) {
+                console.warn('Turnstile init error:', err)
+                window.__turnstileDegraded = true
+                onTurnstileResolved('')
+            }
+        } else {
+            try {
+                window.turnstile.reset(turnstileWidgetId)
+            } catch (e) {}
+        }
+        return turnstileWidgetId
+    }
+
+    function openTurnstileVerificationModal() {
+        if (!APP_STATE.turnstileSiteKey || isTurnstileDegraded()) return Promise.resolve('')
         if (currentTurnstileToken) {
             const tok = currentTurnstileToken
             currentTurnstileToken = ''
             return Promise.resolve(tok)
         }
-        if (!window.turnstile) return Promise.resolve('')
-
-        const container = document.getElementById('cf-turnstile-container')
-        if (container) container.style.display = 'block'
-
-        if (turnstileWidgetId === null) {
-            initTurnstileWidget()
-        } else {
-            try { window.turnstile.reset(turnstileWidgetId) } catch (e) {}
-        }
+        const modal = document.getElementById('turnstile-modal')
+        if (!modal) return Promise.resolve('')
 
         return new Promise(function(resolve) {
-            pendingTurnstileResolvers.push(resolve)
-            setTimeout(function() {
-                const idx = pendingTurnstileResolvers.indexOf(resolve)
+            const cancelBtn = modal.querySelector('.turnstile-modal-cancel')
+            const closeBtn = modal.querySelector('.turnstile-modal-close')
+            const mask = modal.querySelector('.modal-mask')
+            const statusHint = document.getElementById('turnstile-status-hint')
+            if (statusHint) {
+                statusHint.textContent = ''
+                statusHint.style.color = ''
+            }
+
+            let settled = false
+            const finish = function(tok) {
+                if (settled) return
+                settled = true
+                const idx = pendingTurnstileResolvers.indexOf(onToken)
                 if (idx !== -1) pendingTurnstileResolvers.splice(idx, 1)
-                const tok = currentTurnstileToken || ''
-                currentTurnstileToken = ''
-                resolve(tok)
-            }, 4000)
+
+                cancelBtn?.removeEventListener('click', onCancel)
+                closeBtn?.removeEventListener('click', onCancel)
+                mask?.removeEventListener('click', onCancel)
+                modal.removeEventListener('keydown', onKeyDown)
+
+                if (tok && statusHint) {
+                    statusHint.textContent = APP_STATE.lang === 'zh-TW' ? '✓ 驗證成功，正在繼續...' : '✓ Verified, proceeding...'
+                    statusHint.style.color = 'var(--text-success, #1a7f37)'
+                    window.setTimeout(function() {
+                        closeModal(modal)
+                        resolve(tok)
+                    }, 350)
+                } else {
+                    closeModal(modal)
+                    resolve(tok || '')
+                }
+            }
+
+            const onToken = function(tok) { finish(tok) }
+            const onCancel = function() { finish('') }
+            const onKeyDown = function(event) { if (event.key === 'Escape') finish('') }
+
+            pendingTurnstileResolvers.push(onToken)
+            cancelBtn?.addEventListener('click', onCancel)
+            closeBtn?.addEventListener('click', onCancel)
+            mask?.addEventListener('click', onCancel)
+            modal.addEventListener('keydown', onKeyDown)
+
+            openModal(modal, { initialFocus: cancelBtn })
+            if (window.turnstile) {
+                renderTurnstileWidgetInContainer()
+            } else {
+                const waitScriptTimer = window.setInterval(function() {
+                    if (window.turnstile) {
+                        window.clearInterval(waitScriptTimer)
+                        renderTurnstileWidgetInContainer()
+                    } else if (isTurnstileDegraded()) {
+                        window.clearInterval(waitScriptTimer)
+                        finish('')
+                    }
+                }, 100)
+                window.setTimeout(function() {
+                    window.clearInterval(waitScriptTimer)
+                    if (!window.turnstile) {
+                        window.__turnstileDegraded = true
+                        finish('')
+                    }
+                }, 8000)
+            }
         })
     }
 
-    if (window.turnstile) {
-        initTurnstileWidget()
-    } else {
-        window.addEventListener('load', function() {
-            setTimeout(initTurnstileWidget, 500)
-        })
+    window.promptTurnstileVerification = openTurnstileVerificationModal
+    window.getTurnstileToken = function() {
+        if (!APP_STATE.turnstileSiteKey || hasTurnstileClearance() || isTurnstileDegraded()) return Promise.resolve('')
+        if (currentTurnstileToken) {
+            const tok = currentTurnstileToken
+            currentTurnstileToken = ''
+            return Promise.resolve(tok)
+        }
+        return Promise.resolve('')
     }
 
     const syncRealtimeDocumentTitle = (text) => {
@@ -2598,7 +2676,7 @@ ${getMarkdownCss()}
 
         let uploadPendingAudiosToCloud = async () => false;
 
-        const saveCurrentNote = async ({ showBlocked = true } = {}) => {
+        const saveCurrentNote = async ({ showBlocked = true, explicitToken = '' } = {}) => {
             window.canvasBridge?.flush?.()
             if (!$textarea) return false
             if (!APP_STATE.isPublished) {
@@ -2626,15 +2704,16 @@ ${getMarkdownCss()}
             window.dispatchEvent(new CustomEvent('canvas:syncing'))
             const bodyParams = { t: content }
             saveInFlight = (async () => {
-                if (APP_STATE.turnstileSiteKey && !hasTurnstileClearance()) {
-                    const token = await window.getTurnstileToken?.().catch(() => '')
-                    if (token) {
-                        bodyParams['cf-turnstile-response'] = token
-                    }
+                let token = explicitToken || ''
+                if (!token && APP_STATE.turnstileSiteKey && !hasTurnstileClearance()) {
+                    token = await window.getTurnstileToken?.().catch(() => '')
+                }
+                if (token) {
+                    bodyParams['cf-turnstile-response'] = token
                 }
                 const headers = { 'Content-Type': 'application/x-www-form-urlencoded' }
-                if (bodyParams['cf-turnstile-response']) {
-                    headers['cf-turnstile-response'] = bodyParams['cf-turnstile-response']
+                if (token) {
+                    headers['cf-turnstile-response'] = token
                 }
                 return fetchJson('', {
                     method: 'POST',
@@ -2642,15 +2721,20 @@ ${getMarkdownCss()}
                     body: new URLSearchParams(bodyParams),
                 })
             })()
-                .then(res => {
+                .then(async res => {
                     if (res.needTurnstile) {
                         clearTurnstileClearance()
-                        const container = document.getElementById('cf-turnstile-container')
-                        if (container) container.style.display = 'block'
-                        if (window.turnstile && turnstileWidgetId !== null) {
-                            try { window.turnstile.reset(turnstileWidgetId) } catch (e) {}
+                        if (!showBlocked) {
+                            showSaveStatus(APP_STATE.lang === 'zh-TW' ? '⚠️ 需安全驗證 (點擊同步)' : '⚠️ Verification required (click to sync)', true, 'error')
+                            return false
                         }
-                        throw new Error(getI18n('turnstileRequired') || (APP_STATE.lang === 'zh-TW' ? '請完成安全驗證以繼續保存。' : 'Please complete security verification to proceed.'))
+                        const token = await openTurnstileVerificationModal()
+                        if (token) {
+                            markTurnstileCleared()
+                            return saveCurrentNote({ showBlocked, explicitToken: token })
+                        }
+                        showSaveStatus(APP_STATE.lang === 'zh-TW' ? '⚠️ 已取消安全驗證' : '⚠️ Verification cancelled', true, 'error')
+                        return false
                     }
                     if (res.err !== 0) throw new Error(res.msg || 'save failed')
                     markTurnstileCleared()
@@ -3037,7 +3121,7 @@ ${getMarkdownCss()}
                     const token = await window.getTurnstileToken?.().catch(() => '');
                     if (token) headers['cf-turnstile-response'] = token;
                 }
-                const res = await fetchJson('/' + encodeURIComponent(APP_STATE.path || '') + '/ai-format', {
+                let res = await fetchJson('/' + encodeURIComponent(APP_STATE.path || '') + '/ai-format', {
                     method: 'POST',
                     headers,
                     body: JSON.stringify({ text: rawText, mode, instruction, selectionStart, selectionEnd, targetLanguage, bilingual })
@@ -3045,12 +3129,19 @@ ${getMarkdownCss()}
 
                 if (res?.needTurnstile) {
                     clearTurnstileClearance();
-                    const container = document.getElementById('cf-turnstile-container');
-                    if (container) container.style.display = 'block';
-                    if (window.turnstile && turnstileWidgetId !== null) {
-                        try { window.turnstile.reset(turnstileWidgetId); } catch (e) {}
+                    const retryToken = await openTurnstileVerificationModal();
+                    if (retryToken) {
+                        markTurnstileCleared();
+                        headers['cf-turnstile-response'] = retryToken;
+                        res = await fetchJson('/' + encodeURIComponent(APP_STATE.path || '') + '/ai-format', {
+                            method: 'POST',
+                            headers,
+                            body: JSON.stringify({ text: rawText, mode, instruction, selectionStart, selectionEnd, targetLanguage, bilingual })
+                        }, 130000);
+                    } else {
+                        window.showToast?.(APP_STATE.lang === 'zh-TW' ? '已取消安全驗證' : 'Verification cancelled');
+                        return;
                     }
-                    throw new Error(getI18n('turnstileRequired') || (APP_STATE.lang === 'zh-TW' ? '請完成安全驗證以繼續。' : 'Please complete security verification to proceed.'));
                 }
 
                 if (res.err === 0 && res.data?.result) {
@@ -4102,7 +4193,7 @@ ${getMarkdownCss()}
             syncPublicationStatus()
         }
 
-        const publishCurrentNote = async (preferences = defaultPublishPreferences) => {
+        const publishCurrentNote = async (preferences = defaultPublishPreferences, explicitToken = '') => {
             window.canvasBridge?.flush?.()
             try {
                 await uploadPendingAudiosToCloud()
@@ -4122,9 +4213,19 @@ ${getMarkdownCss()}
             const shareBurnAfterReading = draftBurnBtn ? draftBurnBtn.getAttribute('data-burn-after-reading') === 'true' : (APP_STATE.shareBurnAfterReading === true || shareMode === 'burn')
             const shareUnlockIn = draftUnlockSelect ? draftUnlockSelect.value : (APP_STATE.shareUnlockIn || '1d')
             const sharePulseInterval = draftPulseSelect ? draftPulseSelect.value : (APP_STATE.sharePulseInterval || '7d')
+
+            let turnstileToken = explicitToken || ''
+            if (!turnstileToken && APP_STATE.turnstileSiteKey && !hasTurnstileClearance()) {
+                turnstileToken = await window.getTurnstileToken?.().catch(() => '')
+            }
+            const headers = { 'Content-Type': 'application/json' }
+            if (turnstileToken) {
+                headers['cf-turnstile-response'] = turnstileToken
+            }
+
             return fetchJson(window.location.pathname + '/setting', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: headers,
                 body: JSON.stringify({
                     share: true,
                     content: $textarea ? $textarea.value : '',
@@ -4137,9 +4238,24 @@ ${getMarkdownCss()}
                     shareBurnAfterReading,
                     shareUnlockIn,
                     sharePulseInterval,
+                    'cf-turnstile-response': turnstileToken || undefined,
                 })
             })
-                .then(res => {
+                .then(async res => {
+                    if (res.needTurnstile) {
+                        clearTurnstileClearance()
+                        const token = await openTurnstileVerificationModal()
+                        if (token) {
+                            markTurnstileCleared()
+                            return publishCurrentNote(preferences, token)
+                        }
+                        if ($shareBtn) {
+                            $shareBtn.classList.remove('is-checked')
+                            $shareBtn.setAttribute('aria-pressed', 'false')
+                        }
+                        window.showToast?.(APP_STATE.lang === 'zh-TW' ? '已取消安全驗證，筆記未發布' : 'Verification cancelled, note not published')
+                        return false
+                    }
                     if (res.err !== 0) {
                         if ($shareBtn) {
                             $shareBtn.classList.remove('is-checked')
@@ -4148,6 +4264,7 @@ ${getMarkdownCss()}
                         errHandle(res.msg);
                         return false;
                     }
+                    markTurnstileCleared()
                     const nextShareId = typeof res.data === 'string' ? res.data.trim() : ''
                     if (!nextShareId) {
                         errHandle(APP_STATE.lang === 'zh-TW' ? '發布失敗：伺服器未回傳分享連結' : 'Publish failed: the server did not return a share link')
@@ -4728,15 +4845,18 @@ ${getMarkdownCss()}
                     formData.append('cf-turnstile-response', token);
                 }
             }
-            const response = await fetchJson('/upload', { method: 'POST', body: formData });
+            let response = await fetchJson('/upload', { method: 'POST', body: formData });
             if (response?.needTurnstile) {
                 clearTurnstileClearance();
-                const container = document.getElementById('cf-turnstile-container');
-                if (container) container.style.display = 'block';
-                if (window.turnstile && turnstileWidgetId !== null) {
-                    try { window.turnstile.reset(turnstileWidgetId); } catch (e) {}
+                const retryToken = await openTurnstileVerificationModal();
+                if (retryToken) {
+                    markTurnstileCleared();
+                    formData.set('cf-turnstile-response', retryToken);
+                    response = await fetchJson('/upload', { method: 'POST', body: formData });
+                } else {
+                    window.showToast?.(APP_STATE.lang === 'zh-TW' ? '已取消安全驗證，圖片未上傳' : 'Verification cancelled, image not uploaded');
+                    return null;
                 }
-                throw new Error(getI18n('turnstileRequired') || (APP_STATE.lang === 'zh-TW' ? '請完成安全驗證以繼續保存。' : 'Please complete security verification to proceed.'));
             }
             if (response?.err !== 0 || !response?.data) throw new Error(response?.msg || (APP_STATE.lang === 'zh-TW' ? '圖片上傳失敗。' : 'Image upload failed.'));
             markTurnstileCleared();

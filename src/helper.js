@@ -69,12 +69,26 @@ export function returnJSON(code, data, headers = {}, extra = {}) {
     const responseStatus = Number.isInteger(requestedStatus) && requestedStatus >= 200 && requestedStatus <= 599
         ? requestedStatus
         : fallbackStatus
+
+    const finalHeaders = new Headers()
+    finalHeaders.set('content-type', 'application/json;charset=UTF-8')
+    for (const [key, value] of Object.entries(responseHeaders)) {
+        if (key.toLowerCase() === 'set-cookie') {
+            if (Array.isArray(value)) {
+                for (const cookie of value) {
+                    if (cookie) finalHeaders.append('Set-Cookie', cookie)
+                }
+            } else if (value) {
+                finalHeaders.append('Set-Cookie', value)
+            }
+        } else if (value !== undefined && value !== null) {
+            finalHeaders.set(key, String(value))
+        }
+    }
+
     return new Response(JSON.stringify(ret), {
         status: responseStatus,
-        headers: {
-            'content-type': 'application/json;charset=UTF-8',
-            ...responseHeaders,
-        },
+        headers: finalHeaders,
     })
 }
 

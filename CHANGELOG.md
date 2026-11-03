@@ -1,5 +1,16 @@
 # Changelog
 
+## [2026-11-03]
+
+- **🛡️ Turnstile 人機驗證體驗重構與互動挑戰彈窗修正（Interactive Turnstile Modal & Verification Flow Fix）**：
+  - **修復 Turnstile 驗證介面隱匿無法作答之重大缺陷**：解決使用者於編輯或發布時跳出「出錯了: Turnstile verification required」卻未見任何驗證介面之重大問題。將原本隱匿於頁面底角且預設 `display: none` 的容器重構為專屬的 **「🛡️ 安全驗證」對話框（`#turnstile-modal`）**，在需要人機驗證時居中呈現標準 300x65px Cloudflare Turnstile 挑戰，並配備動態狀態提示（「✓ 驗證成功，正在繼續...」）與取消操作。
+  - **發布筆記（`publishCurrentNote`）支援 Turnstile 挑戰與自動重試**：修正發布筆記呼叫 `/:path/setting` 時未索取 Token 且遇 403 直接拋錯中斷之問題。現在發布流程會無縫索取 Token，並在伺服器回傳 `needTurnstile: true` 時自動彈出驗證視窗，使用者完成後自動接續發布。
+  - **筆記儲存（`saveCurrentNote`）智慧防打擾與自動重試**：手動儲存（Cmd+S、儲存按鈕、同步徽章點擊）遇驗證需求時自動彈出挑戰並接續儲存；背景自動存檔（Autosave）遇驗證過期時不會突兀搶焦點彈窗打斷打字，改於狀態列友善提示「⚠️ 需安全驗證 (點擊同步)」，使用者點擊或手動儲存時再彈窗。
+  - **圖片上傳與 AI 格式化自動接續挑戰**：`/upload` 與 `/:path/ai-format` 遇 403 `needTurnstile` 時，統一串接 `openTurnstileVerificationModal()`，驗證通過後自動攜帶新 Token 重試請求。
+  - **後端 `POST /:path/setting` 與 `POST /:path/transcribe` 支援 Body Token 與 Clearance Set-Cookie**：更新後端路由以支援自 JSON Body 提取 Turnstile Token，並在驗證成功時將 `cf_turnstile_cleared` Cookie 隨同 Author Cookie 一併附加於響應標頭。
+  - **`returnJSON` 支援多組 `Set-Cookie` 寫入**：增強 [`src/helper.js`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/helper.js) 的 `returnJSON`，透過標準 `Headers.append('Set-Cookie', ...)` 支援陣列形式的多組 Cookie 派發，防止覆蓋問題。
+  - **單元測試增至 562 項全數通過**：於 [`test/turnstile.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/turnstile.test.mjs) 新增對 Turnstile 彈窗模組、容器結構、Clearance 派發與多 Cookie 附加之自動化測試。
+
 ## [2026-10-28]
 
 - **🛡️ 雙審查機制落地與安全強化（Dual Code Review Hardening: OpenCode & Codex）**：
