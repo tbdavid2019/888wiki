@@ -14,7 +14,8 @@
 
 export const DEFAULT_AIURL_BASE_URL = 'https://llm.aiurl.tw/v1'
 export const DEFAULT_AIURL_API_KEY = ''
-export const DEFAULT_AIURL_MODEL = 'antigravity/gemini-3-flash'
+export const DEFAULT_AIURL_MODEL = 'group/talk'
+export const DEFAULT_AIURL_SERVICE_TIER = 'priority'
 
 export const DEFAULT_GROQ_BASE_URL = 'https://api.groq.com/openai/v1'
 export const DEFAULT_GROQ_MODEL = 'openai/gpt-oss-120b'
@@ -203,6 +204,7 @@ async function callTierAiUrl({ messages, mode, env, maxTokens, temperature, time
     const baseUrl = (env?.SCN_AIURL_LLM_BASE_URL || env?.AIURL_LLM_BASE_URL || DEFAULT_AIURL_BASE_URL).replace(/\/+$/, '')
     const apiKey = env?.SCN_AIURL_LLM_API_KEY || env?.AIURL_LLM_API_KEY || DEFAULT_AIURL_API_KEY
     const model = env?.SCN_AIURL_LLM_MODEL || env?.AIURL_LLM_MODEL || DEFAULT_AIURL_MODEL
+    const serviceTier = env?.SCN_AIURL_LLM_SERVICE_TIER || env?.AIURL_LLM_SERVICE_TIER || DEFAULT_AIURL_SERVICE_TIER
 
     if (!apiKey) {
         throw new Error('No API key configured for aiurl LLM tier')
@@ -221,6 +223,7 @@ async function callTierAiUrl({ messages, mode, env, maxTokens, temperature, time
             },
             body: JSON.stringify({
                 model,
+                service_tier: serviceTier,
                 messages,
                 temperature: typeof temperature === 'number' ? temperature : (isFormatMode ? 0.1 : 0.2),
                 max_tokens: maxTokens || (isFormatMode ? 8192 : 4096),

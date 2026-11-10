@@ -11,7 +11,7 @@
     - **閱讀頁圈選翻譯（Reader Selection Translate）**：`/api/shares/:shareId/ai-assistant`（`mode: 'translate'`），一鍵即時翻譯圈選語句。
     - **語音逐字稿智慧排版（Audio Smart Markdown Formatting）**：`/api/audio/transcribe`（`formatAudioSmartMarkdown`），將 Whisper 原始口語轉錄自動排版為結構化 Markdown。
   - **三層高可用自動 Failover 管線（3-Tier Resilient LLM Gateway）**：
-    - **Tier 1 (首選)**：OpenAI API 相容網關 `https://llm.aiurl.tw/v1`（預設模型 `antigravity/gemini-3-flash`），超低延遲（<1s）、強大推理與優質排版，由 `SCN_AIURL_LLM_BASE_URL` 與 `SCN_AIURL_LLM_API_KEY` 靈活配置。
+    - **Tier 1 (首選)**：OpenAI API 相容網關 `https://llm.aiurl.tw/v1`（採用旗艦模型 `group/talk` 並開啟 `service_tier: "priority"` Fast 加速服務層級），超低延遲（<1s）、強大推理與優質排版，由 `SCN_AIURL_LLM_BASE_URL`、`SCN_AIURL_LLM_API_KEY` 與 `SCN_AIURL_LLM_MODEL` 靈活配置。
     - **Tier 2 (第一備援)**：Groq API（`openai/gpt-oss-120b` 與排版專用 `openai/gpt-oss-20b`），由 `GROQ_API_KEY` 支援高速開源大模型。
     - **Tier 3 (第二備援)**：Cloudflare Workers AI 原生運算（`@cf/openai/gpt-oss-120b` 與 `@cf/openai/gpt-oss-20b`），透過 `env.AI` 提供邊緣運算兜底。
   - **全方位防驚群效應（Anti-Thundering Herd Protection）**：
