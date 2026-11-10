@@ -101,6 +101,9 @@ import {
     normalizeTranslationTargetLanguage,
     preservesFormatLanguage,
 } from './ai_assistant_policy.mjs'
+import {
+    executeLlmWithFallback,
+} from './llm_gateway.mjs'
 
 // init
 const router = Router()
@@ -255,42 +258,32 @@ function extractAiText(payload) {
 }
 
 function resolveAiBinding(env) {
-    if (env && env.AI) {
+    if (env && env.AI && !env.SCN_AIURL_LLM_API_KEY && !env.AIURL_LLM_API_KEY && !env.GROQ_API_KEY) {
         return env.AI
     }
-    const groqKey = env && env.GROQ_API_KEY
-    if (groqKey) {
-        return {
-            async run(model, payload) {
-                const groqModel = (typeof model === 'string' && model.includes('120b'))
-                    ? 'openai/gpt-oss-120b'
-                    : 'openai/gpt-oss-20b'
-                const messages = Array.isArray(payload && payload.messages)
-                    ? payload.messages
-                    : (payload && payload.prompt ? [{ role: 'user', content: payload.prompt }] : [])
-
-                const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${groqKey}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        model: groqModel,
-                        messages,
-                        temperature: 0.2,
-                        max_tokens: (payload && (payload.max_tokens || payload.max_completion_tokens)) || 8192,
-                    })
-                })
-                if (!res.ok) {
-                    const errText = await res.text()
-                    throw new Error(`Groq AI fallback failed (${res.status}): ${errText}`)
-                }
-                return await res.json()
+    return {
+        _isGatewayWrapper: true,
+        async run(model, payload) {
+            const messages = Array.isArray(payload && payload.messages)
+                ? payload.messages
+                : (payload && payload.prompt ? [{ role: 'user', content: payload.prompt }] : [])
+            const mode = (typeof model === 'string' && model.includes('20b')) ? 'format' : 'ask'
+            const execution = await executeLlmWithFallback({
+                messages,
+                mode,
+                env,
+                maxTokens: (payload && (payload.max_tokens || payload.max_completion_tokens)) || 8192,
+                reasoningEffort: payload && payload.reasoning_effort,
+            })
+            return {
+                response: execution.text,
+                choices: [{ message: { content: execution.text } }],
+                result: execution.text,
+                modelUsed: execution.modelUsed,
+                tierUsed: execution.tierUsed,
             }
         }
     }
-    return null
 }
 
 async function runAiWithTimeout(aiBinding, model, payload, timeoutMs = 120000) {
@@ -1556,7 +1549,7 @@ async function handleAudioTranscription(request, context = {}) {
         if (shouldSmartFormat) {
             try {
                 const aiBinding = resolveAiBinding(env)
-                formattedMarkdown = await formatAudioSmartMarkdown(aiBinding, timestampedMarkdown)
+                formattedMarkdown = await formatAudioSmartMarkdown(aiBinding, timestampedMarkdown, env)
             } catch (formatErr) {
                 console.warn('[AI] Audio smart formatting failed, falling back to raw transcript:', formatErr?.message)
                 formattedMarkdown = timestampedMarkdown
@@ -1578,8 +1571,11 @@ async function handleAudioTranscription(request, context = {}) {
     }
 }
 
-async function formatAudioSmartMarkdown(aiBinding, rawText) {
-    if (!rawText || rawText.trim().length < 30 || !aiBinding) {
+async function formatAudioSmartMarkdown(arg1, arg2, arg3 = {}) {
+    const rawText = typeof arg1 === 'string' ? arg1 : arg2
+    const env = typeof arg1 === 'string' ? (arg2 || {}) : { ...arg3, ...(arg1 && !arg1._isGatewayWrapper ? { AI: arg1 } : {}) }
+
+    if (!rawText || rawText.trim().length < 30) {
         return rawText
     }
 
@@ -1589,26 +1585,20 @@ async function formatAudioSmartMarkdown(aiBinding, rawText) {
         { role: 'user', content: userPrompt }
     ]
 
-    const modelsToTry = [
-        '@cf/openai/gpt-oss-120b',
-        '@cf/openai/gpt-oss-20b'
-    ]
-
-    for (const model of modelsToTry) {
-        try {
-            console.log(`[AI] Running audio smart formatting with LLM ${model}...`)
-            const response = await runAiWithTimeout(aiBinding, model, {
-                messages,
-                max_tokens: 8192,
-            }, 40000)
-
-            const formatted = extractAiText(response)
-            if (formatted && formatted.trim().length > 0) {
-                return formatted.trim()
-            }
-        } catch (err) {
-            console.warn(`[AI] LLM ${model} audio smart formatting failed:`, err?.message)
+    try {
+        const execution = await executeLlmWithFallback({
+            messages,
+            mode: 'smart-format',
+            env,
+            maxTokens: 8192,
+            reasoningEffort: 'low',
+            timeoutMs: 40000,
+        })
+        if (execution?.text && execution.text.trim().length > 0) {
+            return execution.text.trim()
         }
+    } catch (err) {
+        console.warn('[AI] Audio smart formatting failed:', err?.message)
     }
 
     return rawText
@@ -2907,7 +2897,6 @@ router.post('/api/shares/:shareId/ai-assistant', async (request, context = {}) =
 
     if (mode === 'translate') {
         const translationTargetLanguage = normalizeTranslationTargetLanguage(targetLanguage) || 'Traditional Chinese'
-        const model = '@cf/openai/gpt-oss-120b'
         const messages = [
             {
                 role: 'system',
@@ -2919,22 +2908,22 @@ router.post('/api/shares/:shareId/ai-assistant', async (request, context = {}) =
             }
         ]
         try {
-            const aiResponse = await runAiWithTimeout(ai, model, {
+            const execution = await executeLlmWithFallback({
                 messages,
-                reasoning_effort: 'low',
-                max_completion_tokens: 4096,
-            }, 60000)
-            const resultText = extractAiText(aiResponse)
-            if (resultText) {
-                return returnJSON(0, { result: resultText, mode: 'translate', modelUsed: model })
+                mode: 'translate',
+                env: context?.env,
+                maxTokens: 4096,
+                reasoningEffort: 'low',
+            })
+            if (execution?.text) {
+                return returnJSON(0, { result: execution.text, mode: 'translate', modelUsed: execution.modelUsed, tierUsed: execution.tierUsed })
             }
-            return returnJSON(50003, 'Workers AI returned an empty response')
+            return returnJSON(50003, 'LLM gateway returned an empty response')
         } catch (error) {
             console.error('Reader AI Translate Error:', error)
             return returnJSON(50003, `Translation failed: ${error.message}`)
         }
     } else if (mode === 'ask' || mode === 'explain') {
-        const model = '@cf/openai/gpt-oss-120b'
         const systemPrompt = 'You are a knowledgeable, helpful, and concise AI assistant for a Wiki and knowledge base system. Answer the reader clearly in Traditional Chinese (繁體中文) based on their question and the selected text snippet. Use clean Markdown (headings, bullet points, bold text, code blocks) and format math equations using KaTeX ($...$ or $$...$$).'
         const prompt = userInstruction
             ? `【讀者提問】：\n${userInstruction}\n\n【讀者選取的內文片段】：\n"""\n${normalizedText}\n"""\n\n請直接且詳細地回答讀者的提問。`
@@ -2944,16 +2933,17 @@ router.post('/api/shares/:shareId/ai-assistant', async (request, context = {}) =
             { role: 'user', content: prompt }
         ]
         try {
-            const aiResponse = await runAiWithTimeout(ai, model, {
+            const execution = await executeLlmWithFallback({
                 messages,
-                reasoning_effort: 'low',
-                max_completion_tokens: 4096,
-            }, 60000)
-            const resultText = extractAiText(aiResponse)
-            if (resultText) {
-                return returnJSON(0, { result: resultText, mode: 'ask', modelUsed: model })
+                mode: 'ask',
+                env: context?.env,
+                maxTokens: 4096,
+                reasoningEffort: 'low',
+            })
+            if (execution?.text) {
+                return returnJSON(0, { result: execution.text, mode: 'ask', modelUsed: execution.modelUsed, tierUsed: execution.tierUsed })
             }
-            return returnJSON(50003, 'Workers AI returned an empty response')
+            return returnJSON(50003, 'LLM gateway returned an empty response')
         } catch (error) {
             console.error('Reader AI Ask Error:', error)
             return returnJSON(50003, `AI question failed: ${error.message}`)
@@ -4471,9 +4461,6 @@ router.post('/:path/ai-format', async (request, { env }) => {
         return returnJSON(50003, `AI service returned an empty response for model ${model}`)
     } catch (error) {
         console.error(`[AI] AI model ${model} failed:`, error)
-        console.error(`[AI] Error name:`, error.name)
-        console.error(`[AI] Error message:`, error.message)
-        console.error(`[AI] Error stack:`, error.stack)
         return returnJSON(50003, `AI model ${model} failed: ${error.message}`)
     }
 })

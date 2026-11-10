@@ -1,5 +1,26 @@
 # Changelog
 
+## [2026-11-10]
+
+- **🧠 全面盤查全站 AI 功能並升級高可用 T1/T2/T3 多層 Fallback 管線與防驚群防護（High-Availability Multi-Tier LLM Gateway with Anti-Thundering Herd Protection）**：
+  - **全站 AI 功能點盤查與統一架構升級**：
+    - **AI 排版（AI Format Document）**：`/:path/ai-format`（`mode: 'format'`），自動優化 Markdown 結構、列表、表格與排版，嚴格保留原意與語種。
+    - **AI 校稿與改寫（AI Edit）**：`/:path/ai-format`（`mode: 'edit'`），依據讀者或作者自訂指令精準重構或改寫段落／全篇筆記。
+    - **AI 雙向翻譯（AI Translation）**：`/:path/ai-format`（`mode: 'translate'`），支援圈選或全文翻譯，相容單語與雙語對照模式。
+    - **閱讀頁「詢問 AI」助手（Ask AI Assistant）**：`/api/shares/:shareId/ai-assistant`（`mode: 'ask'` / `'explain'`），支援 4 大快捷預設晶片（`🔍 解釋概念`、`💡 重點摘要`、`📐 公式推導`、`💻 程式碼解析`）及自訂提問。
+    - **閱讀頁圈選翻譯（Reader Selection Translate）**：`/api/shares/:shareId/ai-assistant`（`mode: 'translate'`），一鍵即時翻譯圈選語句。
+    - **語音逐字稿智慧排版（Audio Smart Markdown Formatting）**：`/api/audio/transcribe`（`formatAudioSmartMarkdown`），將 Whisper 原始口語轉錄自動排版為結構化 Markdown。
+  - **三層高可用自動 Failover 管線（3-Tier Resilient LLM Gateway）**：
+    - **Tier 1 (首選)**：OpenAI API 相容網關 `https://llm.aiurl.tw/v1`（預設模型 `antigravity/gemini-3-flash`），超低延遲（<1s）、強大推理與優質排版，由 `SCN_AIURL_LLM_BASE_URL` 與 `SCN_AIURL_LLM_API_KEY` 靈活配置。
+    - **Tier 2 (第一備援)**：Groq API（`openai/gpt-oss-120b` 與排版專用 `openai/gpt-oss-20b`），由 `GROQ_API_KEY` 支援高速開源大模型。
+    - **Tier 3 (第二備援)**：Cloudflare Workers AI 原生運算（`@cf/openai/gpt-oss-120b` 與 `@cf/openai/gpt-oss-20b`），透過 `env.AI` 提供邊緣運算兜底。
+  - **全方位防驚群效應（Anti-Thundering Herd Protection）**：
+    - **分層熔斷器（Circuit Breaker per Tier）**：當某層發生 HTTP 429 速率限制、5xx 服務器錯誤或超時，立即觸發熔斷進入 `OPEN` 冷卻狀態，後續請求零延遲直通下一健康層，杜絕集體等待掛起。
+    - **冷卻隨機抖動（Jittered Backoff）**：熔斷退避時間加入 0~8 秒不可預測的隨機抖動，避免所有並發請求在完全相同的毫秒集體重試故障服務而引發二次癱瘓。
+    - **單飛請求合併（In-Flight Single-Flight Coalescing）**：對相同提示與選項的並發請求進行動態去重（Request Coalescing），共享單一 Promise，防止連點或瞬間突發流量對後端造成重複計算衝擊。
+    - **分層緊湊逾時預算（Per-Tier Timeout Budget）**：T1 預設 15s、T2 25s、T3 35s，配合 `AbortController` 逾時即時終斷網路連線釋放資源。
+  - **完整測試防護**：新增 [`test/llm-gateway.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/llm-gateway.test.mjs)，覆蓋多層降級容錯、熔斷旁路跳過、隨機抖動與單飛去重，全站 573 項測試全數通過（`0 failures, 0 errors`）。
+
 ## [2026-11-03]
 
 - **🎨 修復底欄「發布與同步」圖示按鈕跑版與箭頭溢出缺陷（Fix Share & Sync Toolbar Button Layout & Caret Overflow）**：
