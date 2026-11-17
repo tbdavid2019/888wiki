@@ -414,10 +414,7 @@ async function isNoteAuthor(request, path, cookie = {}) {
     if (cookie && cookie[authorCookieKey]) {
         try {
             const validAuthor = await jwt.verify(cookie[authorCookieKey], secret)
-            if (validAuthor) {
-                const payload = jwt.decode(cookie[authorCookieKey])
-                if (payload?.path === path) return true
-            }
+            if (validAuthor?.payload?.path === path) return true
         } catch {}
     }
     return false
@@ -795,8 +792,7 @@ async function verifyAdminSession(cookie, adminPassword) {
         const secret = getSecret() || adminPassword
         const valid = await jwt.verify(cookie.admin_session, secret)
         if (valid) {
-            const payload = jwt.decode(cookie.admin_session)
-            return payload?.role === 'admin'
+            return valid.payload?.role === 'admin'
         }
     } catch (_) {}
     return false
@@ -4564,7 +4560,7 @@ export default {
         bindRuntimeEnv(env)
 
         try {
-            const response = await router.handle(request, {
+            const response = await router.fetch(request, {
                 request,
                 env,
                 waitUntil: promise => ctx.waitUntil(promise),

@@ -14,7 +14,7 @@ async function renderMermaid() {
     try {
         let pele = null
         try {
-            pele = await import('https://cdn.jsdelivr.net/npm/pele@1.6.0/dist/pele.js')
+            pele = await import('https://cdn.jsdelivr.net/npm/pele@1.13.0/dist/pele.js')
         } catch (pe) {
             console.warn('Block-view Pele load failed:', pe)
         }
@@ -39,7 +39,7 @@ async function renderMermaid() {
             unrendered.push(...nodes)
         }
         if (unrendered.length > 0) {
-            const mermaid = (await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs')).default
+            const mermaid = (await import('https://cdn.jsdelivr.net/npm/mermaid@12/dist/mermaid.esm.min.mjs')).default
             mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' })
             await mermaid.run({ nodes: unrendered })
         }

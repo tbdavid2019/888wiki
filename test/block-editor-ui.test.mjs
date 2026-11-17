@@ -85,7 +85,7 @@ test('shared block pages load dedicated Mermaid and ECharts enhancement only whe
     const source = readFileSync(new URL('../static/js/block-view.mjs', import.meta.url), 'utf8')
     assert.match(page, /<div id="preview-md" class="contents markdown-body"><p>Shared block<\/p><\/div>/)
     assert.match(page, /\/js\/block-view\.mjs/)
-    assert.match(source, /mermaid@11/)
+    assert.match(source, /mermaid@12/)
     assert.match(source, /renderEchartsChart/)
 })
 

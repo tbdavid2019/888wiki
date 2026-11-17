@@ -116,10 +116,10 @@ export async function verifyTurnstileClearanceCookie(request) {
     if (!clearanceToken) return false
 
     try {
-        const isValid = await jwt.verify(clearanceToken, secret)
-        if (!isValid) return false
+        const verified = await jwt.verify(clearanceToken, secret)
+        if (!verified) return false
 
-        const payload = jwt.decode(clearanceToken)
+        const payload = verified.payload
         if (payload?.type !== 'turnstile_clearance') return false
 
         const now = Math.floor(Date.now() / 1000)

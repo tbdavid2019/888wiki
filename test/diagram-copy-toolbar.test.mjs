@@ -45,7 +45,7 @@ test('rendered HTML with Mermaid diagram renders correctly without syntax errors
 })
 
 test('base template implements Pele-first rendering with Mermaid fallback and CSS variable inlining for image exports', () => {
-    assert.match(baseTemplateSource, /https:\/\/cdn\.jsdelivr\.net\/npm\/pele@1\.6\.0\/dist\/pele\.js/)
+    assert.match(baseTemplateSource, /https:\/\/cdn\.jsdelivr\.net\/npm\/pele@1\.13\.0\/dist\/pele\.js/)
     assert.match(baseTemplateSource, /peleModule\.render\(code/)
     assert.match(baseTemplateSource, /data-diagram-engine/)
     assert.match(baseTemplateSource, /getMermaid/)

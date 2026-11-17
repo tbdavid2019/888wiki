@@ -1,5 +1,22 @@
 # Changelog
 
+## [2026-11-17]
+
+- **📦 全面升級上游依賴套件與 CDN / Vendored 前端執行庫（Full Upstream Dependencies, CDN & Vendored Libraries Upgrade）**：
+  - **後端與 Workers 執行環境升級與 API 遷移**：
+    - `itty-router` `^2.6.1` → `^5.0.24`（於 `src/index.js` 遷移 `router.handle(...)` 至 v5 `router.fetch(...)`）。
+    - `@tsndr/cloudflare-worker-jwt` `^1.1.7` → `^3.2.3`（於 `src/index.js`、`src/helper.js`、`src/turnstile.mjs` 遷移 `jwt.verify(...)` 回傳 `{ header, payload }` 物件之新簽章）。
+    - `takumi-pdf` `^0.11.3` → `^0.20.0`、`@takumi-rs/helpers` `^2.12.0` → `^2.20.0`、`cookie` `^2.0.1` → `^2.0.2`、`dayjs` `^1.11.2` → `^1.11.23`、`wrangler` `^4.154.0` → `^4.163.0`、`esbuild` `^0.28.1` → `^0.28.2`、`jsdom` `^29.1.1` → `^31.0.1`。
+  - **前端島嶼編輯器與本地打包升級（Island Bundles Rebuild）**：
+    - `@xyflow/react` `^12.12.0` → `^13.0.1` 與 `zustand` `^4.5.7` → `^5.1.0`（於 `static/js/canvas-v2/components/Diagram/Diagram.jsx` 遷移至 v13 `NodeChangeset` / `EdgeChangeset` API：`changes.applyTo(...)` 與 `changes.getForNode(...)`）。
+    - `@blocknote/core` / `@blocknote/react` / `@blocknote/mantine` `^0.56.0` → `^0.57.0`、`@tiptap/*` overrides `3.31.3` → `3.34.0`、`@mantine/core` / `@mantine/hooks` `^9.5.1` → `^9.8.1`、`react` / `react-dom` `^19.2.8` → `^19.3.1`、`lucide-react` `^1.47.0` → `^1.73.0`。
+    - `@firecrawl/anydoc-wasm` `^0.1.6` → `^0.2.4`（同步更新 `static/wasm/anydoc_wasm.js` / `anydoc_wasm_bg.wasm` 與 `src/templates/base.js` CDN fallback）。
+    - `overrides` 全面更新：`dompurify` `^3.4.18`、`katex` `^0.19.1`、`nanoid` `^6.0.2`、`undici` `^8.12.4`。
+  - **CDN 與本地 Vendored 安全性及一致性升級**：
+    - `DOMPurify`（`src/templates/base.js` CDN 與 `static/js/purify.min.js`）自 `3.0.6` 升級至 **`3.4.18`**；`marked`（`static/js/marked.min.js`）自 `v11.1.1` 升級至 **`18.2.1`**。
+    - 統一圖表、公式與簡報 CDN 版本：`katex` `0.16.9` → `0.19.1`、`pele` `1.6.0` → `1.13.0`、`mermaid` `10`/`11` → `12`、`echarts`（簡報模式 `5` → `6.1.0`）、`reveal.js` `5.1.0` → `6.0.2`（配合 v6 `dist/plugin/` 路徑調整）、`abcjs` `6.2.2` → `6.7.2`、`flowchart.js` `1.17.1` → `1.18.1`、`underscore.js` `1.13.6` → `1.13.8`，以及 `unified` / `remark-*` / `rehype-*` / `unist-util-visit` 最新相容版本。
+  - **測試與 Bundle 驗證**：更新 [`test/block-editor-tiptap-build.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/block-editor-tiptap-build.test.mjs)、[`test/block-editor-ui.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/block-editor-ui.test.mjs) 與 [`test/diagram-copy-toolbar.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/diagram-copy-toolbar.test.mjs) 版本斷言並重編譯全數前端 bundle，全套測試通過。
+
 ## [2026-11-10]
 
 - **🧠 全面盤查全站 AI 功能並升級高可用 T1/T2/T3 多層 Fallback 管線與防驚群防護（High-Availability Multi-Tier LLM Gateway with Anti-Thundering Herd Protection）**：

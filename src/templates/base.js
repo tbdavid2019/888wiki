@@ -542,26 +542,26 @@ ${getMarkdownCss()}
     ${isEdit ? VAULT_PRESETS_MODAL(lang) : ''}
     ${isEdit ? PUBLISH_NUDGE_MODAL(lang) : ''}
     ${((ext.mode || 'md') === 'md' || ext.share || !isEdit) ? `
-    <script src="${CDN_PREFIX}/dompurify@3.0.6/dist/purify.min.js"></script>
+    <script src="${CDN_PREFIX}/dompurify@3.4.18/dist/purify.min.js"></script>
     <script src="/js/marked.min.js"></script>
     ` : ''}
     
     <!-- KaTeX CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.19.1/dist/katex.min.css">
     
     <!-- Remark / Unified Ecosystem -->
     ${!isBlockDocument && ((ext.mode || 'md') === 'md' || !isEdit) ? `
     <script type="module">
-        import { unified } from 'https://esm.sh/unified@11.0.4?bundle';
+        import { unified } from 'https://esm.sh/unified@11.0.5?bundle';
         import remarkParse from 'https://esm.sh/remark-parse@11.0.0?bundle';
-        import remarkGfm from 'https://esm.sh/remark-gfm@4.0.0?bundle';
+        import remarkGfm from 'https://esm.sh/remark-gfm@4.0.1?bundle';
         import remarkMath from 'https://esm.sh/remark-math@6.0.0?bundle';
-        import remarkRehype from 'https://esm.sh/remark-rehype@11.1.0?bundle';
-        import rehypeKatex from 'https://esm.sh/rehype-katex@7.0.0?bundle';
-        import rehypeStringify from 'https://esm.sh/rehype-stringify@10.0.0?bundle';
+        import remarkRehype from 'https://esm.sh/remark-rehype@11.1.2?bundle';
+        import rehypeKatex from 'https://esm.sh/rehype-katex@7.0.1?bundle';
+        import rehypeStringify from 'https://esm.sh/rehype-stringify@10.0.1?bundle';
         import remarkBreaks from 'https://esm.sh/remark-breaks@4.0.0?bundle';
         import { decorateColumnLayouts, expandHackmdImageSizes, expandPandocCitations, expandTextHighlights, expandCustomColors, expandMarkdownExtensions, decorateFootnoteAndCitationPopovers, decorateCodeBlocks, parseBookToc, htmlOrTsvToMarkdownTable, expandInlineFootnotes, protectCurrencyDollarSigns } from '/js/markdown-extensions.mjs';
-        import { visit } from 'https://esm.sh/unist-util-visit@5.0.0?bundle';
+        import { visit } from 'https://esm.sh/unist-util-visit@5.2.0?bundle';
         import { decorateMediaPreviews } from '/js/media-preview.mjs';
 
         // GitHub Alerts Plugin
@@ -1163,14 +1163,14 @@ ${getMarkdownCss()}
                  }
                  let peleModule = null;
                  try {
-                     peleModule = await import('https://cdn.jsdelivr.net/npm/pele@1.6.0/dist/pele.js');
+                     peleModule = await import('https://cdn.jsdelivr.net/npm/pele@1.13.0/dist/pele.js');
                  } catch (peleLoadErr) {
                      console.warn('Pele engine load failed, will use Mermaid fallback:', peleLoadErr);
                  }
                  let mermaidInstance = null;
                  const getMermaid = async () => {
                      if (!mermaidInstance) {
-                         const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs');
+                         const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@12/dist/mermaid.esm.min.mjs');
                          mermaidInstance = mermaid;
                          const currentTheme = (typeof APP_STATE !== 'undefined' && APP_STATE?.theme) || window.APP_STATE?.theme || '${pageTheme}';
                          const isDark = isDarkContext(currentTheme);
@@ -1238,7 +1238,7 @@ ${getMarkdownCss()}
             if (document.querySelectorAll('.diagram-flow-render').length > 0) {
                  try {
                      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js');
-                     await loadScript('https://cdnjs.cloudflare.com/ajax/libs/flowchart/1.17.1/flowchart.min.js');
+                     await loadScript('https://cdnjs.cloudflare.com/ajax/libs/flowchart/1.18.1/flowchart.min.js');
                      document.querySelectorAll('.diagram-flow-render').forEach(el => {
                          if (el.hasAttribute('data-processed')) return;
                          const code = el.previousElementSibling.textContent.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
@@ -1254,7 +1254,7 @@ ${getMarkdownCss()}
            if (document.querySelectorAll('.diagram-sequence-render').length > 0) {
                  try {
                      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js');
-                     await loadScript('https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.13.6/underscore-min.js');
+                     await loadScript('https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.13.8/underscore-min.js');
                      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/js-sequence-diagrams/1.0.6/sequence-diagram-min.js');
                      document.querySelectorAll('.diagram-sequence-render').forEach(el => {
                          if (el.hasAttribute('data-processed')) return;
@@ -1285,7 +1285,7 @@ ${getMarkdownCss()}
              
              if (document.querySelectorAll('.diagram-abc-render').length > 0) {
                  try {
-                     await loadScript('https://cdn.jsdelivr.net/npm/abcjs@6.2.2/dist/abcjs-basic-min.js');
+                     await loadScript('https://cdn.jsdelivr.net/npm/abcjs@6.7.2/dist/abcjs-basic-min.js');
                      document.querySelectorAll('.diagram-abc-render').forEach(el => {
                          if (el.hasAttribute('data-processed')) return;
                          const code = el.previousElementSibling.textContent.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
@@ -3999,7 +3999,7 @@ ${getMarkdownCss()}
                             anydocModule = await import('/wasm/anydoc_wasm.js')
                         } catch (localErr) {
                             console.warn('Local WASM load failed, falling back to CDN:', localErr)
-                            anydocModule = await import('https://esm.sh/@firecrawl/anydoc-wasm@0.1.6')
+                            anydocModule = await import('https://esm.sh/@firecrawl/anydoc-wasm@0.2.4')
                         }
 
                         const initWasm = anydocModule.default || anydocModule.init
@@ -5096,7 +5096,7 @@ ${getMarkdownCss()}
                     try {
                         anydocModule = await import('/wasm/anydoc_wasm.js');
                     } catch (localErr) {
-                        anydocModule = await import('https://esm.sh/@firecrawl/anydoc-wasm@0.1.6');
+                        anydocModule = await import('https://esm.sh/@firecrawl/anydoc-wasm@0.2.4');
                     }
                     const initWasm = anydocModule.default || anydocModule.init;
                     const { toMarkdownBytes, formatFromExtension } = anydocModule;
@@ -5174,7 +5174,7 @@ ${getMarkdownCss()}
                     try {
                         anydocModule = await import('/wasm/anydoc_wasm.js');
                     } catch (localErr) {
-                        anydocModule = await import('https://esm.sh/@firecrawl/anydoc-wasm@0.1.6');
+                        anydocModule = await import('https://esm.sh/@firecrawl/anydoc-wasm@0.2.4');
                     }
                     const initWasm = anydocModule.default || anydocModule.init;
                     const { toMarkdownBytes, formatFromExtension } = anydocModule;
@@ -6900,7 +6900,7 @@ ${getMarkdownCss()}
 '<meta charset="UTF-8">\\n' +
 '<meta name="viewport" content="width=device-width, initial-scale=1.0">\\n' +
 '<title>' + title + '</title>\\n' +
-'<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">\\n' +
+'<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.19.1/dist/katex.min.css">\\n' +
 '<style>\\n' +
 '* { box-sizing: border-box; }\\n' +
 'body {\\n' +
@@ -7722,22 +7722,22 @@ themeCss + '\\n' +
                 cssLinks.forEach(function(p) {
                     var l = document.createElement('link');
                     l.rel = 'stylesheet';
-                    l.href = 'https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/' + p;
+                    l.href = 'https://cdn.jsdelivr.net/npm/reveal.js@6.0.2/dist/' + p;
                     document.head.appendChild(l);
                 });
                 var highlightCss = document.createElement('link');
                 highlightCss.rel = 'stylesheet';
-                highlightCss.href = 'https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/monokai.css';
+                highlightCss.href = 'https://cdn.jsdelivr.net/npm/reveal.js@6.0.2/dist/plugin/highlight/monokai.css';
                 document.head.appendChild(highlightCss);
 
                 var s = document.createElement('script');
-                s.src = 'https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js';
+                s.src = 'https://cdn.jsdelivr.net/npm/reveal.js@6.0.2/dist/reveal.js';
                 s.onload = function() {
                     var m = document.createElement('script');
-                    m.src = 'https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/markdown/markdown.js';
+                    m.src = 'https://cdn.jsdelivr.net/npm/reveal.js@6.0.2/dist/plugin/markdown.js';
                     m.onload = function() {
                         var h = document.createElement('script');
-                        h.src = 'https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/highlight.js';
+                        h.src = 'https://cdn.jsdelivr.net/npm/reveal.js@6.0.2/dist/plugin/highlight.js';
                         h.onload = function() { _loaded = true; resolve(); };
                         h.onerror = function() { _loaded = true; resolve(); };
                         document.head.appendChild(h);
@@ -7829,14 +7829,14 @@ themeCss + '\\n' +
             if (mermaidBlocks.length > 0) {
                 var peleModule = null;
                 try {
-                    peleModule = await import('https://cdn.jsdelivr.net/npm/pele@1.6.0/dist/pele.js');
+                    peleModule = await import('https://cdn.jsdelivr.net/npm/pele@1.13.0/dist/pele.js');
                 } catch (peleLoadErr) {
                     console.warn('Presentation Pele load failed, will use Mermaid fallback:', peleLoadErr);
                 }
                 var mermaidInstance = null;
                 var getPresentationMermaid = async function() {
                     if (mermaidInstance) return mermaidInstance;
-                    var mermaidModule = await import('https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs');
+                    var mermaidModule = await import('https://cdn.jsdelivr.net/npm/mermaid@12/dist/mermaid.esm.min.mjs');
                     mermaidInstance = mermaidModule.default || mermaidModule;
                     var isDarkTheme = typeof isDarkContext === 'function' ? isDarkContext(APP_STATE.theme) : (APP_STATE.uiTheme === 'dark' || ['tokyo-night', 'x-ai', 'terminal', 'kanagawa', 'catppuccin-macchiato'].includes(APP_STATE.theme));
                     mermaidInstance.initialize({
@@ -7893,7 +7893,7 @@ themeCss + '\\n' +
                     if (!window.echarts) {
                         await new Promise(function(resolve, reject) {
                             var es = document.createElement('script');
-                            es.src = 'https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js';
+                            es.src = 'https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js';
                             es.onload = resolve;
                             es.onerror = reject;
                             document.head.appendChild(es);

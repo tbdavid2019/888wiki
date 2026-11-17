@@ -141,6 +141,10 @@ function __wbg_get_imports() {
             const ret = new Object();
             return addHeapObject(ret);
         },
+        __wbg_push_d2ae3af0c1217ae6: function(arg0, arg1) {
+            const ret = getObject(arg0).push(getObject(arg1));
+            return ret;
+        },
         __wbg_set_6be42768c690e380: function(arg0, arg1, arg2) {
             getObject(arg0)[takeObject(arg1)] = takeObject(arg2);
         },

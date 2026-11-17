@@ -7,8 +7,6 @@ import {
     MiniMap,
     ConnectionMode,
     SelectionMode,
-    applyNodeChanges,
-    applyEdgeChanges,
     useReactFlow,
 } from '@xyflow/react'
 
@@ -139,8 +137,8 @@ export function Diagram({ store }) {
     }, [rawEdges, isEdit, edgeActions])
 
     const handleNodesChange = useCallback((changes) => {
-        const nextNodes = applyNodeChanges(changes, store.getState().nodes).map(node => {
-            const dimChange = changes.find(c => c.id === node.id && c.type === 'dimensions')
+        const nextNodes = changes.applyTo(store.getState().nodes).map(node => {
+            const dimChange = changes.getForNode(node.id).find(c => c.type === 'dimensions')
             if (dimChange?.dimensions) {
                 return {
                     ...node,
@@ -157,7 +155,7 @@ export function Diagram({ store }) {
     }, [store])
 
     const handleEdgesChange = useCallback((changes) => {
-        const nextEdges = applyEdgeChanges(changes, store.getState().edges)
+        const nextEdges = changes.applyTo(store.getState().edges)
         store.getState().setEdges(nextEdges)
     }, [store])
 

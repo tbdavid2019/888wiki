@@ -160,7 +160,7 @@ export async function checkAuth(cookie, path) {
 
             const valid = await jwt.verify(cookie.auth, secret)
             if (valid) {
-                const payload = jwt.decode(cookie.auth)
+                const payload = valid.payload || {}
                 // Backward compatibility: if no role, assume 'edit' (old tokens)
                 const role = payload.role || 'edit'
                 if (payload.path === path) {
