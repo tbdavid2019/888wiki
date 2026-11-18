@@ -21,13 +21,15 @@ The same import choices can create Markdown notes or convert content into editab
 
 ## For AI agents & LLMs
 
-Install or update the official **David888 Wiki** agent skill (covering Markdown, Block, JSON Canvas, Excalidraw whiteboards, Vault modes, and `/mcp`) across Claude Code, Codex, Antigravity, Gemini, Cursor, and OpenCode:
+Install or update the official **David888 Wiki** agent skill (covering Markdown, Block, JSON Canvas 1.0, Excalidraw whiteboards, Share Vault modes, and `/mcp`) across Claude Code, Codex, Antigravity, Gemini, Cursor, and OpenCode.
+
+> **Tip:** Since wiki syntax and MCP tools evolve frequently, run the `update` command before starting an AI workflow so your agent always holds the newest capabilities:
 
 ```bash
-# Install / update globally via dedicated CLI package (packages/888wiki-skill)
+# Install or update globally to the latest live SKILL.md (recommended before every use)
 npx --yes 888wiki-skill update --global -y
 
-# Or install directly via Vercel Agent Skills CLI from GitHub
+# Or install via Vercel Agent Skills CLI from GitHub
 npx --yes skills add tbdavid2019/888wiki -g -y
 ```
 
@@ -58,7 +60,7 @@ Markdown is the starting point: write portable plain text, preview it live, and 
 
 ## Built for agents and automation
 
-Connect compatible agents and LLM clients through the native `/mcp` endpoint, browser WebMCP tools, the REST API and OpenAPI description, or the published [Agent Skill](https://wiki.david888.com/.well-known/agent-skills/david888-wiki-publisher/SKILL.md). These interfaces let agents read, create, and publish wiki content using documented formats and permissions.
+Connect compatible agents and LLM clients through the native `/mcp` endpoint, browser WebMCP tools, the REST API and OpenAPI description, `/llms.txt`, or the published [Agent Skill](https://wiki.david888.com/.well-known/agent-skills/david888-wiki-publisher/SKILL.md) (keep local copies fresh anytime with `npx --yes 888wiki-skill update --global -y`). These interfaces let agents read, create, and publish Markdown, Block, Canvas, and Excalidraw wiki content using documented formats and permissions.
 
 ## Get started
 

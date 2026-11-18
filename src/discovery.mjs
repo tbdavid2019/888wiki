@@ -68,7 +68,7 @@ export function buildLlmsTxt(origin = 'https://wiki.david888.com') {
 
 ## AI Agent & API Discovery
 
-- [Agent Skill](${siteOrigin}${AGENT_SKILL_PATH}): Instructions for agents that read, write, publish, upload, and share notes.
+- [Agent Skill](${siteOrigin}${AGENT_SKILL_PATH}): Canonical skill for Markdown, Block, JSON Canvas, and Excalidraw publishing. **Run \`npx --yes 888wiki-skill update --global -y\` before use** to keep installed global skills synced with the latest features.
 - [Agent Skills Index](${siteOrigin}${AGENT_SKILLS_INDEX_PATH}): Index of machine-readable agent skills (v0.2.0 schema).
 - [Model Context Protocol (MCP)](${siteOrigin}${MCP_PATH}): Native MCP JSON-RPC 2.0 endpoint for WebMCP and AI agent tools.
 - [Canvas MCP Tools](${siteOrigin}${MCP_PATH}): Use \`validate_canvas\`, \`write_canvas\`, and \`read_canvas\` for JSON Canvas validation, publishing, and edge inspection. Canvas notes can be linked as read-only chapters in Book Mode.

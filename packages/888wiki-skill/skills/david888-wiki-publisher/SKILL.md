@@ -12,12 +12,16 @@ You have the ability to read, write, and append markdown content natively to `wi
 ## ⚡ Mandatory Freshness Check & Continuous Feature Evolution
 
 > [!IMPORTANT]
-> **Continuous Feature Evolution — Always Fetch the Latest Live Version**:
-> David888 Wiki is under continuous active development with frequent releases of powerful new authoring capabilities (e.g. academic multi-column layouts, automatic TOC trees, 2D slide decks, Book Mode, rich text highlights, diagram toolbars, LaTeX formulas, and Pandoc citations).
+> **Continuous Feature Evolution — Always Update / Fetch the Latest Live Version Before Use**:
+> David888 Wiki is under continuous active development with frequent releases of powerful new authoring capabilities (e.g. academic multi-column layouts, automatic TOC trees, 2D slide decks, Book Mode, JSON Canvas 1.0, Excalidraw whiteboards, Share Vault modes, rich text highlights, diagram toolbars, LaTeX formulas, and Pandoc citations).
 >
-> **Before every invocation of this skill, AI agents MUST fetch and read the latest complete skill document from the canonical website URL.** Do not assume a local, repository, or previously cached copy is current.
+> **Before every invocation (or whenever new wiki capabilities are needed), keep your local skill fresh using ONE of the two commands below.** Do not assume a local, repository, or previously cached copy is current:
 
 ```bash
+# 1. Recommended for humans & CLI agents (updates ~/.agents/skills, ~/.claude/skills, ~/.codex/skills, ~/.gemini/skills, ~/.config/opencode/skills)
+npx --yes 888wiki-skill update --global -y
+
+# 2. Direct live HTTP fetch inside an execution turn
 curl -fsSL -H "Cache-Control: no-cache" \
   "https://wiki.david888.com/.well-known/agent-skills/david888-wiki-publisher/SKILL.md"
 ```

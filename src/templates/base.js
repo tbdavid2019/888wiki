@@ -1947,8 +1947,9 @@ ${getMarkdownCss()}
             },
             execute: async () => ({
                 skillUrl: 'https://wiki.david888.com/.well-known/agent-skills/david888-wiki-publisher/SKILL.md',
+                updateCommand: 'npx --yes 888wiki-skill update --global -y',
                 docsUrl: 'https://wiki.david888.com/api/docs',
-                instructions: 'Fetch SKILL.md for the 4-step Book Orchestration SOP, 2D presentation slides (---/--), KaTeX, and extended formatting syntaxes.',
+                instructions: 'Always run "npx --yes 888wiki-skill update --global -y" or fetch SKILL.md before use for the newest Markdown, Block, JSON Canvas, Excalidraw Whiteboard, Book Orchestration SOP, and 2D presentation slides (---/--).',
             }),
         })
 
@@ -6879,6 +6880,13 @@ ${getMarkdownCss()}
                     window.__openCiteModal?.(actionItem);
                 } else if (action === 'math-format') {
                     window.__openMathFormatModal?.({ currentTarget: actionItem });
+                } else if (action === 'copy-skill-cmd') {
+                    const cmd = 'npx --yes 888wiki-skill update --global -y';
+                    clipboardCopy(cmd).then(() => {
+                        window.showToast?.(APP_STATE.lang === 'zh-TW' ? '✅ 已複製 Skill 更新指令：' + cmd : '✅ Copied: ' + cmd, 3600);
+                    }).catch(() => {
+                        window.showToast?.(cmd, 4500);
+                    });
                 } else if (action === 'pwa-install') {
                     // #pwa-install-manual-btn already has its native click listener in pwa-install.mjs
                     return;

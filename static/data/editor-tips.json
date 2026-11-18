@@ -38,8 +38,8 @@
     },
     {
       "id": "layout-controls",
-      "zh-TW": "小訣竅：底欄右側的分段開關可快速切換預覽、左右／上下排列與桌面／行動裝置模擬；按 Cmd/Ctrl + Shift + P 或點「工具」可開啟指令面板切換 20 款主題與外觀設定。",
-      "en-US": "Tip: Segmented toggles on the bottom IDE bar quickly switch Preview, Side/Stack layout, and Desktop/Mobile preview. Press Cmd/Ctrl + Shift + P or click Tools to open the Command Palette for all 20 themes and settings."
+      "zh-TW": "小訣竅：底欄右側分段開關可切換預覽、左右／上下排列與桌面／行動模擬；點「主題」可一次設定深淺外觀、字體、寬度與 20 套排版主題，右側「中 / EN」可直覺切換語系，「工具」收錄字數統計、Cite 與開發文件。",
+      "en-US": "Tip: Bottom bar toggles switch Preview, Side/Stack layout, and Desktop/Mobile simulation. Click 'Theme' for UI polarity, fonts, widths, and 20 themes; '中 / EN' switches language; and 'Tools' opens stats, Cite, and docs."
     },
     {
       "id": "quick-share-url",
@@ -213,8 +213,8 @@
     },
     {
       "id": "theme-personalization",
-      "zh-TW": "小訣竅：按 Cmd/Ctrl + Shift + P 開啟指令面板，即可在 20 款主題間搜尋切換、調整亮色／暗色／自動模式，並於編輯預覽即時切換 JetBrains Mono 或 Maple Mono 字體。",
-      "en-US": "Tip: Press Cmd/Ctrl + Shift + P to open the Command Palette, search 20 curated themes, switch Light/Dark/Auto appearance across the entire workspace, and toggle JetBrains Mono or Maple Mono live in edit preview."
+      "zh-TW": "小訣竅：點擊底欄「主題」按鈕，即可在同一面板切換淺色／深色／自動外觀、JetBrains Mono / Maple Mono 字體、預覽寬度與 20 款排版主題（切到東京夜景等深色主題會同步暗化 Markdown 與 Block 編輯區）。",
+      "en-US": "Tip: Click 'Theme' on the bottom bar to switch Light/Dark/Auto appearance, JetBrains Mono / Maple Mono font, preview width, and 20 typography themes—picking dark themes like Tokyo Night automatically adapts Markdown & Block editors."
     },
     {
       "id": "essential-shortcuts",
@@ -245,6 +245,11 @@
       "id": "reading-outline-dots",
       "zh-TW": "小訣竅：閱讀分享頁與預覽區左側配備「層級里程碑圓點導軌」，依 H1~H6 標題自動呈現 7px 至 3px 精緻圓點，懸浮可預覽標題，點擊即可平滑捲動跳轉。",
       "en-US": "Tip: Share pages and previews feature an elegant 'Hierarchical Milestone Dots' outline on the left margin, displaying 7px to 3px dots for H1~H6 headings with hover title tooltips and smooth scroll jumps."
+    },
+    {
+      "id": "agent-skill-npx",
+      "zh-TW": "小訣竅：讓 AI 代理（Claude Code / Codex / Gemini / OpenCode）操作本站時，每次使用前建議先執行 npx --yes 888wiki-skill update --global -y，即可同步最新 Markdown、Block、Canvas 與 Excalidraw 技能！",
+      "en-US": "Tip: Before having an AI agent (Claude Code / Codex / Gemini / OpenCode) interact with this wiki, run `npx --yes 888wiki-skill update --global -y` to keep your skill synced with the latest Canvas, Excalidraw, and Markdown tools!"
     }
   ]
 }

@@ -566,7 +566,7 @@ export const MORE_DROPDOWN_MENU = (lang, { isEdit = false } = {}) => {
                     ${SVG_ICONS.sparkles}
                     <span class="dropdown-item-copy">
                         <strong>Agent Skill (SKILL.md)</strong>
-                        <small>${isZh ? 'AI 代理技能與發布工具規格' : 'AI Agent skill specification'}</small>
+                        <small>${isZh ? 'AI 代理規格｜執行 npx --yes 888wiki-skill update --global -y 更新' : 'AI Agent spec · Run npx --yes 888wiki-skill update --global -y'}</small>
                     </span>
                 </a>
                 <a class="dropdown-item dropdown-item-rich" href="https://github.com/tbdavid2019/888wiki" target="_blank" rel="noreferrer" role="menuitem">
@@ -605,7 +605,7 @@ export const DEV_INFO_DROPDOWN_MENU = (lang, t = getLangText(lang)) => {
                         ${SVG_ICONS.sparkles}
                         <span class="dropdown-item-copy">
                             <strong>${t?.skillTitle || 'Agent Skill'}</strong>
-                            <small>${isZh ? 'AI 代理技能與發布工具規格' : 'AI Agent skill specification'}</small>
+                            <small>${isZh ? 'AI 代理規格｜npx --yes 888wiki-skill update --global -y' : 'AI Agent spec · npx --yes 888wiki-skill update --global -y'}</small>
                         </span>
                     </a>
                     <a class="dropdown-item dropdown-item-rich" target="_blank" href="/docs/api" rel="noreferrer" role="menuitem">
@@ -1844,10 +1844,17 @@ export const COMMAND_PALETTE_MODAL = (lang, { editorFormat = 'markdown' } = {}) 
                 <a class="cp-item" href="/.well-known/agent-skills/david888-wiki-publisher/SKILL.md" target="_blank" rel="noreferrer" data-cp-keywords="agent skill mcp ai">
                     ${SVG_ICONS.sparkles}
                     <span class="cp-item-copy">
-                        <strong>${t.skillTitle || 'Agent Skill'}</strong>
-                        <small>${zh ? 'AI 代理技能與發布工具規格' : 'AI Agent skill specification'}</small>
+                        <strong>${t.skillTitle || 'Agent Skill (SKILL.md)'}</strong>
+                        <small>${zh ? 'AI 代理規格｜使用前可執行 npx --yes 888wiki-skill update --global -y 保持最新' : 'AI Agent spec — run npx --yes 888wiki-skill update --global -y before use'}</small>
                     </span>
                 </a>
+                <button type="button" class="cp-item" data-cp-action="copy-skill-cmd" data-cp-keywords="npx 888wiki-skill update install skill agent cli 安裝 更新 複製指令">
+                    ${SVG_ICONS.copy}
+                    <span class="cp-item-copy">
+                        <strong>${zh ? '複製 npx Skill 安裝／更新指令' : 'Copy npx Skill Update Command'}</strong>
+                        <small>npx --yes 888wiki-skill update --global -y</small>
+                    </span>
+                </button>
                 <a class="cp-item" href="https://github.com/tbdavid2019/888wiki" target="_blank" rel="noreferrer" data-cp-keywords="github source 原始碼">
                     ${SVG_ICONS.github}
                     <span class="cp-item-copy">

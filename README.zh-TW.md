@@ -21,10 +21,12 @@
 
 ## AI 代理與 LLM 整合（Skill 安裝／更新）
 
-一鍵為本機 Claude Code、Codex、Antigravity、Gemini、Cursor、OpenCode 安裝或更新官方 **David888 Wiki Skill**（涵蓋 Markdown、Block、JSON Canvas、Excalidraw 白板、Share Vault 與原生 `/mcp`）：
+一鍵為本機 Claude Code、Codex、Antigravity、Gemini、Cursor、OpenCode 安裝或更新官方 **David888 Wiki Skill**（涵蓋 Markdown、Block、JSON Canvas 1.0、Excalidraw 白板、Share Vault 與原生 `/mcp`）。
+
+> **建議習慣**：由於本站語法與 MCP 工具持續演進，建議每次讓 AI 使用前先執行一次以下指令，確保本機 Skill 永遠是線上最新版：
 
 ```bash
-# 透過專屬 CLI 套件全域安裝／更新至最新版（packages/888wiki-skill）
+# 一鍵從線上拉取最新 SKILL.md 並更新本機全域各 Agent 目錄（推薦每次使用前執行）
 npx --yes 888wiki-skill update --global -y
 
 # 或直接透過 Agent Skills CLI 從 GitHub 安裝
@@ -58,7 +60,7 @@ Markdown 是 888wiki 的起點：以可攜的純文字撰寫，即時預覽數�
 
 ## 為 Agents 與自動化而設
 
-相容的 Agent／LLM 可透過原生 `/mcp`、瀏覽器 WebMCP 工具、REST API 與 OpenAPI 規格，或已發布的 [Agent Skill](https://wiki.david888.com/.well-known/agent-skills/david888-wiki-publisher/SKILL.md) 讀取、建立及發布內容，並依照文件定義的格式與權限操作。
+相容的 Agent／LLM 可透過原生 `/mcp`、瀏覽器 WebMCP 工具、REST API 與 OpenAPI 規格、`/llms.txt` 或已發布的 [Agent Skill](https://wiki.david888.com/.well-known/agent-skills/david888-wiki-publisher/SKILL.md) 讀取、建立及發布 Markdown、Block、Canvas 與 Excalidraw 內容（隨時執行 `npx --yes 888wiki-skill update --global -y` 即可保持同步），並依照文件定義的格式與權限操作。
 
 ## 開始使用
 
