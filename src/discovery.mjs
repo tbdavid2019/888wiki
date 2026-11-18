@@ -831,7 +831,7 @@ export async function buildAgentSkillsIndex() {
             {
                 name: AGENT_SKILL_NAME,
                 type: 'skill-md',
-                description: 'Publish, read, and append markdown content directly to the David888 Wiki using its REST API.',
+                description: 'Publish, read, and append Markdown, Block notes, JSON Canvas 1.0 diagrams, and Excalidraw whiteboards to David888 Wiki via REST API or /mcp.',
                 url: AGENT_SKILL_PATH,
                 digest: `sha256:${await sha256Hex(AGENT_SKILL_MARKDOWN)}`,
             },

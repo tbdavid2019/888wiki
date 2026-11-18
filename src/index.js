@@ -3079,15 +3079,29 @@ router.get('/mcp', handleMcpRequest)
 router.head('/mcp', handleMcpRequest)
 router.post('/mcp', handleMcpRequest)
 
-router.get(AGENT_SKILLS_INDEX_PATH, async () => createDiscoveryResponse(
+const respondAgentSkillsIndex = async () => createDiscoveryResponse(
     JSON.stringify(await buildAgentSkillsIndex(), null, 2),
     'application/json; charset=UTF-8',
-))
+)
 
-router.head(AGENT_SKILLS_INDEX_PATH, async () => createDiscoveryResponse(
-    JSON.stringify(await buildAgentSkillsIndex(), null, 2),
-    'application/json; charset=UTF-8',
-))
+const respondAgentSkillAsset = async (request) => {
+    if (request.params.asset !== 'index.json') {
+        const lang = getI18n(request)
+        return returnPage('Page404', { lang, title: '404' })
+    }
+    return respondAgentSkillsIndex()
+}
+
+const respondAgentSkillMarkdown = (request) => {
+    if (request.params.skillName !== 'david888-wiki-publisher' || request.params.fileName !== 'SKILL.md') {
+        const lang = getI18n(request)
+        return returnPage('Page404', { lang, title: '404' })
+    }
+    return createDiscoveryResponse(AGENT_SKILL_MARKDOWN, 'text/markdown; charset=UTF-8')
+}
+
+router.get(AGENT_SKILLS_INDEX_PATH, respondAgentSkillsIndex)
+router.head(AGENT_SKILLS_INDEX_PATH, respondAgentSkillsIndex)
 
 router.get(AGENT_SKILL_PATH, () => createDiscoveryResponse(
     AGENT_SKILL_MARKDOWN,
@@ -3099,53 +3113,15 @@ router.head(AGENT_SKILL_PATH, () => createDiscoveryResponse(
     'text/markdown; charset=UTF-8',
 ))
 
-router.get('/.well-known/agent-skills/:asset', async (request) => {
-    if (request.params.asset !== 'index.json') {
-        const lang = getI18n(request)
-        return returnPage('Page404', { lang, title: '404' })
-    }
+router.get('/.well-known/agent-skills/:asset', respondAgentSkillAsset)
+router.head('/.well-known/agent-skills/:asset', respondAgentSkillAsset)
+router.get('/.well-known/skills/:asset', respondAgentSkillAsset)
+router.head('/.well-known/skills/:asset', respondAgentSkillAsset)
 
-    return createDiscoveryResponse(
-        JSON.stringify(await buildAgentSkillsIndex(), null, 2),
-        'application/json; charset=UTF-8',
-    )
-})
-
-router.head('/.well-known/agent-skills/:asset', async (request) => {
-    if (request.params.asset !== 'index.json') {
-        const lang = getI18n(request)
-        return returnPage('Page404', { lang, title: '404' })
-    }
-
-    return createDiscoveryResponse(
-        JSON.stringify(await buildAgentSkillsIndex(), null, 2),
-        'application/json; charset=UTF-8',
-    )
-})
-
-router.get('/.well-known/agent-skills/:skillName/:fileName', (request) => {
-    if (request.params.skillName !== 'david888-wiki-publisher' || request.params.fileName !== 'SKILL.md') {
-        const lang = getI18n(request)
-        return returnPage('Page404', { lang, title: '404' })
-    }
-
-    return createDiscoveryResponse(
-        AGENT_SKILL_MARKDOWN,
-        'text/markdown; charset=UTF-8',
-    )
-})
-
-router.head('/.well-known/agent-skills/:skillName/:fileName', (request) => {
-    if (request.params.skillName !== 'david888-wiki-publisher' || request.params.fileName !== 'SKILL.md') {
-        const lang = getI18n(request)
-        return returnPage('Page404', { lang, title: '404' })
-    }
-
-    return createDiscoveryResponse(
-        AGENT_SKILL_MARKDOWN,
-        'text/markdown; charset=UTF-8',
-    )
-})
+router.get('/.well-known/agent-skills/:skillName/:fileName', respondAgentSkillMarkdown)
+router.head('/.well-known/agent-skills/:skillName/:fileName', respondAgentSkillMarkdown)
+router.get('/.well-known/skills/:skillName/:fileName', respondAgentSkillMarkdown)
+router.head('/.well-known/skills/:skillName/:fileName', respondAgentSkillMarkdown)
 
 router.get('/api/:path/history', async (request) => {
     const { path } = request.params

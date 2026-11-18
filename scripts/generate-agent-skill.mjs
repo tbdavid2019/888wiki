@@ -32,6 +32,12 @@ if (existsSync(dirname(localAgentSkillPath))) {
     copyFileSync(resolve(repoRoot, 'skills/SKILL.md'), localAgentSkillPath)
 }
 
+const packageSkillPath = resolve(repoRoot, 'packages/888wiki-skill/skills/david888-wiki-publisher/SKILL.md')
+if (existsSync(resolve(repoRoot, 'packages/888wiki-skill'))) {
+    mkdirSync(dirname(packageSkillPath), { recursive: true })
+    copyFileSync(resolve(repoRoot, 'skills/SKILL.md'), packageSkillPath)
+}
+
 writeGeneratedModule({
     sourcePath: resolve(repoRoot, 'LLM_API_DOCS.md'),
     outputPath: resolve(generatedDir, 'api-docs.generated.mjs'),

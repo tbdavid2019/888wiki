@@ -19,6 +19,18 @@ The **+ New** menu moves content from wherever it starts into a note:
 
 The same import choices can create Markdown notes or convert content into editable Block documents.
 
+## For AI agents & LLMs
+
+Install or update the official **David888 Wiki** agent skill (covering Markdown, Block, JSON Canvas, Excalidraw whiteboards, Vault modes, and `/mcp`) across Claude Code, Codex, Antigravity, Gemini, Cursor, and OpenCode:
+
+```bash
+# Install / update globally via dedicated CLI package (packages/888wiki-skill)
+npx --yes 888wiki-skill update --global -y
+
+# Or install directly via Vercel Agent Skills CLI from GitHub
+npx --yes skills add tbdavid2019/888wiki -g -y
+```
+
 ## Choose the right workspace for the idea
 
 | Mode | Best for | What you get |

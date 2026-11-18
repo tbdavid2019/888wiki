@@ -19,6 +19,18 @@
 
 同一套匯入功能可建立 Markdown 筆記，或將內容轉成可編輯的 Block 文件。
 
+## AI 代理與 LLM 整合（Skill 安裝／更新）
+
+一鍵為本機 Claude Code、Codex、Antigravity、Gemini、Cursor、OpenCode 安裝或更新官方 **David888 Wiki Skill**（涵蓋 Markdown、Block、JSON Canvas、Excalidraw 白板、Share Vault 與原生 `/mcp`）：
+
+```bash
+# 透過專屬 CLI 套件全域安裝／更新至最新版（packages/888wiki-skill）
+npx --yes 888wiki-skill update --global -y
+
+# 或直接透過 Agent Skills CLI 從 GitHub 安裝
+npx --yes skills add tbdavid2019/888wiki -g -y
+```
+
 ## 依想法選擇創作空間
 
 | 模式 | 適合用途 | 主要特色 |
