@@ -121,7 +121,7 @@ test('THEME_DROPDOWN_MENU renders all 20 themes with active checkmark', () => {
     assert.match(activeItem.querySelector('.theme-item-check').textContent, /✓/)
 })
 
-test('Option A footer keeps export & copy on IDE bar while theme & width live in Command Palette for edit mode and footer for share mode', () => {
+test('Option A footer keeps unified appearance/theme, export & copy on IDE bar while unique tools live in Command Palette', () => {
     const editFooterHtml = FOOTER({
         lang: 'zh-TW',
         isEdit: true,
@@ -130,15 +130,23 @@ test('Option A footer keeps export & copy on IDE bar while theme & width live in
         width: '100%',
     })
     const editDom = new JSDOM(editFooterHtml)
+    assert.ok(editDom.window.document.querySelector('#theme-dropdown'))
+    assert.equal(editDom.window.document.querySelectorAll('#theme-dropdown .width-item').length, 4)
+    assert.equal(editDom.window.document.querySelectorAll('#theme-dropdown .theme-item').length, Object.keys(THEMES).length)
+    assert.ok(editDom.window.document.querySelector('#theme-dropdown [data-cp-font="jetbrains"]'))
+    assert.ok(editDom.window.document.querySelector('#theme-dropdown [data-cp-ui-theme="dark"]'))
     assert.ok(editDom.window.document.querySelector('#export-dropdown'))
     assert.ok(editDom.window.document.querySelector('#copy-dropdown'))
     assert.ok(editDom.window.document.querySelector('#quick-share-url-btn'))
     assert.ok(editDom.window.document.querySelector('#command-palette-btn'))
 
-    const paletteHtml = COMMAND_PALETTE_MODAL('zh-TW', { theme: 'claude-canvas', width: '100%' })
+    const paletteHtml = COMMAND_PALETTE_MODAL('zh-TW')
     const paletteDom = new JSDOM(paletteHtml)
-    assert.equal(paletteDom.window.document.querySelectorAll('.width-item').length, 4)
-    assert.equal(paletteDom.window.document.querySelectorAll('.theme-item').length, Object.keys(THEMES).length)
+    assert.equal(paletteDom.window.document.querySelectorAll('.theme-item').length, 0)
+    assert.equal(paletteDom.window.document.querySelectorAll('.width-item').length, 0)
+    assert.ok(paletteDom.window.document.querySelector('[data-cp-action="stats"]'))
+    assert.ok(paletteDom.window.document.querySelector('[data-cp-action="cite"]'))
+    assert.ok(paletteDom.window.document.querySelector('[data-cp-action="math-format"]'))
 
     const shareFooterHtml = FOOTER({
         lang: 'zh-TW',

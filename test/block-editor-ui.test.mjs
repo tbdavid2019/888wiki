@@ -17,7 +17,7 @@ test('block edit pages use a WYSIWYG block canvas instead of the Markdown split 
     assert.match(page, /id="contents" class="contents hide"/)
     assert.doesNotMatch(page, /data-markdown-toolbar/)
     assert.doesNotMatch(page, /class="divide-line"/)
-    assert.match(page, /id="import-md-btn"/)
+    assert.match(page, /id="dropdown-import-doc-btn"/)
     assert.match(page, /id="import-md-input"/)
     assert.match(page, /id="export-dropdown"/)
     assert.match(page, /id="export-image-btn"/)

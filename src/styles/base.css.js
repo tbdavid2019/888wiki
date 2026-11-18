@@ -2694,25 +2694,51 @@ html[data-ui-theme="dark"] .share-menu-trigger.is-published {
 }
 
 .theme-dropdown .dropdown-menu {
-    min-width: 220px;
-    max-height: 360px;
+    width: min(470px, calc(100vw - 24px));
+    min-width: min(440px, calc(100vw - 24px));
+    max-height: min(74vh, 560px);
     overflow-y: auto;
     overscroll-behavior: contain;
+    padding: 10px 12px 12px;
+}
+.theme-appearance-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px 2px 6px;
+}
+.theme-appearance-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+.theme-appearance-label {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--modal-muted, #655a43);
+    white-space: nowrap;
+}
+.theme-dropdown-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
 }
 .theme-item {
     display: flex;
     align-items: center;
-    justify-content: space-between !important;
+    justify-content: flex-start !important;
     padding: 8px 10px;
     font-size: 13px;
     cursor: pointer;
-    border: 0;
+    border: 1px solid transparent;
     background: transparent;
     width: 100%;
     box-sizing: border-box;
     color: var(--toolbar-text, #24292f);
     border-radius: 8px;
-    transition: background 0.1s ease, color 0.1s ease;
+    text-align: left !important;
+    transition: background 0.1s ease, color 0.1s ease, border-color 0.1s ease;
 }
 .theme-item:hover,
 .theme-item:focus-visible,
@@ -2722,10 +2748,23 @@ html[data-ui-theme="dark"] .share-menu-trigger.is-published {
 }
 .theme-item.is-active {
     font-weight: 600;
-    color: var(--accent-color, #0969da);
+    color: var(--toolbar-active-text, #0969da);
+    background: var(--toolbar-active-bg);
+    border-color: color-mix(in srgb, var(--toolbar-active-border, #a9471d) 40%, transparent);
 }
 .theme-item-name {
     text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+@media (max-width: 560px) {
+    .theme-dropdown-grid {
+        grid-template-columns: 1fr;
+    }
+    .theme-appearance-row {
+        flex-wrap: wrap;
+    }
 }
 .theme-item-check {
     font-weight: bold;

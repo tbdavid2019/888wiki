@@ -205,8 +205,10 @@ export const HTML = ({ lang = 'zh-TW', title, content = '', ext = {}, tips, isEd
         (function() {
             try {
                 var darkThemes = ${JSON.stringify(DARK_PREVIEW_THEMES)};
+                window.__DARK_PREVIEW_THEMES = darkThemes;
+                window.__isDarkPreviewTheme = function(name) { return darkThemes.indexOf(name) !== -1; };
                 var pageTheme = ${JSON.stringify(pageTheme)};
-                var isDarkPreviewTheme = darkThemes.indexOf(pageTheme) !== -1;
+                var isDarkPreviewTheme = window.__isDarkPreviewTheme(pageTheme);
                 document.documentElement.setAttribute('data-preview-theme', pageTheme);
                 var t = localStorage.getItem('cf-notepad-ui-theme') || 'auto';
                 var syncedFromPreview = localStorage.getItem('cf-notepad-ui-theme-sync') === '1';
@@ -1149,7 +1151,9 @@ ${getMarkdownCss()}
         };
 
         const DARK_PREVIEW_THEMES = ${JSON.stringify(DARK_PREVIEW_THEMES)};
-        const isDarkPreviewTheme = (themeName) => DARK_PREVIEW_THEMES.includes(themeName);
+        const isDarkPreviewTheme = (themeName) => window.__isDarkPreviewTheme
+            ? window.__isDarkPreviewTheme(themeName)
+            : DARK_PREVIEW_THEMES.includes(themeName);
         const isDarkContext = (themeName) => {
             if (isDarkPreviewTheme(themeName)) return true;
             const uiTheme = document.documentElement.getAttribute('data-ui-theme');
@@ -6715,34 +6719,34 @@ ${getMarkdownCss()}
         let cpSelectedIndex = 0;
 
         const syncCommandPaletteQuickStates = () => {
-            if (!$cpModal) return;
             const uiMode = window.__getUiThemeMode ? window.__getUiThemeMode() : 'auto';
-            $cpModal.querySelectorAll('[data-cp-ui-theme]').forEach(btn => {
+            document.querySelectorAll('[data-cp-ui-theme]').forEach(btn => {
                 const active = btn.getAttribute('data-cp-ui-theme') === uiMode;
                 btn.classList.toggle('is-active', active);
                 btn.setAttribute('aria-pressed', active ? 'true' : 'false');
             });
             const currentFont = document.body.classList.contains('share-font-maple') ? 'maple' : 'jetbrains';
-            $cpModal.querySelectorAll('[data-cp-font]').forEach(btn => {
+            document.querySelectorAll('[data-cp-font]').forEach(btn => {
                 const active = btn.getAttribute('data-cp-font') === currentFont;
                 btn.classList.toggle('is-active', active);
                 btn.setAttribute('aria-pressed', active ? 'true' : 'false');
             });
             const currentLang = APP_STATE.lang || 'zh-TW';
-            $cpModal.querySelectorAll('[data-cp-lang]').forEach(btn => {
+            document.querySelectorAll('[data-cp-lang]').forEach(btn => {
                 const active = btn.getAttribute('data-cp-lang') === currentLang;
                 btn.classList.toggle('is-active', active);
                 btn.setAttribute('aria-pressed', active ? 'true' : 'false');
             });
             const activeWidth = APP_STATE.noteSettings.width || '100%';
             const isMobilePreview = document.body.classList.contains('preview-device-mobile');
-            $cpModal.querySelectorAll('.width-item').forEach(btn => {
+            document.querySelectorAll('.width-item').forEach(btn => {
                 const active = btn.dataset.widthValue === activeWidth;
                 btn.classList.toggle('is-active', active);
                 btn.disabled = isMobilePreview;
             });
         };
         window.__syncCommandPaletteQuickStates = syncCommandPaletteQuickStates;
+        window.__syncAppearanceStates = syncCommandPaletteQuickStates;
 
         const getVisibleCpItems = () => {
             if (!$cpList) return [];
@@ -6835,77 +6839,46 @@ ${getMarkdownCss()}
                 }
             });
         }
+        document.addEventListener('click', (e) => {
+            const uiThemeBtn = e.target.closest('[data-cp-ui-theme]');
+            if (uiThemeBtn) {
+                const mode = uiThemeBtn.getAttribute('data-cp-ui-theme');
+                window.__applyUiTheme?.(mode, { persist: true, manual: true, toast: true });
+                syncCommandPaletteQuickStates();
+                return;
+            }
+            const fontBtn = e.target.closest('[data-cp-font]');
+            if (fontBtn) {
+                const nextFont = fontBtn.getAttribute('data-cp-font');
+                window.__setShareFont?.(nextFont);
+                syncCommandPaletteQuickStates();
+                window.showToast?.(APP_STATE.lang === 'zh-TW'
+                    ? ('已切換預覽字體：' + (nextFont === 'maple' ? 'Maple Mono' : 'JetBrains Mono'))
+                    : ('Preview font: ' + (nextFont === 'maple' ? 'Maple Mono' : 'JetBrains Mono')));
+                return;
+            }
+            const langBtn = e.target.closest('[data-cp-lang]');
+            if (langBtn) {
+                const nextLang = langBtn.getAttribute('data-cp-lang');
+                if (nextLang && nextLang !== APP_STATE.lang) setLanguage(nextLang);
+                return;
+            }
+        });
+        document.getElementById('theme-menu-btn')?.addEventListener('click', () => {
+            window.setTimeout(syncCommandPaletteQuickStates, 0);
+        });
         if ($cpModal) {
             $cpModal.addEventListener('click', (e) => {
-                const uiThemeBtn = e.target.closest('[data-cp-ui-theme]');
-                if (uiThemeBtn) {
-                    const mode = uiThemeBtn.getAttribute('data-cp-ui-theme');
-                    window.__applyUiTheme?.(mode, { persist: true, manual: true, toast: true });
-                    syncCommandPaletteQuickStates();
-                    return;
-                }
-                const fontBtn = e.target.closest('[data-cp-font]');
-                if (fontBtn) {
-                    const nextFont = fontBtn.getAttribute('data-cp-font');
-                    window.__setShareFont?.(nextFont);
-                    syncCommandPaletteQuickStates();
-                    window.showToast?.(APP_STATE.lang === 'zh-TW'
-                        ? ('已切換預覽字體：' + (nextFont === 'maple' ? 'Maple Mono' : 'JetBrains Mono'))
-                        : ('Preview font: ' + (nextFont === 'maple' ? 'Maple Mono' : 'JetBrains Mono')));
-                    return;
-                }
-                const langBtn = e.target.closest('[data-cp-lang]');
-                if (langBtn) {
-                    const nextLang = langBtn.getAttribute('data-cp-lang');
-                    if (nextLang && nextLang !== APP_STATE.lang) setLanguage(nextLang);
-                    return;
-                }
-                const widthBtn = e.target.closest('.width-item');
-                if (widthBtn) {
-                    window.setTimeout(syncCommandPaletteQuickStates, 0);
-                    return;
-                }
-                const themeItem = e.target.closest('.theme-item');
-                if (themeItem) {
-                    closeCommandPalette();
-                    return;
-                }
                 const actionItem = e.target.closest('[data-cp-action]');
                 if (!actionItem) return;
                 const action = actionItem.getAttribute('data-cp-action');
                 closeCommandPalette();
-                if (action === 'quick-share-url') {
-                    triggerQuickShareUrl();
-                } else if (action === 'open-share-page') {
-                    const url = getCurrentShareUrl();
-                    if (url) window.open(url, '_blank', 'noopener,noreferrer');
-                    else openPublishOptions();
-                } else if (action === 'open-present') {
-                    if (typeof window.initPresentation === 'function') window.initPresentation();
-                    else document.getElementById('present-btn')?.click();
-                } else if (action === 'open-book') {
-                    if (typeof window.initBookMode === 'function') window.initBookMode();
-                    else document.getElementById('editor-book-btn')?.click();
-                } else if (action === 'open-seal') {
-                    if (typeof openVaultPresetsModal === 'function') openVaultPresetsModal();
-                    else document.getElementById('open-vault-presets-modal-btn')?.click();
-                } else if (action === 'note-history') {
-                    document.getElementById('note-history-btn')?.click() || document.getElementById('note-history-btn-draft')?.click();
-                } else if (action === 'share-history') {
-                    document.getElementById('share-history-btn')?.click() || document.getElementById('share-history-btn-draft')?.click();
-                } else if (action === 'import-file') {
-                    // #import-md-btn already has its native click listener wired to #import-md-input
-                    return;
-                } else if (action === 'import-url') {
-                    document.getElementById('dropdown-import-url-btn')?.click();
-                } else if (action === 'print') {
-                    window.__openPrintDialog?.();
+                if (action === 'stats') {
+                    document.getElementById('more-menu-stats-btn')?.click();
                 } else if (action === 'cite') {
                     window.__openCiteModal?.(actionItem);
                 } else if (action === 'math-format') {
                     window.__openMathFormatModal?.({ currentTarget: actionItem });
-                } else if (action === 'editor-preference') {
-                    document.getElementById('editor-preference-btn')?.click();
                 } else if (action === 'pwa-install') {
                     // #pwa-install-manual-btn already has its native click listener in pwa-install.mjs
                     return;
@@ -7037,6 +7010,7 @@ ${getMarkdownCss()}
             shareViewBody.classList.toggle('share-font-jetbrains', shareFont === 'jetbrains');
             shareViewBody.classList.toggle('share-font-maple', shareFont === 'maple');
             setRailSwitchState(shareFontSelector, shareFont === 'jetbrains');
+            window.__syncAppearanceStates?.();
         }
         window.__setShareFont = (shareFont) => {
             const normalized = shareFont === 'maple' ? 'maple' : 'jetbrains';
@@ -7143,9 +7117,11 @@ ${getMarkdownCss()}
                     const currentUiMode = typeof window.__getUiThemeMode === 'function'
                         ? window.__getUiThemeMode()
                         : (localStorage.getItem('cf-notepad-ui-theme') || 'auto');
-                    if (isDarkPreviewTheme(theme)) {
+                    if (window.__isDarkPreviewTheme?.(theme)) {
                         if (currentUiMode !== 'dark') {
-                            localStorage.setItem(prevKey, currentUiMode || 'auto');
+                            if (localStorage.getItem(syncKey) !== '1') {
+                                localStorage.setItem(prevKey, currentUiMode || 'auto');
+                            }
                             localStorage.setItem(syncKey, '1');
                             window.__applyUiTheme?.('dark', { persist: true, toast: false });
                         } else {
@@ -7157,7 +7133,7 @@ ${getMarkdownCss()}
                         localStorage.removeItem(prevKey);
                         window.__applyUiTheme?.(prevMode, { persist: true, toast: false });
                     }
-                    window.__syncCommandPaletteQuickStates?.();
+                    window.__syncAppearanceStates?.();
                 } catch (syncErr) {}
 
                 document.querySelectorAll('.theme-item').forEach(el => {
@@ -7846,7 +7822,7 @@ themeCss + '\\n' +
             }
 
             function applyTheme(theme, options = {}) {
-                const isDark = theme === 'dark' || (theme === 'auto' && (mediaQuery.matches || isDarkPreviewTheme(APP_STATE.theme)));
+                const isDark = theme === 'dark' || (theme === 'auto' && (mediaQuery.matches || Boolean(window.__isDarkPreviewTheme?.(APP_STATE.theme))));
                 if (theme === 'dark' || (theme === 'auto' && isDark)) {
                     root.setAttribute('data-ui-theme', 'dark');
                 } else if (theme === 'light') {
@@ -7864,6 +7840,7 @@ themeCss + '\\n' +
                     try { localStorage.setItem(UI_THEME_STORAGE_KEY, theme); } catch(e) {}
                 }
                 updateIcon(theme);
+                window.__syncAppearanceStates?.();
                 if (typeof window.updateEditorLineNumbers === 'function') {
                     window.updateEditorLineNumbers();
                 }
@@ -7880,7 +7857,7 @@ themeCss + '\\n' +
             window.__getUiThemeMode = getSavedTheme;
 
             function updateIcon(theme) {
-                const isDark = theme === 'dark' || (theme === 'auto' && (mediaQuery.matches || isDarkPreviewTheme(APP_STATE.theme)));
+                const isDark = theme === 'dark' || (theme === 'auto' && (mediaQuery.matches || Boolean(window.__isDarkPreviewTheme?.(APP_STATE.theme))));
                 root.classList.toggle('wa-theme-dark', isDark);
                 if (!$themeBtn) return;
                 $themeBtn.classList.toggle('is-dark', isDark);

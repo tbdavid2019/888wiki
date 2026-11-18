@@ -123,7 +123,7 @@ test('footer uses full theme labels and descriptive width options', () => {
 })
 
 test('footer exposes markdown import export and PDF tools without reusing existing controls', () => {
-    assert.match(commonTemplateSource, /id="import-md-btn"/)
+    assert.match(commonTemplateSource, /id="dropdown-import-doc-btn"/)
     assert.match(commonTemplateSource, /id="export-md-btn"/)
     assert.match(commonTemplateSource, /id="copy-menu-btn"|id="copy-all-md-btn"/)
     assert.match(commonTemplateSource, /copy-button-icon-success/)

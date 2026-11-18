@@ -66,8 +66,8 @@ test('Block note menus expose imports that convert content into blocks', () => {
     assert.match(document.querySelector('#dropdown-import-doc-btn')?.textContent || '', /轉成 Block/)
     assert.match(document.querySelector('#dropdown-import-url-btn')?.textContent || '', /轉成 Block/)
     assert.ok(document.querySelector('#import-md-input'))
-    assert.ok(paletteDoc.querySelector('#import-md-btn'))
     assert.ok(document.querySelector('#new-block-note-link'))
+    assert.equal(paletteDoc.querySelector('[data-cp-action="math-format"]'), null)
 })
 
 test('scrolling toolbars delegate unclipped tooltips and dropdowns to a body-level floating layer', () => {
@@ -201,10 +201,11 @@ test('clicking select elements, labels, or toggles inside dropdown does not clos
     assert.equal(menu.classList.contains('floating-menu-open'), false)
 })
 
-test('share mode keeps print button in footer while edit mode exposes print inside Command Palette', () => {
-    const paletteDoc = new JSDOM(COMMAND_PALETTE_MODAL('zh-TW', { isEdit: true })).window.document
-    const palettePrint = paletteDoc.querySelector('[data-cp-action="print"]')
-    assert.ok(palettePrint, 'Edit mode Command Palette must expose print action')
+test('share mode keeps dedicated print button while edit mode exposes print inside Export menu without Command Palette duplication', () => {
+    const editDoc = renderFooter({ isEdit: true, mode: 'md' })
+    assert.ok(editDoc.querySelector('#export-dropdown #print-preview-btn'), 'Edit mode Export menu must expose #print-preview-btn')
+    const paletteDoc = new JSDOM(COMMAND_PALETTE_MODAL('zh-TW')).window.document
+    assert.equal(paletteDoc.querySelector('[data-cp-action="print"]'), null, 'Command Palette should not duplicate Export menu print button')
 
     const shareDoc = renderFooter({ isEdit: false, path: 'my-note', sharePath: 'share/id' })
     const printShareBtn = shareDoc.querySelector('#toolbar-print-btn')
@@ -307,6 +308,7 @@ test('Option A IDE edit footer places quick public URL action beside publish cap
     assert.match(liveEditDoc.querySelector('#quick-share-url-btn').textContent, /複製連結/)
 
     const appearanceSection = editDoc.querySelector('.footer-section-appearance')
+    assert.ok(appearanceSection.querySelector('#theme-dropdown'), '#theme-dropdown must be standalone in IDE bottom bar')
     assert.ok(appearanceSection.querySelector('#command-palette-btn'), '#command-palette-btn must exist in IDE bar')
     assert.ok(appearanceSection.querySelector('#language-selector'), '#language-selector must remain directly accessible on IDE bottom bar')
     assert.ok(appearanceSection.querySelector('#export-dropdown'), '#export-dropdown must exist in IDE bar')

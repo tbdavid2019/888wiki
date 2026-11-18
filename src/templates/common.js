@@ -381,29 +381,62 @@ export const EXPORT_DROPDOWN_MENU = (lang, { includeMarkdown = true } = {}) => {
     `
 }
 
-export const THEME_DROPDOWN_MENU = (lang, currentTheme, getThemeLabel) => {
+export const THEME_DROPDOWN_MENU = (lang, currentTheme, getThemeLabel, { width = DEFAULT_PREVIEW_WIDTH } = {}) => {
     const isZh = lang === 'zh-TW'
     const activeTheme = currentTheme || 'claude-canvas'
+    const effectiveWidth = width || DEFAULT_PREVIEW_WIDTH
+    const widthOptions = [
+        { value: '100%', label: '100%' },
+        { value: '960px', label: '960px' },
+        { value: '1200px', label: '1200px' },
+        { value: '1440px', label: '1440px' },
+    ]
     return `
         <div class="footer-control-group">
             <div class="dropdown-container theme-dropdown" id="theme-dropdown">
-                <button type="button" id="theme-menu-btn" class="toolbar-icon-button dropdown-trigger theme-menu-trigger" data-tooltip="${isZh ? '排版樣式' : 'Typography theme'}" title="${isZh ? '排版樣式' : 'Typography theme'}" aria-label="${isZh ? '排版樣式' : 'Typography theme'}" aria-haspopup="menu" aria-expanded="false">
+                <button type="button" id="theme-menu-btn" class="toolbar-icon-button dropdown-trigger theme-menu-trigger" data-tooltip="${isZh ? '預覽樣式（主題、字體與寬度）' : 'Appearance (Themes, Font & Width)'}" title="${isZh ? '預覽樣式（主題、字體與寬度）' : 'Appearance (Themes, Font & Width)'}" aria-label="${isZh ? '預覽樣式與主題設定' : 'Appearance & Theme Settings'}" aria-haspopup="menu" aria-expanded="false">
                     ${SVG_ICONS.palette}
-                    <span class="toolbar-button-label">${isZh ? '樣式' : 'Theme'}</span>
+                    <span class="toolbar-button-label">${isZh ? '主題' : 'Theme'}</span>
                     <span class="toolbar-button-caret" aria-hidden="true">▾</span>
                 </button>
                 <div class="dropdown-menu theme-dropdown-menu" role="menu">
-                    <div class="dropdown-menu-label">${isZh ? '排版樣式' : 'Theme Style'}</div>
-                    ${Object.keys(THEMES).map(themeName => {
-                        const isActive = themeName === activeTheme
-                        const label = getThemeLabel(themeName)
-                        return `
-                            <button type="button" class="dropdown-item theme-item ${isActive ? 'is-active' : ''}" data-theme-name="${themeName}" role="menuitem">
-                                <span class="theme-item-name">${label}</span>
-                                ${isActive ? `<span class="theme-item-check" aria-hidden="true">✓</span>` : ''}
-                            </button>
-                        `
-                    }).join('')}
+                    <div class="dropdown-item-control theme-appearance-panel" aria-label="${isZh ? '預覽外觀、字體與寬度' : 'Appearance, Font & Width'}">
+                        <div class="theme-appearance-row">
+                            <span class="theme-appearance-label">${isZh ? '介面深淺' : 'Appearance'}</span>
+                            <div class="cp-segmented-group" role="group" aria-label="${isZh ? '外觀深淺模式' : 'UI Theme'}">
+                                <button type="button" class="cp-seg-btn" data-cp-ui-theme="light">${SVG_ICONS.sun}<span>${isZh ? '淺色' : 'Light'}</span></button>
+                                <button type="button" class="cp-seg-btn" data-cp-ui-theme="dark">${SVG_ICONS.moon}<span>${isZh ? '深色' : 'Dark'}</span></button>
+                                <button type="button" class="cp-seg-btn" data-cp-ui-theme="auto"><span>${isZh ? '自動' : 'Auto'}</span></button>
+                            </div>
+                        </div>
+                        <div class="theme-appearance-row">
+                            <span class="theme-appearance-label">${isZh ? '預覽字體' : 'Preview Font'}</span>
+                            <div class="cp-segmented-group" role="group" aria-label="${isZh ? '預覽字體' : 'Preview Font'}">
+                                <button type="button" class="cp-seg-btn" data-cp-font="jetbrains">JetBrains Mono</button>
+                                <button type="button" class="cp-seg-btn" data-cp-font="maple">Maple Mono</button>
+                            </div>
+                        </div>
+                        <div class="theme-appearance-row">
+                            <span class="theme-appearance-label">${isZh ? '預覽寬度' : 'Preview Width'}</span>
+                            <div class="cp-segmented-group" role="group" aria-label="${isZh ? '預覽寬度' : 'Preview Width'}">
+                                ${widthOptions.map(opt => `<button type="button" class="cp-seg-btn width-item ${opt.value === effectiveWidth ? 'is-active' : ''}" data-width-value="${opt.value}">${opt.label}</button>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dropdown-divider"></div>
+                    <div class="dropdown-menu-label">${isZh ? '排版主題 (20 套)' : 'Typography Themes (20)'}</div>
+                    <div class="theme-dropdown-grid">
+                        ${Object.keys(THEMES).map(themeName => {
+                            const isActive = themeName === activeTheme
+                            const label = getThemeLabel(themeName)
+                            return `
+                                <button type="button" class="dropdown-item theme-item ${isActive ? 'is-active' : ''}" data-theme-name="${themeName}" role="menuitem">
+                                    <span class="theme-item-name">${label}</span>
+                                    ${isActive ? `<span class="theme-item-check" aria-hidden="true">✓</span>` : ''}
+                                </button>
+                            `
+                        }).join('')}
+                    </div>
                 </div>
             </div>
         </div>
@@ -1091,8 +1124,11 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                                 </div>
                             ` : ''}
                         </div>
+                        ${THEME_DROPDOWN_MENU(lang, theme, getThemeLabel, { width: effectiveWidth })}
                         ${COPY_DROPDOWN_MENU(lang)}
-                        ` : ''}
+                        ` : `
+                        ${THEME_DROPDOWN_MENU(lang, theme, getThemeLabel, { width: effectiveWidth })}
+                        `}
                         ${EXPORT_DROPDOWN_MENU(lang, { includeMarkdown: !isBlockEditor })}
                         <button type="button" id="command-palette-btn" class="toolbar-icon-button command-palette-trigger" data-tooltip="${lang === 'zh-TW' ? '工具與指令面板 (Cmd/Ctrl+Shift+P)' : 'Tools & Command Palette (Cmd/Ctrl+Shift+P)'}" title="${lang === 'zh-TW' ? '工具與指令面板 (Cmd/Ctrl+Shift+P)' : 'Tools & Command Palette (Cmd/Ctrl+Shift+P)'}" aria-label="${lang === 'zh-TW' ? '開啟工具與指令面板' : 'Open Tools & Command Palette'}" aria-haspopup="dialog">
                             ${SVG_ICONS.sliders}
@@ -1744,143 +1780,31 @@ export const VAULT_PRESETS_MODAL = (lang) => {
 </div>`
 }
 
-export const COMMAND_PALETTE_MODAL = (lang, { theme = 'claude-canvas', width = DEFAULT_PREVIEW_WIDTH, share = false, shareId = '', editorFormat = 'markdown', mode = 'md', noteHistoryEnabled = false } = {}) => {
+export const COMMAND_PALETTE_MODAL = (lang, { editorFormat = 'markdown' } = {}) => {
     const zh = lang === 'zh-TW'
     const t = getLangText(lang)
     const closeLabel = zh ? '關閉' : 'Close'
     const isBlockEditor = editorFormat === 'block'
-    const isPublished = share === true && Boolean(shareId)
-    const effectiveWidth = width || DEFAULT_PREVIEW_WIDTH
-    const getThemeLabel = themeName => {
-        const description = THEME_OPTION_LABELS[themeName]?.[lang] || ''
-        return description ? `${themeName} · ${description}` : themeName
-    }
-    const widthOptions = [
-        { value: '100%', label: '100%' },
-        { value: '960px', label: '960px' },
-        { value: '1200px', label: '1200px' },
-        { value: '1440px', label: '1440px' },
-    ]
     return `
 <div id="command-palette-modal" class="modal command-palette-modal" role="dialog" aria-modal="true" aria-labelledby="command-palette-title" aria-hidden="true" style="display:none;">
     <div class="modal-mask" id="command-palette-mask" data-modal-close></div>
     <div class="command-palette-content">
         <div class="command-palette-header">
             <span class="command-palette-search-icon" aria-hidden="true">${SVG_ICONS.search}</span>
-            <h2 id="command-palette-title" class="sr-only">${zh ? '工具與指令面板' : 'Tools & Command Palette'}</h2>
-            <input type="text" id="command-palette-search" class="command-palette-search" placeholder="${zh ? '搜尋指令、外觀設定或 20 套主題... (Esc 關閉)' : 'Search commands, settings, or 20 themes... (Esc to close)'}" autocomplete="off" spellcheck="false" aria-label="${zh ? '搜尋工具與指令' : 'Search tools and commands'}" />
+            <h2 id="command-palette-title" class="sr-only">${zh ? '工具與說明面板' : 'Tools & Docs Palette'}</h2>
+            <input type="text" id="command-palette-search" class="command-palette-search" placeholder="${zh ? '搜尋寫作工具或說明文件... (Esc 關閉)' : 'Search tools or documentation... (Esc to close)'}" autocomplete="off" spellcheck="false" aria-label="${zh ? '搜尋寫作工具與文件' : 'Search tools and docs'}" />
             <kbd class="command-palette-esc" aria-hidden="true">ESC</kbd>
             <button type="button" class="close-btn command-palette-close" id="command-palette-close-btn" data-modal-close aria-label="${closeLabel}">×</button>
         </div>
 
-        <div class="command-palette-quick-settings" aria-label="${zh ? '常用外觀設定' : 'Quick appearance settings'}">
-            <div class="cp-quick-row">
-                <span class="cp-quick-label">${zh ? '外觀深淺' : 'Appearance'}</span>
-                <div class="cp-segmented-group" role="group" aria-label="${zh ? '外觀深淺模式' : 'UI Theme'}">
-                    <button type="button" class="cp-seg-btn" data-cp-ui-theme="light">${SVG_ICONS.sun}<span>${zh ? '淺色' : 'Light'}</span></button>
-                    <button type="button" class="cp-seg-btn" data-cp-ui-theme="dark">${SVG_ICONS.moon}<span>${zh ? '深色' : 'Dark'}</span></button>
-                    <button type="button" class="cp-seg-btn" data-cp-ui-theme="auto"><span>${zh ? '自動' : 'Auto'}</span></button>
-                </div>
-            </div>
-            <div class="cp-quick-row">
-                <span class="cp-quick-label">${zh ? '預覽字體' : 'Preview Font'}</span>
-                <div class="cp-segmented-group" role="group" aria-label="${zh ? '預覽字體' : 'Preview Font'}">
-                    <button type="button" class="cp-seg-btn" data-cp-font="jetbrains">JetBrains Mono</button>
-                    <button type="button" class="cp-seg-btn" data-cp-font="maple">Maple Mono</button>
-                </div>
-            </div>
-            <div class="cp-quick-row">
-                <span class="cp-quick-label">${zh ? '預覽寬度' : 'Width'}</span>
-                <div class="cp-segmented-group" role="group" aria-label="${zh ? '預覽寬度' : 'Preview Width'}">
-                    ${widthOptions.map(opt => `<button type="button" class="cp-seg-btn width-item ${opt.value === effectiveWidth ? 'is-active' : ''}" data-width-value="${opt.value}">${opt.label}</button>`).join('')}
-                </div>
-            </div>
-            <div class="cp-quick-row">
-                <span class="cp-quick-label">${zh ? '介面語言' : 'Language'}</span>
-                <div class="cp-segmented-group" role="group" aria-label="${t.language}">
-                    <button type="button" class="cp-seg-btn ${zh ? 'is-active' : ''}" data-cp-lang="zh-TW">繁體中文</button>
-                    <button type="button" class="cp-seg-btn ${!zh ? 'is-active' : ''}" data-cp-lang="en-US">English</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="command-palette-list" id="command-palette-list" role="listbox" aria-label="${zh ? '所有指令' : 'Commands'}">
-            <div class="cp-group" data-cp-group="publish">
-                <div class="cp-group-label">${zh ? '發布與快速分享' : 'Publish & Share'}</div>
-                <button type="button" class="cp-item" data-cp-action="quick-share-url" data-cp-keywords="copy url share link publish 複製 連結 公開分享">
-                    ${SVG_ICONS.shareHistory}
-                    <span class="cp-item-copy">
-                        <strong id="cp-quick-share-title">${isPublished ? (zh ? '複製公開分享連結（可繼續編輯）' : 'Copy Public Share URL (keep editing)') : (zh ? '一鍵發布並複製公開連結' : 'Publish & Copy Public Share URL')}</strong>
-                        <small>${zh ? '立即取得同事可閱讀的網址，不中斷當前編輯' : 'Get a shareable link immediately without interrupting editing'}</small>
-                    </span>
-                </button>
-                <button type="button" class="cp-item" data-cp-action="open-share-page" data-cp-keywords="open share preview 打開分享頁面 閱讀">
-                    ${SVG_ICONS.externalLink}
-                    <span class="cp-item-copy">
-                        <strong>${zh ? '打開公開分享頁面' : 'Open Public Share Page'}</strong>
-                        <small>${zh ? '在新分頁檢視讀者看到的排版' : 'View published reader page in new tab'}</small>
-                    </span>
-                </button>
-                <button type="button" class="cp-item" data-cp-action="open-present" data-cp-keywords="present slides 簡報 投影片">
-                    ${SVG_ICONS.play}
-                    <span class="cp-item-copy">
-                        <strong>${zh ? '打開簡報模式 (/present)' : 'Open Presentation (/present)'}</strong>
-                        <small>${zh ? '全螢幕 Slidev 投影片播放' : 'Fullscreen Slidev presentation'}</small>
-                    </span>
-                </button>
-                <button type="button" class="cp-item" data-cp-action="open-book" data-cp-keywords="book mode toc 書本模式 目錄">
-                    ${SVG_ICONS.book}
-                    <span class="cp-item-copy">
-                        <strong>${zh ? '打開書本模式 (/book)' : 'Open Book Mode (/book)'}</strong>
-                        <small>${zh ? '章節目錄側邊欄與翻書閱讀' : 'Sidebar TOC & Book reader'}</small>
-                    </span>
-                </button>
-                <button type="button" class="cp-item" data-cp-action="open-seal" data-cp-keywords="seal password lock vault 密碼 存取控制 閱後即焚 定時">
-                    ${SVG_ICONS.lock}
-                    <span class="cp-item-copy">
-                        <strong>${zh ? 'Seal 存取控制與時間鎖' : 'Seal Access Control & Timelock'}</strong>
-                        <small>${zh ? '定時解鎖、閱後即焚、亡者開關與安全範本' : 'Timelock, burn after reading, and dead man switch'}</small>
-                    </span>
-                </button>
-                ${noteHistoryEnabled ? `
-                <button type="button" class="cp-item" data-cp-action="note-history" data-cp-keywords="history versions restore 歷史版本 還原">
-                    ${SVG_ICONS.history}
-                    <span class="cp-item-copy">
-                        <strong>${t.historyTitle}</strong>
-                        <small>${zh ? '檢視歷史修訂版本與還原' : 'View past revisions & restore'}</small>
-                    </span>
-                </button>
-                ` : ''}
-                <button type="button" class="cp-item" data-cp-action="share-history" data-cp-keywords="recent shares history 最近分享紀錄">
-                    ${SVG_ICONS.clock}
-                    <span class="cp-item-copy">
-                        <strong>${t.recentSharesTitle}</strong>
-                        <small>${zh ? '瀏覽本機建立過的所有發布連結' : 'Browse recent shares on this browser'}</small>
-                    </span>
-                </button>
-            </div>
-
+        <div class="command-palette-list" id="command-palette-list" role="listbox" aria-label="${zh ? '所有工具' : 'Tools'}">
             <div class="cp-group" data-cp-group="tools">
-                <div class="cp-group-label">${zh ? '文件與排版工具' : 'Document Tools'}</div>
-                <button type="button" id="import-md-btn" class="cp-item" data-cp-action="import-file" data-cp-keywords="import word pdf markdown 匯入 轉檔">
-                    ${SVG_ICONS.import}
+                <div class="cp-group-label">${zh ? '寫作輔助與格式工具' : 'Writing & Formatting Tools'}</div>
+                <button type="button" class="cp-item" data-cp-action="stats" data-cp-keywords="word count reading time stats 字數 統計 閱讀時間">
+                    ${SVG_ICONS.pulse}
                     <span class="cp-item-copy">
-                        <strong>${isBlockEditor ? t.importFileBlock : t.importMarkdown}</strong>
-                        <small>${zh ? '支援 Word、PDF、PPT、Excel、Markdown 與音訊' : 'Supports Word, PDF, PPT, Excel, Markdown, and audio'}</small>
-                    </span>
-                </button>
-                <button type="button" class="cp-item" data-cp-action="import-url" data-cp-keywords="url web import 匯入網頁">
-                    ${SVG_ICONS.globe}
-                    <span class="cp-item-copy">
-                        <strong>${isBlockEditor ? t.importWebsiteBlock : t.importWebsiteMarkdown}</strong>
-                        <small>${zh ? '擷取外部網頁正文並轉為筆記' : 'Fetch webpage content into clean Markdown'}</small>
-                    </span>
-                </button>
-                <button type="button" class="cp-item" data-cp-action="print" data-cp-keywords="print pdf 列印">
-                    ${SVG_ICONS.printer}
-                    <span class="cp-item-copy">
-                        <strong>${zh ? '列印筆記 / 系統 PDF' : 'Print Note / System PDF'}</strong>
-                        <small>${zh ? '開啟瀏覽器列印預覽對話框' : 'Open browser print dialog'}</small>
+                        <strong>${zh ? '字數統計與閱讀時間' : 'Word Count & Reading Time'}</strong>
+                        <small>${zh ? '即時檢視字數、字元與段落數' : 'View words, characters, and reading time'}</small>
                     </span>
                 </button>
                 <button type="button" class="cp-item" data-cp-action="cite" data-cp-keywords="cite citation bibtex apa ieee 引用 論文">
@@ -1899,33 +1823,10 @@ export const COMMAND_PALETTE_MODAL = (lang, { theme = 'claude-canvas', width = D
                     </span>
                 </button>
                 ` : ''}
-                <button type="button" class="cp-item" data-cp-action="editor-preference" data-cp-keywords="default editor markdown block canvas whiteboard 預設編輯器">
-                    ${SVG_ICONS.settings}
-                    <span class="cp-item-copy">
-                        <strong>${zh ? '設定預設編輯器模式' : 'Set Default Editor Mode'}</strong>
-                        <small>${zh ? '選擇 Markdown / Block / Canvas / 白板' : 'Choose Markdown / Block / Canvas / Whiteboard'}</small>
-                    </span>
-                </button>
-            </div>
-
-            <div class="cp-group" data-cp-group="themes">
-                <div class="cp-group-label">${zh ? '預覽排版主題 (20 套)' : 'Preview Typography Themes (20)'}</div>
-                <div class="cp-theme-grid">
-                    ${Object.keys(THEMES).map(themeName => {
-                        const isActive = themeName === (theme || 'claude-canvas')
-                        const label = getThemeLabel(themeName)
-                        return `
-                            <button type="button" class="cp-item theme-item ${isActive ? 'is-active' : ''}" data-theme-name="${themeName}" data-cp-keywords="theme style 主題 樣式 ${label}">
-                                <span class="theme-item-name">${label}</span>
-                                ${isActive ? `<span class="theme-item-check" aria-hidden="true">✓</span>` : ''}
-                            </button>
-                        `
-                    }).join('')}
-                </div>
             </div>
 
             <div class="cp-group" data-cp-group="docs">
-                <div class="cp-group-label">${zh ? '使用指南、開發與系統' : 'Docs, Developer & App'}</div>
+                <div class="cp-group-label">${zh ? '使用指南、開發與離線應用' : 'Docs, Developer & App'}</div>
                 <a class="cp-item" href="/docs" target="_blank" rel="noreferrer" data-cp-keywords="docs guide help 使用指南 說明書 教學">
                     ${SVG_ICONS.book}
                     <span class="cp-item-copy">
@@ -1963,7 +1864,7 @@ export const COMMAND_PALETTE_MODAL = (lang, { theme = 'claude-canvas', width = D
                 </button>
             </div>
         </div>
-        <div id="command-palette-empty" class="command-palette-empty" hidden>${zh ? '找不到符合的指令或主題' : 'No matching commands or themes'}</div>
+        <div id="command-palette-empty" class="command-palette-empty" hidden>${zh ? '找不到符合的工具或文件' : 'No matching tools or docs'}</div>
     </div>
 </div>`
 }

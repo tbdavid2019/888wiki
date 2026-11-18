@@ -73,6 +73,6 @@ test('Option A single-bar IDE layout replaces shaking nudge with quick 1-click p
     assert.match(baseTemplateSource, /body:is\(\.share-font-jetbrains, \.share-font-maple\) #preview-md/)
     assert.match(baseCssSource, /--editor-bg:\s*#fdfbf6;/)
     assert.match(baseCssSource, /html\[data-ui-theme="dark"\][\s\S]*--editor-bg:\s*#161d26;/)
-    assert.match(baseTemplateSource, /isDarkPreviewTheme\(theme\)/)
+    assert.match(baseTemplateSource, /window\.__isDarkPreviewTheme/)
     assert.match(baseTemplateSource, /cf-notepad-ui-theme-sync/)
 })
