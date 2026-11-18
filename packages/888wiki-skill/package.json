@@ -4,7 +4,7 @@
   "description": "Install and update the David888 Wiki (wiki.david888.com) AI agent skill globally or per-project across Claude Code, Codex, Antigravity, Gemini, Cursor, OpenCode, and .agents/skills.",
   "type": "module",
   "bin": {
-    "888wiki-skill": "./bin/888wiki-skill.mjs"
+    "888wiki-skill": "bin/888wiki-skill.mjs"
   },
   "files": [
     "bin",
@@ -26,7 +26,7 @@
   "license": "AGPL-3.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/tbdavid2019/888wiki.git",
+    "url": "git+https://github.com/tbdavid2019/888wiki.git",
     "directory": "packages/888wiki-skill"
   },
   "homepage": "https://wiki.david888.com",
