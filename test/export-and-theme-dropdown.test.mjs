@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { JSDOM } from 'jsdom'
-import { FOOTER, EXPORT_DROPDOWN_MENU, COPY_DROPDOWN_MENU, THEME_DROPDOWN_MENU, WIDTH_DROPDOWN_MENU, MATH_FORMAT_MODAL } from '../src/templates/common.js'
+import { FOOTER, EXPORT_DROPDOWN_MENU, COPY_DROPDOWN_MENU, THEME_DROPDOWN_MENU, WIDTH_DROPDOWN_MENU, MATH_FORMAT_MODAL, COMMAND_PALETTE_MODAL } from '../src/templates/common.js'
 import { THEMES } from '../src/theme_data.js'
 
 const baseTemplateSource = readFileSync(new URL('../src/templates/base.js', import.meta.url), 'utf8')
@@ -121,7 +121,7 @@ test('THEME_DROPDOWN_MENU renders all 20 themes with active checkmark', () => {
     assert.match(activeItem.querySelector('.theme-item-check').textContent, /✓/)
 })
 
-test('FOOTER incorporates unified export, copy, width, and theme dropdown in edit and share modes', () => {
+test('Option A footer keeps export & copy on IDE bar while theme & width live in Command Palette for edit mode and footer for share mode', () => {
     const editFooterHtml = FOOTER({
         lang: 'zh-TW',
         isEdit: true,
@@ -132,8 +132,13 @@ test('FOOTER incorporates unified export, copy, width, and theme dropdown in edi
     const editDom = new JSDOM(editFooterHtml)
     assert.ok(editDom.window.document.querySelector('#export-dropdown'))
     assert.ok(editDom.window.document.querySelector('#copy-dropdown'))
-    assert.ok(editDom.window.document.querySelector('#width-dropdown'))
-    assert.ok(editDom.window.document.querySelector('#theme-dropdown'))
+    assert.ok(editDom.window.document.querySelector('#quick-share-url-btn'))
+    assert.ok(editDom.window.document.querySelector('#command-palette-btn'))
+
+    const paletteHtml = COMMAND_PALETTE_MODAL('zh-TW', { theme: 'claude-canvas', width: '100%' })
+    const paletteDom = new JSDOM(paletteHtml)
+    assert.equal(paletteDom.window.document.querySelectorAll('.width-item').length, 4)
+    assert.equal(paletteDom.window.document.querySelectorAll('.theme-item').length, Object.keys(THEMES).length)
 
     const shareFooterHtml = FOOTER({
         lang: 'zh-TW',

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { JSDOM } from 'jsdom'
 
-import { FOOTER, SVG_ICONS } from '../src/templates/common.js'
+import { FOOTER, COMMAND_PALETTE_MODAL, SVG_ICONS } from '../src/templates/common.js'
 import { setupDropdownMenus, setupFloatingTooltips } from '../static/js/floating-controls.mjs'
 
 const baseTemplateSource = readFileSync(new URL('../src/templates/base.js', import.meta.url), 'utf8')
@@ -61,11 +61,12 @@ test('footer provides a primary new-note action, explicit format choices, and a 
 
 test('Block note menus expose imports that convert content into blocks', () => {
     const document = renderFooter({ isEdit: true, editorFormat: 'block' })
+    const paletteDoc = new JSDOM(COMMAND_PALETTE_MODAL('zh-TW', { editorFormat: 'block' })).window.document
 
     assert.match(document.querySelector('#dropdown-import-doc-btn')?.textContent || '', /轉成 Block/)
     assert.match(document.querySelector('#dropdown-import-url-btn')?.textContent || '', /轉成 Block/)
     assert.ok(document.querySelector('#import-md-input'))
-    assert.ok(document.querySelector('#import-md-btn'))
+    assert.ok(paletteDoc.querySelector('#import-md-btn'))
     assert.ok(document.querySelector('#new-block-note-link'))
 })
 
@@ -200,12 +201,10 @@ test('clicking select elements, labels, or toggles inside dropdown does not clos
     assert.equal(menu.classList.contains('floating-menu-open'), false)
 })
 
-test('dedicated toolbar print button is rendered in edit and share modes with printer icon', () => {
-    const editDoc = renderFooter({ isEdit: true })
-    const printEditBtn = editDoc.querySelector('#toolbar-print-btn')
-    assert.ok(printEditBtn, 'Edit mode must have #toolbar-print-btn')
-    assert.match(printEditBtn.dataset.tooltip || '', /列印/)
-    assert.match(printEditBtn.innerHTML, /<svg class="svg-icon"/)
+test('share mode keeps print button in footer while edit mode exposes print inside Command Palette', () => {
+    const paletteDoc = new JSDOM(COMMAND_PALETTE_MODAL('zh-TW', { isEdit: true })).window.document
+    const palettePrint = paletteDoc.querySelector('[data-cp-action="print"]')
+    assert.ok(palettePrint, 'Edit mode Command Palette must expose print action')
 
     const shareDoc = renderFooter({ isEdit: false, path: 'my-note', sharePath: 'share/id' })
     const printShareBtn = shareDoc.querySelector('#toolbar-print-btn')
@@ -242,10 +241,10 @@ test('SVG_ICONS: import has upload icon (arrow up) and export has download icon 
     assert.ok(SVG_ICONS.bot, 'bot icon must exist')
 })
 
-test('footer dev-info dropdown consolidates GitHub, Agent Skill, API docs, and PWA install buttons', () => {
-    const editDoc = renderFooter({ isEdit: true })
-    const devInfoDropdown = editDoc.querySelector('#dev-info-dropdown')
-    assert.ok(devInfoDropdown, '#dev-info-dropdown container must exist')
+test('share dev-info dropdown and edit Command Palette expose GitHub, Agent Skill, API docs, /docs, and PWA install', () => {
+    const shareDoc = renderFooter({ isEdit: false, path: 'my-note', sharePath: 'share/id' })
+    const devInfoDropdown = shareDoc.querySelector('#dev-info-dropdown')
+    assert.ok(devInfoDropdown, '#dev-info-dropdown container must exist in share mode')
     assert.ok(devInfoDropdown.classList.contains('dropdown-container'))
 
     const trigger = devInfoDropdown.querySelector('#dev-info-menu-btn')
@@ -260,7 +259,16 @@ test('footer dev-info dropdown consolidates GitHub, Agent Skill, API docs, and P
     assert.ok(menu.querySelector('a[href="/docs/api"]'), 'API docs link must exist')
     assert.ok(menu.querySelector('#pwa-install-manual-btn'), '#pwa-install-manual-btn must exist in dev-info menu')
 
+    // Edit mode Command Palette exposes docs, API, skill, GitHub, and PWA install directly
+    const paletteDoc = new JSDOM(COMMAND_PALETTE_MODAL('zh-TW', {})).window.document
+    assert.ok(paletteDoc.querySelector('a[href="/docs"]'), 'Docs guide link must exist in Command Palette')
+    assert.ok(paletteDoc.querySelector('a[href="/docs/api"]'), 'API docs link must exist in Command Palette')
+    assert.ok(paletteDoc.querySelector('a[href="/.well-known/agent-skills/david888-wiki-publisher/SKILL.md"]'), 'Agent skill link must exist in Command Palette')
+    assert.ok(paletteDoc.querySelector('a[href="https://github.com/tbdavid2019/888wiki"]'), 'GitHub link must exist in Command Palette')
+    assert.ok(paletteDoc.querySelector('#pwa-install-manual-btn'), '#pwa-install-manual-btn must exist in Command Palette')
+
     // Mobile more dropdown also exposes doc & dev links for mobile users
+    const editDoc = renderFooter({ isEdit: true })
     const moreMenu = editDoc.querySelector('.more-dropdown-menu')
     assert.ok(moreMenu.querySelector('a[href="/docs"]'), 'Docs guide link must exist in more menu')
     assert.ok(moreMenu.querySelector('a[href="/docs/api"]'), 'API docs link must exist in more menu')
@@ -272,32 +280,30 @@ test('footer dev-info dropdown consolidates GitHub, Agent Skill, API docs, and P
     assert.match(baseCssSource, /\.footer-section-info\s*\{\s*display:\s*none\s*!important;/)
 })
 
-test('save capsule uses compact cloud icon badge and positions theme/dark-mode/width beside publish & save', () => {
-    const editDoc = renderFooter({ isEdit: true, mode: 'md' })
+test('Option A IDE edit footer places quick public URL action beside publish capsule and moves secondary tools to Command Palette', () => {
+    const editDoc = renderFooter({ isEdit: true, mode: 'md', share: false, shareId: '' })
     const syncBadge = editDoc.querySelector('#sync-status-badge')
     assert.ok(syncBadge, '#sync-status-badge must exist')
     assert.ok(syncBadge.querySelector('.sync-status-icon'), '.sync-status-icon must exist')
     assert.ok(syncBadge.querySelector('.sync-status-dot'), '.sync-status-dot must exist')
     assert.ok(syncBadge.querySelector('.sync-status-text.sr-only'), '.sync-status-text must be visually hidden with sr-only')
 
-    // Verify ordering: Publish & Save are followed by Theme, Dark/Light, and Width
     const editSection = editDoc.querySelector('.footer-section-edit')
     assert.ok(editSection, '.footer-section-edit must exist')
-    const shareDropdown = editSection.querySelector('#share-dropdown')
-    const saveDropdown = editSection.querySelector('#save-dropdown')
-    const themeDropdown = editSection.querySelector('#theme-dropdown')
-    const uiThemeBtn = editSection.querySelector('#ui-theme-toggle-btn')
-    const widthDropdown = editSection.querySelector('#width-dropdown')
+    assert.ok(editSection.querySelector('#share-dropdown'), '#share-dropdown must be in edit section')
+    assert.ok(editSection.querySelector('#save-dropdown'), '#save-dropdown must be in edit section')
+    const quickShareBtn = editSection.querySelector('#quick-share-url-btn')
+    assert.ok(quickShareBtn, '#quick-share-url-btn must be right beside publish capsule')
+    assert.match(quickShareBtn.textContent, /發布並複製連結/)
+    assert.ok(editSection.querySelector('#ide-cursor-status'), '#ide-cursor-status must exist in edit section')
 
-    assert.ok(shareDropdown, '#share-dropdown must be in edit section')
-    assert.ok(saveDropdown, '#save-dropdown must be in edit section')
-    assert.ok(themeDropdown, '#theme-dropdown must be in edit section next to save')
-    assert.ok(uiThemeBtn, '#ui-theme-toggle-btn must be in edit section next to save')
-    assert.ok(widthDropdown, '#width-dropdown must be in edit section next to save')
+    const liveEditDoc = renderFooter({ isEdit: true, mode: 'md', share: true, shareId: 'live-123' })
+    assert.match(liveEditDoc.querySelector('#quick-share-url-btn').textContent, /複製連結/)
 
-    // Document tools follow the visual controls
-    const printBtn = editSection.querySelector('#toolbar-print-btn')
-    assert.ok(printBtn, '#toolbar-print-btn must exist in edit section')
+    const appearanceSection = editDoc.querySelector('.footer-section-appearance')
+    assert.ok(appearanceSection.querySelector('#command-palette-btn'), '#command-palette-btn must exist in IDE bar')
+    assert.ok(appearanceSection.querySelector('#export-dropdown'), '#export-dropdown must exist in IDE bar')
+    assert.ok(appearanceSection.querySelector('#copy-dropdown'), '#copy-dropdown must exist in IDE bar')
 })
 
 test('publish and sync controls are unified into a joint capsule with dynamic draft/published labels', () => {

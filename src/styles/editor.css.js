@@ -21,7 +21,7 @@ export const getEditorCss = () => `
     display: flex;
     position: relative;
     overflow: hidden;
-    background: #282a36;
+    background: var(--editor-bg, #fdfbf6);
     --editor-font-size: 16px;
     --editor-line-height: 1.6;
     --editor-row-height: calc(var(--editor-font-size, 16px) * var(--editor-line-height, 1.6));
@@ -43,7 +43,7 @@ export const getEditorCss = () => `
     place-content: center;
     width: auto;
     padding: clamp(28px, 8vh, 88px) clamp(32px, 8vw, 120px);
-    color: #abb2c5;
+    color: var(--editor-muted, #7a705b);
     font-family: var(--editor-font-family);
     pointer-events: none;
     text-align: center;
@@ -58,12 +58,12 @@ export const getEditorCss = () => `
 .editor-welcome__section--tip {
     margin-top: 24px;
     padding-top: 22px;
-    border-top: 1px solid rgba(248, 248, 242, .16);
+    border-top: 1px solid color-mix(in srgb, var(--editor-text, #24211b) 14%, transparent);
 }
 
 .editor-welcome__label {
     margin: 0 0 10px;
-    color: #e4e7ef;
+    color: var(--editor-text, #24211b);
     font-size: 15px;
     font-weight: 700;
     letter-spacing: .01em;
@@ -437,9 +437,9 @@ export const getEditorCss = () => `
     min-height: 24px;
     padding: 4px 10px;
     overflow: hidden;
-    border-top: 1px solid rgba(248, 248, 242, 0.12);
-    background: #20212b;
-    color: #a7a9bf;
+    border-top: 1px solid var(--editor-status-border, #e2d7bd);
+    background: var(--editor-status-bg, #f4efe3);
+    color: var(--editor-status-text, #5c5340);
     font-family: var(--editor-font-family);
     font-size: 11px;
     line-height: 16px;
@@ -453,9 +453,9 @@ export const getEditorCss = () => `
     box-sizing: border-box;
     padding: 20px 6px 20px 4px;
     overflow: hidden;
-    border-right: 1px solid rgba(248, 248, 242, 0.08);
-    background: #282a36;
-    color: #6272a4;
+    border-right: 1px solid color-mix(in srgb, var(--editor-text, #24211b) 10%, transparent);
+    background: var(--editor-gutter-bg, #f7f2e7);
+    color: var(--editor-gutter-text, #8c8168);
     font-family: var(--editor-font-family);
     font-size: 13px;
     line-height: var(--editor-row-height, 25.6px);
@@ -518,9 +518,9 @@ export const getEditorCss = () => `
     display: flex;
     align-items: center;
     flex-wrap: nowrap;
-    gap: 2px;
-    min-height: 32px;
-    padding: 3px 8px;
+    gap: 3px;
+    min-height: 36px;
+    padding: 4px 10px;
     position: relative;
     z-index: 100;
     overflow-x: auto;
@@ -538,14 +538,14 @@ export const getEditorCss = () => `
 }
 
 .markdown-toolbar-button {
-    flex: 0 0 24px;
-    width: 24px;
-    height: 24px;
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     border: 1px solid transparent;
-    border-radius: var(--toolbar-radius, 4px);
+    border-radius: 5px;
     background: transparent;
     color: inherit;
     cursor: pointer;
@@ -889,17 +889,17 @@ export const getEditorCss = () => `
     padding: 0 12px 0 10px;
     gap: 5px;
     border-radius: 9999px;
-    background: linear-gradient(135deg, #ef4444, #dc2626);
+    background: #b91c1c;
     color: #ffffff;
     font-size: 12px;
     font-weight: 600;
-    border-color: rgba(255, 255, 255, 0.2);
-    box-shadow: 0 2px 10px rgba(239, 68, 68, 0.4);
+    border-color: #991b1b;
+    box-shadow: 0 2px 10px rgba(185, 28, 28, 0.35);
 }
 
 .recording-hud-pill-btn.hud-btn-stop:hover {
-    background: linear-gradient(135deg, #f87171, #ef4444);
-    box-shadow: 0 3px 14px rgba(239, 68, 68, 0.6);
+    background: #991b1b;
+    box-shadow: 0 3px 14px rgba(185, 28, 28, 0.5);
     transform: scale(1.02);
 }
 
@@ -982,13 +982,20 @@ export const getEditorCss = () => `
     font-family: var(--editor-font-family);
 }
 
-/* Editor Specific (Dark Mode) */
+/* Editor Surface (follows UI theme polarity via CSS tokens) */
 textarea#contents {
     flex: 1;
-    background-color: #282a36;
-    color: #f8f8f2;
+    background-color: var(--editor-bg, #fdfbf6);
+    color: var(--editor-text, #24211b);
+    caret-color: var(--editor-caret, #a9471d);
     resize: none;
     line-height: 1.6;
+}
+textarea#contents::selection {
+    background: var(--editor-selection, rgba(169, 71, 29, 0.16));
+}
+textarea#contents::placeholder {
+    color: var(--editor-muted, #7a705b);
 }
 
 @media (min-width: 961px) {
@@ -1026,9 +1033,9 @@ textarea#contents {
         display: none; /* Safari and Chrome */
     }
     .markdown-toolbar-button {
-        flex: 0 0 34px !important;
-        width: 34px !important;
-        height: 34px !important;
+        flex: 0 0 38px !important;
+        width: 38px !important;
+        height: 38px !important;
         border-radius: 6px !important;
     }
     .markdown-toolbar-button .svg-icon {
@@ -1096,10 +1103,10 @@ textarea#contents {
 .editor-search-field {
     width: 100%;
     padding: 5px 60px 5px 28px;
-    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.15));
+    border: 1px solid var(--toolbar-border, #ddc58b);
     border-radius: 6px;
-    background: var(--input-bg, rgba(0, 0, 0, 0.02));
-    color: var(--text-color, inherit);
+    background: var(--input-bg, #ffffff);
+    color: var(--toolbar-text, #2b251a);
     font-family: inherit;
     font-size: 13px;
     outline: none;
@@ -1131,12 +1138,12 @@ textarea#contents {
     border: 1px solid transparent;
     border-radius: 4px;
     background: transparent;
-    color: var(--text-color, #444);
+    color: var(--toolbar-text, #2b251a);
     font-size: 12px;
-    padding: 3px 6px;
+    padding: 4px 7px;
     cursor: pointer;
     line-height: 1.2;
-    transition: background 0.12s, border-color 0.12s;
+    transition: background-color 0.12s, border-color 0.12s;
 }
 .search-opt-btn:hover,
 .search-nav-btn:hover,
@@ -1144,14 +1151,21 @@ textarea#contents {
 .search-action-btn:hover {
     background: var(--toolbar-bg-hover, rgba(0, 0, 0, 0.08));
 }
+.search-opt-btn:focus-visible,
+.search-nav-btn:focus-visible,
+.search-close-btn:focus-visible,
+.search-action-btn:focus-visible {
+    outline: 2px solid var(--toolbar-accent, #a9471d);
+    outline-offset: 1px;
+}
 .search-opt-btn.is-active {
-    background: var(--toolbar-accent, #2563eb);
-    color: #ffffff;
+    background: var(--toolbar-primary-bg, #17324d);
+    color: var(--toolbar-primary-text, #ffffff);
     font-weight: 600;
 }
 .search-action-btn {
-    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.15));
-    background: var(--button-bg, rgba(0, 0, 0, 0.04));
+    border: 1px solid var(--toolbar-border, #ddc58b);
+    background: var(--modal-surface, rgba(0, 0, 0, 0.04));
     font-weight: 500;
 }
 

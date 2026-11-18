@@ -1,5 +1,21 @@
 # Changelog
 
+## [2026-11-18]
+
+- **🎛️ 方案 A：單層 IDE 底列重構、一鍵發布複製公開連結、`⌘⇧P` 指令面板與全工作區深淺極性一致化（Single-Layer IDE Bottom Bar, Quick Public Share URL, Command Palette & Unified Polarity）**：
+  - **單層 IDE 工作底列（Single-Layer IDE Footer Bar, `.footer.footer-ide-edit` + `body.ide-single-bar`）**：
+    - 將原本編輯模式底部疊加的三層條列（`#editor-status`、`.editor-publication-status` 與滿牆的 12 顆無字方形 icon）整併為單一 `42px` 高的 IDE 底部工作列，並恢復所有主要按鈕的可讀文字標籤（`新增`、`草稿／已發布`、`發布並複製連結／複製連結`、`複製`、`匯出`、`工具 ⌘⇧P`），同步吸收游標與字元狀態（`#ide-cursor-status`）與分段視圖控制（`預覽`、`左右／上下`、`桌面／手機`）。
+    - 移除干擾寫作專注力的 `share-btn-nudge-shake` 3.5 秒無限抖動動畫與重複的 `.share-menu-trigger.is-published::after` 綠點，並將 `.footer-rail-switch` 從 3D `rotateY(180deg)` 翻牌改為 `150ms` 乾淨的平面分段切換。
+  - **編輯中一鍵分享公開連結（`#quick-share-url-btn`）**：
+    - 針對「寫作到一半急需把 public URL 傳給同事，且文件還要繼續改」的實戰情境，於底欄發布膠囊旁新增 **`發布並複製連結`（草稿）／`複製連結`（已發布）** 單鍵按鈕：草稿狀態點擊即依偏好自動發布並複製公開連結；已發布狀態點擊則立即同步複製連結，若有未同步修改同時於背景靜默存檔，游標與編輯焦點完全不中斷。
+  - **可搜尋指令面板與快捷設定中心（`#command-palette-modal` / `Cmd/Ctrl + Shift + P`）**：
+    - 收斂低頻方塊按鈕（外觀深淺、預覽字體 `JB/Maple`、預覽寬度、語言、20 套排版主題搜尋、匯入檔案／網頁、列印、引用 `Cite`、公式格式 `Math`、版本與分享紀錄、Seal 存取控制、使用指南 `/docs`、API 文件、Agent Skill 與 PWA 安裝），支援即時關鍵字過濾與鍵盤上下鍵／Enter 選取。
+  - **編輯模式右側即時預覽字體切換生效**：
+    - 解除 `share-font-jetbrains` / `share-font-maple` 僅套用於 `body.share-view` 的限制，使編輯模式下切換 `JetBrains Mono` / `Maple Mono` 時右側 `#preview-md` / `#preview-plain` 預覽字體立即所見即所得切換。
+  - **全工作區深淺極性一致化與無障礙對比度修正**：
+    - 於 `src/styles/base.css.js` 與 `src/styles/editor.css.js` 建立語意化工作區 Token（`--workspace-surface`、`--divider-bg`、`--divider-border`、`--editor-bg`、`--editor-text`、`--editor-gutter-bg`、`--editor-caret`、`--text-color`、`--input-bg`），讓左編輯區、中央分隔線、右預覽殼層與底列同步跟隨 `data-ui-theme`（Light / Dark / Auto），消除暗畫布夾雜亮白分隔線與米白工具列的割裂感；同步修復搜尋列預設 `#444` 低對比、亮黃底白字（`1.8:1`）、`.bottom-sheet-content` 淺底淺字（`1.1:1`）及危險按鈕對比度缺陷，並放大頂部工具列按鈕點擊區（桌面 `28×28`、手機 `38×38`）。
+  - **測試與文件同步**：更新 [`test/editor-publication-status.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/editor-publication-status.test.mjs)、[`test/export-and-theme-dropdown.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/export-and-theme-dropdown.test.mjs)、[`test/floating-controls-ui.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/floating-controls-ui.test.mjs)、[`test/public-index-ui.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/public-index-ui.test.mjs) 與 [`static/data/editor-tips.json`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/data/editor-tips.json)。
+
 ## [2026-11-17]
 
 - **📦 全面升級上游依賴套件與 CDN / Vendored 前端執行庫（Full Upstream Dependencies, CDN & Vendored Libraries Upgrade）**：

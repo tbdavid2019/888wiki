@@ -161,8 +161,10 @@ export const SVG_ICONS = {
     pulse: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.48 12H2"></path></svg>`,
     dictate: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line><path d="M8 22h8"></path><path d="m18 8 3-1"></path><path d="m18 12 3 1"></path></svg>`,
     plus: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>`,
-    chevronDown: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>`,
-    chevronRight: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-9-6"></path></svg>`
+    chevronDown: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>`,
+    chevronRight: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-9-6"></path></svg>`,
+    command: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3"></path></svg>`,
+    sliders: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="4" y1="21" y2="14"></line><line x1="4" x2="4" y1="10" y2="3"></line><line x1="12" x2="12" y1="21" y2="12"></line><line x1="12" x2="12" y1="8" y2="3"></line><line x1="20" x2="20" y1="21" y2="16"></line><line x1="20" x2="20" y1="12" y2="3"></line><line x1="2" x2="6" y1="14" y2="14"></line><line x1="10" x2="14" y1="8" y2="8"></line><line x1="18" x2="22" y1="16" y2="16"></line></svg>`
 }
 
 const EDITOR_TOOLBAR_COMMANDS = [
@@ -387,6 +389,7 @@ export const THEME_DROPDOWN_MENU = (lang, currentTheme, getThemeLabel) => {
                 <button type="button" id="theme-menu-btn" class="toolbar-icon-button dropdown-trigger theme-menu-trigger" data-tooltip="${isZh ? '排版樣式' : 'Typography theme'}" title="${isZh ? '排版樣式' : 'Typography theme'}" aria-label="${isZh ? '排版樣式' : 'Typography theme'}" aria-haspopup="menu" aria-expanded="false">
                     ${SVG_ICONS.palette}
                     <span class="toolbar-button-label">${isZh ? '樣式' : 'Theme'}</span>
+                    <span class="toolbar-button-caret" aria-hidden="true">▾</span>
                 </button>
                 <div class="dropdown-menu theme-dropdown-menu" role="menu">
                     <div class="dropdown-menu-label">${isZh ? '排版樣式' : 'Theme Style'}</div>
@@ -420,6 +423,7 @@ export const WIDTH_DROPDOWN_MENU = (lang, currentWidth) => {
                 <button type="button" id="width-menu-btn" class="toolbar-icon-button dropdown-trigger width-menu-trigger" data-tooltip="${isZh ? '預覽寬度' : 'Preview width'}" title="${isZh ? '預覽寬度' : 'Preview width'}" aria-label="${isZh ? '預覽寬度' : 'Preview width'}" aria-haspopup="menu" aria-expanded="false">
                     ${SVG_ICONS.width}
                     <span class="toolbar-button-label">${isZh ? '寬度' : 'Width'}</span>
+                    <span class="toolbar-button-caret" aria-hidden="true">▾</span>
                 </button>
                 <div class="dropdown-menu width-dropdown-menu" role="menu">
                     <div class="dropdown-menu-label">${isZh ? '預覽寬度' : 'Preview Width'}</div>
@@ -630,7 +634,7 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
         return description ? `${themeName} · ${description}` : themeName
     }
     return `
-    <div class="footer">
+    <div class="footer ${isEdit ? 'footer-ide-edit' : 'footer-share-view'}">
         <div class="footer-sections">
             <div class="footer-section footer-section-create">
                 <div class="footer-section-body">
@@ -777,7 +781,7 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                                         <span class="sync-status-dot"></span>
                                         <span class="sync-status-text sr-only">${share && shareId ? (lang === 'zh-TW' ? '雲端已同步' : 'Cloud synced') : (lang === 'zh-TW' ? '本機已存' : 'Saved locally')}</span>
                                     </span>
-                                    <span class="toolbar-button-label" id="share-btn-label">${share && shareId ? (lang === 'zh-TW' ? '已發布' : 'Live') : (lang === 'zh-TW' ? '發布' : 'Publish')}</span>
+                                    <span class="toolbar-button-label" id="share-btn-label">${share && shareId ? (lang === 'zh-TW' ? '已發布' : 'Live') : (lang === 'zh-TW' ? '草稿' : 'Draft')}</span>
                                     <span class="toolbar-button-caret" aria-hidden="true">▾</span>
                                 </button>
                                 <div id="save-dropdown" class="save-dropdown save-dropdown-alias sr-only" style="display:none;" aria-hidden="true"></div>
@@ -957,42 +961,27 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                                 </div>
                             </div>
                         </div>
-                        ${!isEdit || isBlockEditor || mode === 'md' ? `
-                            ${THEME_DROPDOWN_MENU(lang, theme, getThemeLabel)}
-                            <button type="button" id="ui-theme-toggle-btn" class="toolbar-icon-button ui-theme-toggle-btn" data-tooltip="${lang === 'zh-TW' ? '切換介面深淺模式' : 'Toggle UI theme'}" title="${lang === 'zh-TW' ? '切換介面深淺模式' : 'Toggle UI theme'}" aria-label="${lang === 'zh-TW' ? '切換介面深淺模式' : 'Toggle UI theme'}">
-                                <span class="ui-theme-icon-sun" aria-hidden="true">${SVG_ICONS.sun}</span>
-                                <span class="ui-theme-icon-moon" aria-hidden="true">${SVG_ICONS.moon}</span>
-                                <span class="toolbar-button-label">${lang === 'zh-TW' ? '深淺' : 'Theme'}</span>
-                            </button>
-                            ${WIDTH_DROPDOWN_MENU(lang, effectiveWidth)}
-                        ` : `
-                            <button type="button" id="ui-theme-toggle-btn" class="toolbar-icon-button ui-theme-toggle-btn" data-tooltip="${lang === 'zh-TW' ? '切換介面深淺模式' : 'Toggle UI theme'}" title="${lang === 'zh-TW' ? '切換介面深淺模式' : 'Toggle UI theme'}" aria-label="${lang === 'zh-TW' ? '切換介面深淺模式' : 'Toggle UI theme'}">
-                                <span class="ui-theme-icon-sun" aria-hidden="true">${SVG_ICONS.sun}</span>
-                                <span class="ui-theme-icon-moon" aria-hidden="true">${SVG_ICONS.moon}</span>
-                                <span class="toolbar-button-label">${lang === 'zh-TW' ? '深淺' : 'Theme'}</span>
-                            </button>
-                        `}
-                        ${isBlockEditor ? `
-                        ${TOOLBAR_PRINT_BUTTON(lang)}
-                        <button type="button" id="import-md-btn" class="toolbar-icon-button" data-tooltip="${t.importFileBlock}" title="${t.importFileBlock}" aria-label="${t.importFileBlock}">
-                            ${SVG_ICONS.import}
-                            <span class="toolbar-button-label">${lang === 'zh-TW' ? '匯入' : 'Import'}</span>
+                        <button
+                            type="button"
+                            id="quick-share-url-btn"
+                            class="toolbar-icon-button quick-share-url-btn ${share && shareId ? 'is-published' : ''}"
+                            data-published="${share && shareId ? 'true' : 'false'}"
+                            data-tooltip="${share && shareId ? (lang === 'zh-TW' ? '一鍵複製公開分享連結（可繼續編輯）' : 'Copy public share URL (keep editing)') : (lang === 'zh-TW' ? '一鍵發布並複製公開連結（可繼續編輯）' : 'Publish & copy public URL (keep editing)')}"
+                            title="${share && shareId ? (lang === 'zh-TW' ? '一鍵複製公開分享連結（可繼續編輯）' : 'Copy public share URL (keep editing)') : (lang === 'zh-TW' ? '一鍵發布並複製公開連結（可繼續編輯）' : 'Publish & copy public URL (keep editing)')}"
+                            aria-label="${share && shareId ? (lang === 'zh-TW' ? '複製公開分享連結' : 'Copy public share URL') : (lang === 'zh-TW' ? '發布並複製公開連結' : 'Publish & copy public URL')}"
+                        >
+                            <span class="quick-share-icon-default">${SVG_ICONS.shareHistory}</span>
+                            <span class="quick-share-icon-copied" aria-hidden="true">${SVG_ICONS.check}</span>
+                            <span class="toolbar-button-label" id="quick-share-url-label">${share && shareId ? (lang === 'zh-TW' ? '複製連結' : 'Copy URL') : (lang === 'zh-TW' ? '發布並複製連結' : 'Share URL')}</span>
                         </button>
-                        ${EXPORT_DROPDOWN_MENU(lang, { includeMarkdown: false })}
-                        <button type="button" id="cite-edit-btn" class="toolbar-icon-button cite-edit-btn" data-tooltip="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}" title="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}" aria-label="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}">
-                            ${SVG_ICONS.quote}
-                            <span class="toolbar-button-label">${lang === 'zh-TW' ? '引用' : 'Cite'}</span>
-                        </button>
+                        ${editorFormat === 'markdown' ? `
+                            <span id="ide-cursor-status" class="ide-cursor-status" aria-live="polite">${lang === 'zh-TW' ? '第 1 行・第 1 欄・總長度 0' : 'Ln 1 · Col 1 · 0 chars'}</span>
                         ` : ''}
-                        ${!isBlockEditor ? `
+                    ` : (path ? `
                         ${TOOLBAR_PRINT_BUTTON(lang)}
-                        <button type="button" id="import-md-btn" class="toolbar-icon-button" data-tooltip="${t.importMarkdown}" title="${t.importMarkdown}" aria-label="${t.importMarkdown}">
-                            ${SVG_ICONS.import}
-                            <span class="toolbar-button-label">${lang === 'zh-TW' ? '匯入' : 'Import'}</span>
-                        </button>
                         ${EXPORT_DROPDOWN_MENU(lang)}
                         ${COPY_DROPDOWN_MENU(lang)}
-                        <button type="button" id="cite-edit-btn" class="toolbar-icon-button cite-edit-btn" data-tooltip="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}" title="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}" aria-label="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}">
+                        <button type="button" id="cite-share-btn" class="toolbar-icon-button cite-share-btn" data-tooltip="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}" title="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}" aria-label="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}">
                             ${SVG_ICONS.quote}
                             <span class="toolbar-button-label">${lang === 'zh-TW' ? '引用' : 'Cite'}</span>
                         </button>
@@ -1000,6 +989,33 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                             <span class="math-icon-badge" aria-hidden="true">${SVG_ICONS.math}</span>
                             <span class="toolbar-button-label">${lang === 'zh-TW' ? '公式' : 'Math'}</span>
                         </button>
+                        <button type="button" id="present-btn" class="toolbar-icon-button" data-tooltip="${t.presentTitle}" title="${t.presentTitle}" aria-label="${t.presentTitle}">
+                            ${SVG_ICONS.play}
+                            <span class="toolbar-button-label">${t.present}</span>
+                        </button>
+                        ${sharePath && shareId ? `
+                        <a href="${'/share/' + encodeURIComponent(shareId) + '/book'}" id="book-mode-btn" class="toolbar-icon-button" data-tooltip="${lang === 'zh-TW' ? '書本模式' : 'Book mode'}" title="${lang === 'zh-TW' ? '書本模式' : 'Book mode'}" aria-label="${lang === 'zh-TW' ? '書本模式' : 'Book mode'}">
+                            ${SVG_ICONS.book}
+                            <span class="toolbar-button-label">${lang === 'zh-TW' ? '書本' : 'Book'}</span>
+                        </a>
+                        <button type="button" id="copy-embed-code-btn" class="toolbar-icon-button" data-tooltip="${lang === 'zh-TW' ? '嵌入分享頁' : 'Embed share page'}" title="${lang === 'zh-TW' ? '嵌入分享頁' : 'Embed share page'}" aria-label="${lang === 'zh-TW' ? '嵌入分享頁' : 'Embed share page'}">
+                            ${SVG_ICONS.link}
+                            <span class="toolbar-button-label">${lang === 'zh-TW' ? '嵌入' : 'Embed'}</span>
+                        </button>
+                        ` : ''}
+                        <button type="button" id="share-history-btn" class="toolbar-icon-button share-history-trigger" data-tooltip="${t.recentSharesTitle}" title="${lang === 'zh-TW' ? '最近分享紀錄' : 'Recent shares'}" aria-label="${lang === 'zh-TW' ? '最近分享紀錄' : 'Recent shares'}" aria-haspopup="dialog" aria-expanded="false">
+                            ${SVG_ICONS.shareHistory}
+                            <span class="toolbar-button-label">${lang === 'zh-TW' ? '紀錄' : 'Recent'}</span>
+                        </button>
+                    ` : '')}
+                    ${!isEdit ? MORE_DROPDOWN_MENU(lang, { isEdit }) : ''}
+                </div>
+            </div>
+
+            <div class="footer-section footer-section-appearance">
+                <div class="footer-section-body">
+                    ${isEdit ? `
+                        ${editorFormat === 'markdown' ? `
                         <div class="footer-view-settings-group" aria-label="${lang === 'zh-TW' ? '編輯器視圖設定' : 'Editor view settings'}">
                             <div class="footer-preview-group footer-control-group">
                                 ${RAIL_SWITCH({
@@ -1007,8 +1023,8 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                                     checked: mode === 'md',
                                     checkedTitle: lang === 'zh-TW' ? '預覽' : 'Preview',
                                     uncheckedTitle: lang === 'zh-TW' ? '預覽' : 'Preview',
-                                    checkedText: lang === 'zh-TW' ? '開預覽' : 'On',
-                                    uncheckedText: lang === 'zh-TW' ? '關預覽' : 'Off',
+                                    checkedText: lang === 'zh-TW' ? '預覽' : 'Preview',
+                                    uncheckedText: lang === 'zh-TW' ? '純文字' : 'Plain',
                                     ariaLabel: t.preview,
                                     checkedValue: 'md',
                                     uncheckedValue: 'plain',
@@ -1052,80 +1068,51 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                                 </div>
                             ` : ''}
                         </div>
-                        ` : ''}
-                    ` : (path ? `
-                        ${TOOLBAR_PRINT_BUTTON(lang)}
-                        ${EXPORT_DROPDOWN_MENU(lang)}
                         ${COPY_DROPDOWN_MENU(lang)}
-                        <button type="button" id="cite-share-btn" class="toolbar-icon-button cite-share-btn" data-tooltip="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}" title="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}" aria-label="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}">
-                            ${SVG_ICONS.quote}
-                            <span class="toolbar-button-label">${lang === 'zh-TW' ? '引用' : 'Cite'}</span>
-                        </button>
-                        <button type="button" id="math-format-btn" class="toolbar-icon-button math-format-trigger" data-tooltip="${lang === 'zh-TW' ? '公式複製格式' : 'Formula copy format'}" title="${lang === 'zh-TW' ? '公式複製格式' : 'Formula copy format'}" aria-label="${lang === 'zh-TW' ? '公式複製格式' : 'Formula copy format'}">
-                            <span class="math-icon-badge" aria-hidden="true">${SVG_ICONS.math}</span>
-                            <span class="toolbar-button-label">${lang === 'zh-TW' ? '公式' : 'Math'}</span>
-                        </button>
-                        <button type="button" id="present-btn" class="toolbar-icon-button" data-tooltip="${t.presentTitle}" title="${t.presentTitle}" aria-label="${t.presentTitle}">
-                            ${SVG_ICONS.play}
-                            <span class="toolbar-button-label">${t.present}</span>
-                        </button>
-                        ${sharePath && shareId ? `
-                        <a href="${'/share/' + encodeURIComponent(shareId) + '/book'}" id="book-mode-btn" class="toolbar-icon-button" data-tooltip="${lang === 'zh-TW' ? '書本模式' : 'Book mode'}" title="${lang === 'zh-TW' ? '書本模式' : 'Book mode'}" aria-label="${lang === 'zh-TW' ? '書本模式' : 'Book mode'}">
-                            ${SVG_ICONS.book}
-                            <span class="toolbar-button-label">${lang === 'zh-TW' ? '書本' : 'Book'}</span>
-                        </a>
-                        <button type="button" id="copy-embed-code-btn" class="toolbar-icon-button" data-tooltip="${lang === 'zh-TW' ? '嵌入分享頁' : 'Embed share page'}" title="${lang === 'zh-TW' ? '嵌入分享頁' : 'Embed share page'}" aria-label="${lang === 'zh-TW' ? '嵌入分享頁' : 'Embed share page'}">
-                            ${SVG_ICONS.link}
-                            <span class="toolbar-button-label">${lang === 'zh-TW' ? '嵌入' : 'Embed'}</span>
-                        </button>
                         ` : ''}
-                        <button type="button" id="share-history-btn" class="toolbar-icon-button share-history-trigger" data-tooltip="${t.recentSharesTitle}" title="${lang === 'zh-TW' ? '最近分享紀錄' : 'Recent shares'}" aria-label="${lang === 'zh-TW' ? '最近分享紀錄' : 'Recent shares'}" aria-haspopup="dialog" aria-expanded="false">
-                            ${SVG_ICONS.shareHistory}
-                            <span class="toolbar-button-label">${lang === 'zh-TW' ? '紀錄' : 'Recent'}</span>
+                        ${EXPORT_DROPDOWN_MENU(lang, { includeMarkdown: !isBlockEditor })}
+                        <button type="button" id="command-palette-btn" class="toolbar-icon-button command-palette-trigger" data-tooltip="${lang === 'zh-TW' ? '工具與指令面板 (Cmd/Ctrl+Shift+P)' : 'Tools & Command Palette (Cmd/Ctrl+Shift+P)'}" title="${lang === 'zh-TW' ? '工具與指令面板 (Cmd/Ctrl+Shift+P)' : 'Tools & Command Palette (Cmd/Ctrl+Shift+P)'}" aria-label="${lang === 'zh-TW' ? '開啟工具與指令面板' : 'Open Tools & Command Palette'}" aria-haspopup="dialog">
+                            ${SVG_ICONS.sliders}
+                            <span class="toolbar-button-label">${lang === 'zh-TW' ? '工具' : 'Tools'}</span>
+                            <kbd class="ide-kbd" aria-hidden="true">⌘⇧P</kbd>
                         </button>
-                    ` : '')}
-                    ${MORE_DROPDOWN_MENU(lang, { isEdit })}
-                </div>
-            </div>
-
-            <div class="footer-section footer-section-appearance">
-                <div class="footer-section-body">
-                    ${(sharePath || isEdit) ? `
+                        ${MORE_DROPDOWN_MENU(lang, { isEdit })}
+                    ` : `
+                        ${sharePath ? `
+                            <div class="footer-control-group footer-toggle-control-group">
+                                <div id="share-font-selector" class="share-font-toggle" role="group" aria-label="${shareFontAriaLabel}">
+                                    ${RAIL_SWITCH({
+                                        className: 'share-font-switch',
+                                        checked: true,
+                                        checkedTitle: 'Font',
+                                        uncheckedTitle: 'Font',
+                                        checkedText: 'JB',
+                                        uncheckedText: 'Maple',
+                                        ariaLabel: shareFontAriaLabel,
+                                        checkedValue: 'jetbrains',
+                                        uncheckedValue: 'maple',
+                                        checkedIcon: SVG_ICONS.type,
+                                        uncheckedIcon: SVG_ICONS.type,
+                                    })}
+                                </div>
+                            </div>
+                        ` : ''}
                         <div class="footer-control-group footer-toggle-control-group">
-                            <div id="share-font-selector" class="share-font-toggle" role="group" aria-label="${shareFontAriaLabel}">
+                            <div id="language-selector">
                                 ${RAIL_SWITCH({
-                                    className: 'share-font-switch',
-                                    checked: true,
-                                    checkedTitle: 'Font',
-                                    uncheckedTitle: 'Font',
-                                    checkedText: 'JB',
-                                    uncheckedText: 'Maple',
-                                    ariaLabel: shareFontAriaLabel,
-                                    checkedValue: 'jetbrains',
-                                    uncheckedValue: 'maple',
-                                    checkedIcon: SVG_ICONS.type,
-                                    uncheckedIcon: SVG_ICONS.type,
+                                    checked: lang === 'zh-TW',
+                                    checkedTitle: 'Lang',
+                                    uncheckedTitle: 'Lang',
+                                    checkedText: '中',
+                                    uncheckedText: 'En',
+                                    ariaLabel: t.language,
+                                    checkedValue: 'zh-TW',
+                                    uncheckedValue: 'en-US',
+                                    checkedIcon: SVG_ICONS.languages,
+                                    uncheckedIcon: SVG_ICONS.languages,
                                 })}
                             </div>
                         </div>
-                    ` : ''}
-                    <div class="footer-control-group footer-toggle-control-group">
-                        <div id="language-selector">
-                            ${RAIL_SWITCH({
-                                checked: lang === 'zh-TW',
-                                checkedTitle: 'Lang',
-                                uncheckedTitle: 'Lang',
-                                checkedText: '中',
-                                uncheckedText: 'En',
-                                ariaLabel: t.language,
-                                checkedValue: 'zh-TW',
-                                uncheckedValue: 'en-US',
-                                checkedIcon: SVG_ICONS.languages,
-                                uncheckedIcon: SVG_ICONS.languages,
-                            })}
-                        </div>
-                    </div>
-                    ${!isEdit ? `
                         ${THEME_DROPDOWN_MENU(lang, theme, getThemeLabel)}
                         <button type="button" id="ui-theme-toggle-btn" class="toolbar-icon-button ui-theme-toggle-btn" data-tooltip="${lang === 'zh-TW' ? '切換介面深淺模式' : 'Toggle UI theme'}" title="${lang === 'zh-TW' ? '切換介面深淺模式' : 'Toggle UI theme'}" aria-label="${lang === 'zh-TW' ? '切換介面深淺模式' : 'Toggle UI theme'}">
                             <span class="ui-theme-icon-sun" aria-hidden="true">${SVG_ICONS.sun}</span>
@@ -1133,25 +1120,27 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                             <span class="toolbar-button-label">${lang === 'zh-TW' ? '深淺' : 'Theme'}</span>
                         </button>
                         ${WIDTH_DROPDOWN_MENU(lang, effectiveWidth)}
-                    ` : ''}
-                    ${sharePath ? `
-                        <div id="share-analytics-hook">
-                            ${safeViewCount === null ? '' : `
-                                <span id="share-view-count" class="share-view-count" title="${viewCountText}" aria-label="${viewCountText}">
-                                    ${SVG_ICONS.eye}
-                                    <span>${viewCountText}</span>
-                                </span>
-                            `}
-                        </div>
-                    ` : ''}
+                        ${sharePath ? `
+                            <div id="share-analytics-hook">
+                                ${safeViewCount === null ? '' : `
+                                    <span id="share-view-count" class="share-view-count" title="${viewCountText}" aria-label="${viewCountText}">
+                                        ${SVG_ICONS.eye}
+                                        <span>${viewCountText}</span>
+                                    </span>
+                                `}
+                            </div>
+                        ` : ''}
+                    `}
                 </div>
             </div>
 
+            ${!isEdit ? `
             <div class="footer-section footer-section-info">
                 <div class="footer-section-body">
                     ${DEV_INFO_DROPDOWN_MENU(lang, t)}
                 </div>
             </div>
+            ` : ''}
         </div>
     </div>
 
@@ -1742,6 +1731,230 @@ export const VAULT_PRESETS_MODAL = (lang) => {
                 <button type="button" class="opt-button opt-button-accent" id="seal-save-btn" data-i18n-key="saveSeal">${zh ? '建立 Seal' : 'Create Seal'}</button>
             </div>
         </div>
+    </div>
+</div>`
+}
+
+export const COMMAND_PALETTE_MODAL = (lang, { theme = 'claude-canvas', width = DEFAULT_PREVIEW_WIDTH, share = false, shareId = '', editorFormat = 'markdown', mode = 'md', noteHistoryEnabled = false } = {}) => {
+    const zh = lang === 'zh-TW'
+    const t = getLangText(lang)
+    const closeLabel = zh ? '關閉' : 'Close'
+    const isBlockEditor = editorFormat === 'block'
+    const isPublished = share === true && Boolean(shareId)
+    const effectiveWidth = width || DEFAULT_PREVIEW_WIDTH
+    const getThemeLabel = themeName => {
+        const description = THEME_OPTION_LABELS[themeName]?.[lang] || ''
+        return description ? `${themeName} · ${description}` : themeName
+    }
+    const widthOptions = [
+        { value: '100%', label: '100%' },
+        { value: '960px', label: '960px' },
+        { value: '1200px', label: '1200px' },
+        { value: '1440px', label: '1440px' },
+    ]
+    return `
+<div id="command-palette-modal" class="modal command-palette-modal" role="dialog" aria-modal="true" aria-labelledby="command-palette-title" aria-hidden="true" style="display:none;">
+    <div class="modal-mask" id="command-palette-mask" data-modal-close></div>
+    <div class="command-palette-content">
+        <div class="command-palette-header">
+            <span class="command-palette-search-icon" aria-hidden="true">${SVG_ICONS.search}</span>
+            <h2 id="command-palette-title" class="sr-only">${zh ? '工具與指令面板' : 'Tools & Command Palette'}</h2>
+            <input type="text" id="command-palette-search" class="command-palette-search" placeholder="${zh ? '搜尋指令、外觀設定或 20 套主題... (Esc 關閉)' : 'Search commands, settings, or 20 themes... (Esc to close)'}" autocomplete="off" spellcheck="false" aria-label="${zh ? '搜尋工具與指令' : 'Search tools and commands'}" />
+            <kbd class="command-palette-esc" aria-hidden="true">ESC</kbd>
+            <button type="button" class="close-btn command-palette-close" id="command-palette-close-btn" data-modal-close aria-label="${closeLabel}">×</button>
+        </div>
+
+        <div class="command-palette-quick-settings" aria-label="${zh ? '常用外觀設定' : 'Quick appearance settings'}">
+            <div class="cp-quick-row">
+                <span class="cp-quick-label">${zh ? '外觀深淺' : 'Appearance'}</span>
+                <div class="cp-segmented-group" role="group" aria-label="${zh ? '外觀深淺模式' : 'UI Theme'}">
+                    <button type="button" class="cp-seg-btn" data-cp-ui-theme="light">${SVG_ICONS.sun}<span>${zh ? '淺色' : 'Light'}</span></button>
+                    <button type="button" class="cp-seg-btn" data-cp-ui-theme="dark">${SVG_ICONS.moon}<span>${zh ? '深色' : 'Dark'}</span></button>
+                    <button type="button" class="cp-seg-btn" data-cp-ui-theme="auto"><span>${zh ? '自動' : 'Auto'}</span></button>
+                </div>
+            </div>
+            <div class="cp-quick-row">
+                <span class="cp-quick-label">${zh ? '預覽字體' : 'Preview Font'}</span>
+                <div class="cp-segmented-group" role="group" aria-label="${zh ? '預覽字體' : 'Preview Font'}">
+                    <button type="button" class="cp-seg-btn" data-cp-font="jetbrains">JetBrains Mono</button>
+                    <button type="button" class="cp-seg-btn" data-cp-font="maple">Maple Mono</button>
+                </div>
+            </div>
+            <div class="cp-quick-row">
+                <span class="cp-quick-label">${zh ? '預覽寬度' : 'Width'}</span>
+                <div class="cp-segmented-group" role="group" aria-label="${zh ? '預覽寬度' : 'Preview Width'}">
+                    ${widthOptions.map(opt => `<button type="button" class="cp-seg-btn width-item ${opt.value === effectiveWidth ? 'is-active' : ''}" data-width-value="${opt.value}">${opt.label}</button>`).join('')}
+                </div>
+            </div>
+            <div class="cp-quick-row">
+                <span class="cp-quick-label">${zh ? '介面語言' : 'Language'}</span>
+                <div class="cp-segmented-group" role="group" aria-label="${t.language}">
+                    <button type="button" class="cp-seg-btn ${zh ? 'is-active' : ''}" data-cp-lang="zh-TW">繁體中文</button>
+                    <button type="button" class="cp-seg-btn ${!zh ? 'is-active' : ''}" data-cp-lang="en-US">English</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="command-palette-list" id="command-palette-list" role="listbox" aria-label="${zh ? '所有指令' : 'Commands'}">
+            <div class="cp-group" data-cp-group="publish">
+                <div class="cp-group-label">${zh ? '發布與快速分享' : 'Publish & Share'}</div>
+                <button type="button" class="cp-item" data-cp-action="quick-share-url" data-cp-keywords="copy url share link publish 複製 連結 公開分享">
+                    ${SVG_ICONS.shareHistory}
+                    <span class="cp-item-copy">
+                        <strong id="cp-quick-share-title">${isPublished ? (zh ? '複製公開分享連結（可繼續編輯）' : 'Copy Public Share URL (keep editing)') : (zh ? '一鍵發布並複製公開連結' : 'Publish & Copy Public Share URL')}</strong>
+                        <small>${zh ? '立即取得同事可閱讀的網址，不中斷當前編輯' : 'Get a shareable link immediately without interrupting editing'}</small>
+                    </span>
+                </button>
+                <button type="button" class="cp-item" data-cp-action="open-share-page" data-cp-keywords="open share preview 打開分享頁面 閱讀">
+                    ${SVG_ICONS.externalLink}
+                    <span class="cp-item-copy">
+                        <strong>${zh ? '打開公開分享頁面' : 'Open Public Share Page'}</strong>
+                        <small>${zh ? '在新分頁檢視讀者看到的排版' : 'View published reader page in new tab'}</small>
+                    </span>
+                </button>
+                <button type="button" class="cp-item" data-cp-action="open-present" data-cp-keywords="present slides 簡報 投影片">
+                    ${SVG_ICONS.play}
+                    <span class="cp-item-copy">
+                        <strong>${zh ? '打開簡報模式 (/present)' : 'Open Presentation (/present)'}</strong>
+                        <small>${zh ? '全螢幕 Slidev 投影片播放' : 'Fullscreen Slidev presentation'}</small>
+                    </span>
+                </button>
+                <button type="button" class="cp-item" data-cp-action="open-book" data-cp-keywords="book mode toc 書本模式 目錄">
+                    ${SVG_ICONS.book}
+                    <span class="cp-item-copy">
+                        <strong>${zh ? '打開書本模式 (/book)' : 'Open Book Mode (/book)'}</strong>
+                        <small>${zh ? '章節目錄側邊欄與翻書閱讀' : 'Sidebar TOC & Book reader'}</small>
+                    </span>
+                </button>
+                <button type="button" class="cp-item" data-cp-action="open-seal" data-cp-keywords="seal password lock vault 密碼 存取控制 閱後即焚 定時">
+                    ${SVG_ICONS.lock}
+                    <span class="cp-item-copy">
+                        <strong>${zh ? 'Seal 存取控制與時間鎖' : 'Seal Access Control & Timelock'}</strong>
+                        <small>${zh ? '定時解鎖、閱後即焚、亡者開關與安全範本' : 'Timelock, burn after reading, and dead man switch'}</small>
+                    </span>
+                </button>
+                ${noteHistoryEnabled ? `
+                <button type="button" class="cp-item" data-cp-action="note-history" data-cp-keywords="history versions restore 歷史版本 還原">
+                    ${SVG_ICONS.history}
+                    <span class="cp-item-copy">
+                        <strong>${t.historyTitle}</strong>
+                        <small>${zh ? '檢視歷史修訂版本與還原' : 'View past revisions & restore'}</small>
+                    </span>
+                </button>
+                ` : ''}
+                <button type="button" class="cp-item" data-cp-action="share-history" data-cp-keywords="recent shares history 最近分享紀錄">
+                    ${SVG_ICONS.clock}
+                    <span class="cp-item-copy">
+                        <strong>${t.recentSharesTitle}</strong>
+                        <small>${zh ? '瀏覽本機建立過的所有發布連結' : 'Browse recent shares on this browser'}</small>
+                    </span>
+                </button>
+            </div>
+
+            <div class="cp-group" data-cp-group="tools">
+                <div class="cp-group-label">${zh ? '文件與排版工具' : 'Document Tools'}</div>
+                <button type="button" id="import-md-btn" class="cp-item" data-cp-action="import-file" data-cp-keywords="import word pdf markdown 匯入 轉檔">
+                    ${SVG_ICONS.import}
+                    <span class="cp-item-copy">
+                        <strong>${isBlockEditor ? t.importFileBlock : t.importMarkdown}</strong>
+                        <small>${zh ? '支援 Word、PDF、PPT、Excel、Markdown 與音訊' : 'Supports Word, PDF, PPT, Excel, Markdown, and audio'}</small>
+                    </span>
+                </button>
+                <button type="button" class="cp-item" data-cp-action="import-url" data-cp-keywords="url web import 匯入網頁">
+                    ${SVG_ICONS.globe}
+                    <span class="cp-item-copy">
+                        <strong>${isBlockEditor ? t.importWebsiteBlock : t.importWebsiteMarkdown}</strong>
+                        <small>${zh ? '擷取外部網頁正文並轉為筆記' : 'Fetch webpage content into clean Markdown'}</small>
+                    </span>
+                </button>
+                <button type="button" class="cp-item" data-cp-action="print" data-cp-keywords="print pdf 列印">
+                    ${SVG_ICONS.printer}
+                    <span class="cp-item-copy">
+                        <strong>${zh ? '列印筆記 / 系統 PDF' : 'Print Note / System PDF'}</strong>
+                        <small>${zh ? '開啟瀏覽器列印預覽對話框' : 'Open browser print dialog'}</small>
+                    </span>
+                </button>
+                <button type="button" class="cp-item" data-cp-action="cite" data-cp-keywords="cite citation bibtex apa ieee 引用 論文">
+                    ${SVG_ICONS.quote}
+                    <span class="cp-item-copy">
+                        <strong>${zh ? '引用此文章 (Cite)' : 'Cite this Note'}</strong>
+                        <small>${zh ? '產生 APA、IEEE、BibTeX、MLA 等引用格式' : 'Generate APA, IEEE, BibTeX, MLA citations'}</small>
+                    </span>
+                </button>
+                ${!isBlockEditor ? `
+                <button type="button" class="cp-item" data-cp-action="math-format" data-cp-keywords="math formula latex mathml notion 公式">
+                    ${SVG_ICONS.math}
+                    <span class="cp-item-copy">
+                        <strong>${zh ? '公式複製格式設定' : 'Formula Copy Format'}</strong>
+                        <small>${zh ? '設定點擊公式時複製 LaTeX / Word MathML / Notion' : 'Choose LaTeX, MathML (Word), or Notion on formula click'}</small>
+                    </span>
+                </button>
+                ` : ''}
+                <button type="button" class="cp-item" data-cp-action="editor-preference" data-cp-keywords="default editor markdown block canvas whiteboard 預設編輯器">
+                    ${SVG_ICONS.settings}
+                    <span class="cp-item-copy">
+                        <strong>${zh ? '設定預設編輯器模式' : 'Set Default Editor Mode'}</strong>
+                        <small>${zh ? '選擇 Markdown / Block / Canvas / 白板' : 'Choose Markdown / Block / Canvas / Whiteboard'}</small>
+                    </span>
+                </button>
+            </div>
+
+            <div class="cp-group" data-cp-group="themes">
+                <div class="cp-group-label">${zh ? '預覽排版主題 (20 套)' : 'Preview Typography Themes (20)'}</div>
+                <div class="cp-theme-grid">
+                    ${Object.keys(THEMES).map(themeName => {
+                        const isActive = themeName === (theme || 'claude-canvas')
+                        const label = getThemeLabel(themeName)
+                        return `
+                            <button type="button" class="cp-item theme-item ${isActive ? 'is-active' : ''}" data-theme-name="${themeName}" data-cp-keywords="theme style 主題 樣式 ${label}">
+                                <span class="theme-item-name">${label}</span>
+                                ${isActive ? `<span class="theme-item-check" aria-hidden="true">✓</span>` : ''}
+                            </button>
+                        `
+                    }).join('')}
+                </div>
+            </div>
+
+            <div class="cp-group" data-cp-group="docs">
+                <div class="cp-group-label">${zh ? '使用指南、開發與系統' : 'Docs, Developer & App'}</div>
+                <a class="cp-item" href="/docs" target="_blank" rel="noreferrer" data-cp-keywords="docs guide help 使用指南 說明書 教學">
+                    ${SVG_ICONS.book}
+                    <span class="cp-item-copy">
+                        <strong>${zh ? '使用指南與語法說明 (/docs)' : 'User Guide & Docs (/docs)'}</strong>
+                        <small>${zh ? '快捷鍵、Markdown 語法與進階功能' : 'Shortcuts, syntax, and features'}</small>
+                    </span>
+                </a>
+                <a class="cp-item" href="/docs/api" target="_blank" rel="noreferrer" data-cp-keywords="api openapi swagger 開發文件">
+                    ${SVG_ICONS.apiDocs}
+                    <span class="cp-item-copy">
+                        <strong>${t.apiDocTitle || 'REST API / OpenAPI'}</strong>
+                        <small>${zh ? '端點規格與 Swagger 文件' : 'Endpoint specs & Swagger UI'}</small>
+                    </span>
+                </a>
+                <a class="cp-item" href="/.well-known/agent-skills/david888-wiki-publisher/SKILL.md" target="_blank" rel="noreferrer" data-cp-keywords="agent skill mcp ai">
+                    ${SVG_ICONS.sparkles}
+                    <span class="cp-item-copy">
+                        <strong>${t.skillTitle || 'Agent Skill'}</strong>
+                        <small>${zh ? 'AI 代理技能與發布工具規格' : 'AI Agent skill specification'}</small>
+                    </span>
+                </a>
+                <a class="cp-item" href="https://github.com/tbdavid2019/888wiki" target="_blank" rel="noreferrer" data-cp-keywords="github source 原始碼">
+                    ${SVG_ICONS.github}
+                    <span class="cp-item-copy">
+                        <strong>GitHub</strong>
+                        <small>${zh ? '開源專案原始碼與貢獻' : 'Open-source repository'}</small>
+                    </span>
+                </a>
+                <button type="button" id="pwa-install-manual-btn" class="cp-item pwa-install-manual-btn" data-cp-action="pwa-install" data-cp-keywords="pwa install app 安裝 離線">
+                    ${SVG_ICONS.install}
+                    <span class="cp-item-copy">
+                        <strong>${zh ? '安裝離線桌面應用 (PWA)' : 'Install Offline App (PWA)'}</strong>
+                        <small>${zh ? '支援離線編輯與自動背景同步' : 'Offline editing with background sync'}</small>
+                    </span>
+                </button>
+            </div>
+        </div>
+        <div id="command-palette-empty" class="command-palette-empty" hidden>${zh ? '找不到符合的指令或主題' : 'No matching commands or themes'}</div>
     </div>
 </div>`
 }

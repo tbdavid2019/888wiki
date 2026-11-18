@@ -65,10 +65,12 @@ test('publication status labels are localized', () => {
     assert.match(constantSource, /publicationViews: '不重複瀏覽'/)
 })
 
-test('publication bar provides far-left direct share open button with shake reminder and hides raw URL text', () => {
-    assert.match(baseTemplateSource, /id="editor-share-page-btn" class="publication-share-page-btn toolbar-icon-button"/)
-    assert.match(baseTemplateSource, /const \$editorSharePageBtn = document\.querySelector\('#editor-share-page-btn'\)/)
-    assert.match(baseCssSource, /@keyframes share-btn-nudge-shake/)
-    assert.match(baseCssSource, /\.publication-share-page-btn \{[\s\S]*animation: share-btn-nudge-shake 3\.5s ease-in-out infinite;/)
+test('Option A single-bar IDE layout replaces shaking nudge with quick 1-click public URL action and unified tokens', () => {
+    assert.match(baseTemplateSource, /id="quick-share-url-btn"|ide-single-bar/)
+    assert.doesNotMatch(baseCssSource, /@keyframes share-btn-nudge-shake/)
+    assert.match(baseCssSource, /body\.ide-single-bar #editor-status,\s*body\.ide-single-bar \.editor-publication-status \{\s*display: none !important;\s*\}/)
     assert.match(baseCssSource, /\.publication-label,\s*#publication-share-url \{\s*display: none !important;\s*\}/)
+    assert.match(baseTemplateSource, /body:is\(\.share-font-jetbrains, \.share-font-maple\) #preview-md/)
+    assert.match(baseCssSource, /--editor-bg:\s*#fdfbf6;/)
+    assert.match(baseCssSource, /html\[data-ui-theme="dark"\][\s\S]*--editor-bg:\s*#161d26;/)
 })

@@ -4,7 +4,7 @@
  */
 import { CDN_PREFIX, SUPPORTED_LANG, APP_NAME, DEFAULT_PREVIEW_WIDTH, getFlowTrackerScript } from '../constant.js'
 import { THEMES } from '../theme_data.js'
-import { EDITOR_TOOLBAR, FOOTER, MODAL, EDITOR_PREFERENCE_MODAL, MATH_FORMAT_MODAL, URL_IMPORT_MODAL, CITE_MODAL, VAULT_PRESETS_MODAL, SVG_ICONS } from './common.js'
+import { EDITOR_TOOLBAR, FOOTER, MODAL, EDITOR_PREFERENCE_MODAL, MATH_FORMAT_MODAL, URL_IMPORT_MODAL, CITE_MODAL, VAULT_PRESETS_MODAL, COMMAND_PALETTE_MODAL, SVG_ICONS } from './common.js'
 import { getBaseCss } from '../styles/base.css.js'
 import { getEditorCss } from '../styles/editor.css.js'
 import { getMarkdownCss } from '../styles/markdown.css.js'
@@ -323,37 +323,37 @@ ${getMarkdownCss()}
             font-size: 0.92em;
         }
 
-        body.share-view.share-font-jetbrains {
+        body.share-font-jetbrains {
             --share-font-family: var(--share-font-jetbrains-family);
         }
 
-        body.share-view.share-font-maple {
+        body.share-font-maple {
             --share-font-family: var(--share-font-maple-family);
         }
 
-        body.share-view:is(.share-font-jetbrains, .share-font-maple) #preview-md,
-        body.share-view:is(.share-font-jetbrains, .share-font-maple) #preview-plain,
-        body.share-view:is(.share-font-jetbrains, .share-font-maple) #preview-md.markdown-body,
-        body.share-view:is(.share-font-jetbrains, .share-font-maple) #preview-plain.markdown-body,
-        body.share-view:is(.share-font-jetbrains, .share-font-maple) #preview-md.markdown-body :is(
+        body:is(.share-font-jetbrains, .share-font-maple) #preview-md,
+        body:is(.share-font-jetbrains, .share-font-maple) #preview-plain,
+        body:is(.share-font-jetbrains, .share-font-maple) #preview-md.markdown-body,
+        body:is(.share-font-jetbrains, .share-font-maple) #preview-plain.markdown-body,
+        body:is(.share-font-jetbrains, .share-font-maple) #preview-md.markdown-body :is(
             p, li, dd, dt, blockquote, strong, b, em, i, del, s, strike, mark, small,
             span, a, figcaption, summary, table, thead, tbody, tfoot, tr, th, td,
             ul, ol, dl, h1, h2, h3, h4, h5, h6
         ),
-        body.share-view:is(.share-font-jetbrains, .share-font-maple) #preview-md.markdown-body code,
-        body.share-view:is(.share-font-jetbrains, .share-font-maple) #preview-md.markdown-body pre,
-        body.share-view:is(.share-font-jetbrains, .share-font-maple) #preview-md.markdown-body pre code,
-        body.share-view:is(.share-font-jetbrains, .share-font-maple) #preview-plain.markdown-body code {
+        body:is(.share-font-jetbrains, .share-font-maple) #preview-md.markdown-body code,
+        body:is(.share-font-jetbrains, .share-font-maple) #preview-md.markdown-body pre,
+        body:is(.share-font-jetbrains, .share-font-maple) #preview-md.markdown-body pre code,
+        body:is(.share-font-jetbrains, .share-font-maple) #preview-plain.markdown-body code {
             font-family: var(--share-font-family);
         }
 
-        body.share-view:is(.share-font-jetbrains, .share-font-maple) #preview-plain.markdown-body :is(
+        body:is(.share-font-jetbrains, .share-font-maple) #preview-plain.markdown-body :is(
             p, li, dd, dt, blockquote, strong, b, em, i, del, s, strike, mark, small,
             span, a, figcaption, summary, table, thead, tbody, tfoot, tr, th, td,
             ul, ol, dl, h1, h2, h3, h4, h5, h6
         ),
-        body.share-view:is(.share-font-jetbrains, .share-font-maple) #preview-plain.markdown-body pre,
-        body.share-view:is(.share-font-jetbrains, .share-font-maple) #preview-plain.markdown-body pre code {
+        body:is(.share-font-jetbrains, .share-font-maple) #preview-plain.markdown-body pre,
+        body:is(.share-font-jetbrains, .share-font-maple) #preview-plain.markdown-body pre code {
             font-family: var(--share-font-family);
         }
 
@@ -372,7 +372,7 @@ ${getMarkdownCss()}
     ${gaScript}
     ${ext.turnstileSiteKey ? `<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer onerror="window.__turnstileDegraded = true; window.__turnstileScriptFailed = true;"></script>` : ''}
 </head>
-<body class="${ext.sharePath && !isEdit ? `share-view share-font-${initialShareFont}${isEmbed ? ' share-embed' : ''}${ext.autoToc ? ' is-toc-pinned' : ''}` : ''}">
+<body class="${ext.sharePath && !isEdit ? `share-view share-font-${initialShareFont}${isEmbed ? ' share-embed' : ''}${ext.autoToc ? ' is-toc-pinned' : ''}` : `share-font-${initialShareFont}${isEdit && !isBurnInterstitial ? ' ide-single-bar' : ''}`}">
     ${ext.turnstileSiteKey ? `
     <div id="turnstile-modal" class="modal turnstile-modal" role="dialog" aria-modal="true" aria-labelledby="turnstile-modal-title" aria-describedby="turnstile-modal-desc" aria-hidden="true" style="display:none;">
         <div class="modal-mask" data-modal-close></div>
@@ -541,6 +541,7 @@ ${getMarkdownCss()}
     ${CITE_MODAL(lang)}
     ${isEdit ? VAULT_PRESETS_MODAL(lang) : ''}
     ${isEdit ? PUBLISH_NUDGE_MODAL(lang) : ''}
+    ${isEdit && !isEmbed ? COMMAND_PALETTE_MODAL(lang, { theme: pageTheme, width: ext.width, share: ext.share === true, shareId, editorFormat: effectiveEditorFormat, mode: ext.mode || 'md', noteHistoryEnabled: ext.noteHistoryEnabled === true }) : ''}
     ${((ext.mode || 'md') === 'md' || ext.share || !isEdit) ? `
     <script src="${CDN_PREFIX}/dompurify@3.4.18/dist/purify.min.js"></script>
     <script src="/js/marked.min.js"></script>
@@ -4197,7 +4198,30 @@ ${getMarkdownCss()}
             if (shareBtnLabel) {
                 shareBtnLabel.textContent = isPublished
                     ? (isZh ? '已發布' : 'Live')
-                    : (isZh ? '發布' : 'Publish')
+                    : (isZh ? '草稿' : 'Draft')
+            }
+            const quickShareBtn = document.getElementById('quick-share-url-btn')
+            const quickShareLabel = document.getElementById('quick-share-url-label')
+            const cpQuickShareTitle = document.getElementById('cp-quick-share-title')
+            if (quickShareBtn) {
+                quickShareBtn.classList.toggle('is-published', isPublished)
+                quickShareBtn.dataset.published = isPublished ? 'true' : 'false'
+                const quickTooltip = isPublished
+                    ? (isZh ? '一鍵複製公開分享連結（可繼續編輯）' : 'Copy public share URL (keep editing)')
+                    : (isZh ? '一鍵發布並複製公開連結（可繼續編輯）' : 'Publish & copy public URL (keep editing)')
+                quickShareBtn.title = quickTooltip
+                quickShareBtn.dataset.tooltip = quickTooltip
+                quickShareBtn.setAttribute('aria-label', isPublished ? (isZh ? '複製公開分享連結' : 'Copy public share URL') : (isZh ? '發布並複製公開連結' : 'Publish & copy public URL'))
+            }
+            if (quickShareLabel && !quickShareBtn?.classList.contains('is-copied')) {
+                quickShareLabel.textContent = isPublished
+                    ? (isZh ? '複製連結' : 'Copy URL')
+                    : (isZh ? '發布並複製連結' : 'Share URL')
+            }
+            if (cpQuickShareTitle) {
+                cpQuickShareTitle.textContent = isPublished
+                    ? (isZh ? '複製公開分享連結（可繼續編輯）' : 'Copy Public Share URL (keep editing)')
+                    : (isZh ? '一鍵發布並複製公開連結' : 'Publish & Copy Public Share URL')
             }
             const sharePublishBtn = document.getElementById('share-publish-menu-btn')
             if (sharePublishBtn) {
@@ -5444,6 +5468,104 @@ ${getMarkdownCss()}
                 }
             });
         }
+        const $quickShareUrlBtn = document.querySelector('#quick-share-url-btn');
+        let quickShareResetTimer = null;
+        const triggerQuickShareUrl = async () => {
+            const isZh = APP_STATE.lang === 'zh-TW';
+            const quickLabel = document.querySelector('#quick-share-url-label');
+            const showCopiedFeedback = (syncedInBg = false) => {
+                if (!$quickShareUrlBtn) return;
+                window.clearTimeout(quickShareResetTimer);
+                $quickShareUrlBtn.classList.add('is-copied');
+                if (quickLabel) quickLabel.textContent = isZh ? '已複製' : 'Copied';
+                window.showToast?.(
+                    syncedInBg
+                        ? (isZh ? '已複製公開連結，並正在背景同步最新修改' : 'Public URL copied; syncing latest edits in background')
+                        : (isZh ? '已複製公開連結，可繼續編輯' : 'Public URL copied — keep editing')
+                );
+                quickShareResetTimer = window.setTimeout(() => {
+                    $quickShareUrlBtn.classList.remove('is-copied');
+                    syncShareStateUI();
+                }, 1800);
+            };
+            if (APP_STATE.isPublished && APP_STATE.shareId) {
+                const shareUrl = getCurrentShareUrl();
+                if (shareUrl) {
+                    let copied = false;
+                    try {
+                        await clipboardCopy(shareUrl);
+                        copied = true;
+                    } catch (e) {
+                        copied = false;
+                    }
+                    const dirty = typeof hasUnsavedChanges === 'function' && hasUnsavedChanges();
+                    if (dirty) {
+                        saveCurrentNote({ showBlocked: false });
+                    }
+                    if (copied) {
+                        showCopiedFeedback(dirty);
+                    } else {
+                        window.showAppPrompt?.({
+                            title: isZh ? '複製公開分享連結' : 'Copy Public Share URL',
+                            message: isZh ? '請手動複製下方公開連結（可繼續編輯）：' : 'Copy the public share URL below:',
+                            defaultValue: shareUrl,
+                        });
+                    }
+                    return;
+                }
+            }
+            if (APP_STATE.editorFormat === 'markdown' && $textarea && !$textarea.value.trim()) {
+                window.showToast?.(isZh ? '請先輸入筆記內容後再發布分享' : 'Write something before publishing and sharing');
+                $textarea.focus();
+                return;
+            }
+            if ($quickShareUrlBtn) {
+                $quickShareUrlBtn.classList.add('is-busy');
+                $quickShareUrlBtn.disabled = true;
+            }
+            if (quickLabel) quickLabel.textContent = isZh ? '發布中...' : 'Publishing...';
+            try {
+                const ok = await publishCurrentNote(loadPublishPreferences());
+                if (ok) {
+                    const nextUrl = getCurrentShareUrl();
+                    if (nextUrl) {
+                        try {
+                            await clipboardCopy(nextUrl);
+                            if ($quickShareUrlBtn) {
+                                window.clearTimeout(quickShareResetTimer);
+                                $quickShareUrlBtn.classList.add('is-copied');
+                                if (quickLabel) quickLabel.textContent = isZh ? '已發布並複製' : 'Shared & Copied';
+                                window.showToast?.(isZh ? '已發布並複製公開連結，可繼續編輯' : 'Published & copied public URL — keep editing');
+                                quickShareResetTimer = window.setTimeout(() => {
+                                    $quickShareUrlBtn.classList.remove('is-copied');
+                                    syncShareStateUI();
+                                }, 1800);
+                            }
+                        } catch (copyErr) {
+                            window.showToast?.(isZh ? '已發布！請複製公開連結' : 'Published! Copy your public URL');
+                            if (typeof window.showAppPrompt === 'function') {
+                                window.showAppPrompt({
+                                    title: isZh ? '公開分享連結已建立' : 'Public Share URL Ready',
+                                    message: isZh ? '請複製下方公開連結（可繼續編輯）：' : 'Copy your public share URL below:',
+                                    defaultValue: nextUrl,
+                                });
+                            }
+                        }
+                    }
+                }
+            } finally {
+                if ($quickShareUrlBtn) {
+                    $quickShareUrlBtn.classList.remove('is-busy');
+                    $quickShareUrlBtn.disabled = false;
+                }
+                if (!$quickShareUrlBtn?.classList.contains('is-copied')) {
+                    syncShareStateUI();
+                }
+            }
+        };
+        if ($quickShareUrlBtn) {
+            $quickShareUrlBtn.addEventListener('click', triggerQuickShareUrl);
+        }
         if ($copyPresentShareBtn) {
             $copyPresentShareBtn.addEventListener('click', async () => {
                 const presentationUrl = getCurrentShareUrl()
@@ -6553,8 +6675,232 @@ ${getMarkdownCss()}
                     const file = await window.openLocalMarkdownFile();
                     if (file) window.__openLocalFileContent(file);
                 }
+            } else if (key === 'p' && e.shiftKey && APP_STATE.isEdit) {
+                e.preventDefault();
+                window.__toggleCommandPalette?.();
             }
         });
+
+        // --- Sync editor cursor status into single-layer IDE bottom bar ---
+        const $editorStatusSource = document.getElementById('editor-status');
+        const $ideCursorStatus = document.getElementById('ide-cursor-status');
+        if ($editorStatusSource && $ideCursorStatus) {
+            const syncIdeCursorStatus = () => {
+                const nextText = ($editorStatusSource.textContent || '').trim();
+                if (nextText) $ideCursorStatus.textContent = nextText;
+            };
+            syncIdeCursorStatus();
+            if (typeof MutationObserver === 'function') {
+                new MutationObserver(syncIdeCursorStatus).observe($editorStatusSource, {
+                    childList: true,
+                    characterData: true,
+                    subtree: true,
+                });
+            }
+        }
+
+        // --- Command Palette & Quick Settings Modal (Option A) ---
+        const $cpModal = document.getElementById('command-palette-modal');
+        const $cpTrigger = document.getElementById('command-palette-btn');
+        const $cpSearch = document.getElementById('command-palette-search');
+        const $cpList = document.getElementById('command-palette-list');
+        const $cpEmpty = document.getElementById('command-palette-empty');
+        let cpSelectedIndex = 0;
+
+        const syncCommandPaletteQuickStates = () => {
+            if (!$cpModal) return;
+            const uiMode = window.__getUiThemeMode ? window.__getUiThemeMode() : 'auto';
+            $cpModal.querySelectorAll('[data-cp-ui-theme]').forEach(btn => {
+                const active = btn.getAttribute('data-cp-ui-theme') === uiMode;
+                btn.classList.toggle('is-active', active);
+                btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+            });
+            const currentFont = document.body.classList.contains('share-font-maple') ? 'maple' : 'jetbrains';
+            $cpModal.querySelectorAll('[data-cp-font]').forEach(btn => {
+                const active = btn.getAttribute('data-cp-font') === currentFont;
+                btn.classList.toggle('is-active', active);
+                btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+            });
+            const currentLang = APP_STATE.lang || 'zh-TW';
+            $cpModal.querySelectorAll('[data-cp-lang]').forEach(btn => {
+                const active = btn.getAttribute('data-cp-lang') === currentLang;
+                btn.classList.toggle('is-active', active);
+                btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+            });
+            const activeWidth = APP_STATE.noteSettings.width || '100%';
+            const isMobilePreview = document.body.classList.contains('preview-device-mobile');
+            $cpModal.querySelectorAll('.width-item').forEach(btn => {
+                const active = btn.dataset.widthValue === activeWidth;
+                btn.classList.toggle('is-active', active);
+                btn.disabled = isMobilePreview;
+            });
+        };
+
+        const getVisibleCpItems = () => {
+            if (!$cpList) return [];
+            return Array.from($cpList.querySelectorAll('.cp-item')).filter(el => !el.hidden);
+        };
+
+        const updateCpSelection = (nextIndex) => {
+            const items = getVisibleCpItems();
+            items.forEach(el => el.classList.remove('is-selected'));
+            if (!items.length) {
+                cpSelectedIndex = -1;
+                return;
+            }
+            cpSelectedIndex = ((nextIndex % items.length) + items.length) % items.length;
+            const activeEl = items[cpSelectedIndex];
+            activeEl.classList.add('is-selected');
+            activeEl.scrollIntoView({ block: 'nearest' });
+        };
+
+        const filterCommandPalette = (rawQuery = '') => {
+            if (!$cpList) return;
+            const query = String(rawQuery || '').trim().toLowerCase();
+            const groups = $cpList.querySelectorAll('.cp-group');
+            let totalVisible = 0;
+            groups.forEach(group => {
+                const items = group.querySelectorAll('.cp-item');
+                let groupVisible = 0;
+                items.forEach(item => {
+                    const haystack = (
+                        (item.textContent || '') + ' ' +
+                        (item.getAttribute('data-cp-keywords') || '') + ' ' +
+                        (item.getAttribute('data-theme-name') || '')
+                    ).toLowerCase();
+                    const matches = !query || haystack.includes(query);
+                    item.hidden = !matches;
+                    if (matches) groupVisible++;
+                });
+                group.hidden = groupVisible === 0;
+                totalVisible += groupVisible;
+            });
+            if ($cpEmpty) $cpEmpty.hidden = totalVisible > 0;
+            updateCpSelection(0);
+        };
+
+        const openCommandPalette = (presetQuery = '') => {
+            if (!$cpModal) return;
+            syncCommandPaletteQuickStates();
+            if ($cpSearch) $cpSearch.value = presetQuery;
+            filterCommandPalette(presetQuery);
+            openModal($cpModal, { initialFocus: $cpSearch || $cpModal, trigger: $cpTrigger || document.activeElement });
+            if ($cpSearch) {
+                $cpSearch.focus();
+                $cpSearch.select();
+            }
+        };
+
+        const closeCommandPalette = () => {
+            if ($cpModal) closeModal($cpModal);
+        };
+
+        window.__openCommandPalette = openCommandPalette;
+        window.__toggleCommandPalette = () => {
+            if (!$cpModal) return;
+            if ($cpModal.classList.contains('show')) closeCommandPalette();
+            else openCommandPalette();
+        };
+
+        if ($cpTrigger) {
+            $cpTrigger.addEventListener('click', () => openCommandPalette());
+        }
+        if ($cpSearch) {
+            $cpSearch.addEventListener('input', () => filterCommandPalette($cpSearch.value));
+            $cpSearch.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    updateCpSelection(cpSelectedIndex + 1);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    updateCpSelection(cpSelectedIndex - 1);
+                } else if (e.key === 'Enter') {
+                    const items = getVisibleCpItems();
+                    const activeEl = items[cpSelectedIndex] || items[0];
+                    if (activeEl) {
+                        e.preventDefault();
+                        activeEl.click();
+                    }
+                }
+            });
+        }
+        if ($cpModal) {
+            $cpModal.addEventListener('click', (e) => {
+                const uiThemeBtn = e.target.closest('[data-cp-ui-theme]');
+                if (uiThemeBtn) {
+                    const mode = uiThemeBtn.getAttribute('data-cp-ui-theme');
+                    window.__applyUiTheme?.(mode, { persist: true, toast: true });
+                    syncCommandPaletteQuickStates();
+                    return;
+                }
+                const fontBtn = e.target.closest('[data-cp-font]');
+                if (fontBtn) {
+                    const nextFont = fontBtn.getAttribute('data-cp-font');
+                    window.__setShareFont?.(nextFont);
+                    syncCommandPaletteQuickStates();
+                    window.showToast?.(APP_STATE.lang === 'zh-TW'
+                        ? ('已切換預覽字體：' + (nextFont === 'maple' ? 'Maple Mono' : 'JetBrains Mono'))
+                        : ('Preview font: ' + (nextFont === 'maple' ? 'Maple Mono' : 'JetBrains Mono')));
+                    return;
+                }
+                const langBtn = e.target.closest('[data-cp-lang]');
+                if (langBtn) {
+                    const nextLang = langBtn.getAttribute('data-cp-lang');
+                    if (nextLang && nextLang !== APP_STATE.lang) setLanguage(nextLang);
+                    return;
+                }
+                const widthBtn = e.target.closest('.width-item');
+                if (widthBtn) {
+                    window.setTimeout(syncCommandPaletteQuickStates, 0);
+                    return;
+                }
+                const themeItem = e.target.closest('.theme-item');
+                if (themeItem) {
+                    closeCommandPalette();
+                    return;
+                }
+                const actionItem = e.target.closest('[data-cp-action]');
+                if (!actionItem) return;
+                const action = actionItem.getAttribute('data-cp-action');
+                closeCommandPalette();
+                if (action === 'quick-share-url') {
+                    triggerQuickShareUrl();
+                } else if (action === 'open-share-page') {
+                    const url = getCurrentShareUrl();
+                    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+                    else openPublishOptions();
+                } else if (action === 'open-present') {
+                    if (typeof window.initPresentation === 'function') window.initPresentation();
+                    else document.getElementById('present-btn')?.click();
+                } else if (action === 'open-book') {
+                    if (typeof window.initBookMode === 'function') window.initBookMode();
+                    else document.getElementById('editor-book-btn')?.click();
+                } else if (action === 'open-seal') {
+                    if (typeof openVaultPresetsModal === 'function') openVaultPresetsModal();
+                    else document.getElementById('open-vault-presets-modal-btn')?.click();
+                } else if (action === 'note-history') {
+                    document.getElementById('note-history-btn')?.click() || document.getElementById('note-history-btn-draft')?.click();
+                } else if (action === 'share-history') {
+                    document.getElementById('share-history-btn')?.click() || document.getElementById('share-history-btn-draft')?.click();
+                } else if (action === 'import-file') {
+                    // #import-md-btn already has its native click listener wired to #import-md-input
+                    return;
+                } else if (action === 'import-url') {
+                    document.getElementById('dropdown-import-url-btn')?.click();
+                } else if (action === 'print') {
+                    window.__openPrintDialog?.();
+                } else if (action === 'cite') {
+                    window.__openCiteModal?.(actionItem);
+                } else if (action === 'math-format') {
+                    window.__openMathFormatModal?.({ currentTarget: actionItem });
+                } else if (action === 'editor-preference') {
+                    document.getElementById('editor-preference-btn')?.click();
+                } else if (action === 'pwa-install') {
+                    // #pwa-install-manual-btn already has its native click listener in pwa-install.mjs
+                    return;
+                }
+            });
+        }
 
         // --- Online & Offline Network State Listeners ---
         window.addEventListener('online', () => {
@@ -6600,8 +6946,6 @@ ${getMarkdownCss()}
         const PREVIEW_SPLIT_STORAGE_KEY = 'cf-notepad-split-direction';
         const SHARE_FONT_STORAGE_KEY = 'cf-notepad-share-font';
         const themeStyleNode = document.getElementById('theme-style');
-        const themeSelector = document.getElementById('theme-selector');
-        const previewWidthSelector = document.getElementById('preview-width-selector');
         const previewDeviceSelector = document.getElementById('preview-device-selector');
         const splitDirectionSelector = document.getElementById('split-direction-selector');
         const languageSelector = document.getElementById('language-selector');
@@ -6612,11 +6956,10 @@ ${getMarkdownCss()}
         function applyPreviewWidth(value) {
             const width = value || DEFAULT_PREVIEW_WIDTH;
             previewWidthRoot.style.setProperty('--preview-max-width', width);
-            const widthDropdown = document.getElementById('width-dropdown');
-            if (widthDropdown) {
-                widthDropdown.querySelectorAll('.width-item').forEach(el => {
-                    const active = el.dataset.widthValue === width;
-                    el.classList.toggle('is-active', active);
+            document.querySelectorAll('.width-item').forEach(el => {
+                const active = el.dataset.widthValue === width;
+                el.classList.toggle('is-active', active);
+                if (el.closest('#width-dropdown')) {
                     let check = el.querySelector('.width-item-check');
                     if (active && !check) {
                         const checkEl = document.createElement('span');
@@ -6627,16 +6970,8 @@ ${getMarkdownCss()}
                     } else if (!active && check) {
                         check.remove();
                     }
-                });
-            }
-        }
-
-        function syncThemeSelectorTitle() {
-            if (!themeSelector) return;
-            const theme = themeSelector.value || themeSelector.getAttribute('value') || 'claude-canvas';
-            const option = Array.from(themeSelector.querySelectorAll('wa-option'))
-                .find(item => item.value === theme);
-            themeSelector.title = option?.textContent?.trim() || theme;
+                }
+            });
         }
 
         function setSegmentedActive(selector, dataAttribute, activeValue) {
@@ -6669,9 +7004,11 @@ ${getMarkdownCss()}
             document.body.classList.toggle('preview-device-mobile', device === 'mobile');
             document.body.classList.toggle('preview-device-desktop', device === 'desktop');
             setRailSwitchState(previewDeviceSelector, device === 'desktop');
-            if (previewWidthSelector) {
-                previewWidthSelector.disabled = device === 'mobile';
-            }
+            const widthMenuBtn = document.getElementById('width-menu-btn');
+            if (widthMenuBtn) widthMenuBtn.disabled = device === 'mobile';
+            document.querySelectorAll('.width-item').forEach(btn => {
+                btn.disabled = device === 'mobile';
+            });
         }
 
         function applySplitDirection(value) {
@@ -6686,12 +7023,18 @@ ${getMarkdownCss()}
 
         function applyShareFont(value) {
             const shareFont = value === 'maple' ? 'maple' : 'jetbrains';
-            if (shareViewBody.classList.contains('share-view')) {
-                shareViewBody.classList.toggle('share-font-jetbrains', shareFont === 'jetbrains');
-                shareViewBody.classList.toggle('share-font-maple', shareFont === 'maple');
-            }
+            shareViewBody.classList.toggle('share-font-jetbrains', shareFont === 'jetbrains');
+            shareViewBody.classList.toggle('share-font-maple', shareFont === 'maple');
             setRailSwitchState(shareFontSelector, shareFont === 'jetbrains');
         }
+        window.__setShareFont = (shareFont) => {
+            const normalized = shareFont === 'maple' ? 'maple' : 'jetbrains';
+            applyShareFont(normalized);
+            if (canPersistSettings) {
+                window.localStorage.setItem(SHARE_FONT_STORAGE_KEY, normalized);
+                persistSetting({ shareFont: normalized }).catch(err => errHandle(err?.message || err));
+            }
+        };
 
         const savedPreviewWidth = canPersistSettings ? window.localStorage.getItem(PREVIEW_WIDTH_STORAGE_KEY) : '';
         const initialPreviewWidth = APP_STATE.noteSettings.width || savedPreviewWidth || DEFAULT_PREVIEW_WIDTH;
@@ -6724,7 +7067,7 @@ ${getMarkdownCss()}
             });
         }
 
-        if (shareViewBody.classList.contains('share-view') || shareFontSelector) {
+        {
             const savedShareFont = canPersistSettings ? window.localStorage.getItem(SHARE_FONT_STORAGE_KEY) : '';
             const initialShareFont = APP_STATE.noteSettings.shareFont
                 || (savedShareFont === 'maple' || savedShareFont === 'true'
@@ -7006,6 +7349,7 @@ themeCss + '\\n' +
 
             if (exportPdfBtn) exportPdfBtn.addEventListener('click', handleDirectPdfDownload);
             if (printPreviewBtn) printPreviewBtn.addEventListener('click', handlePrint);
+            window.__openPrintDialog = handlePrint;
 
             const toolbarPrintBtn = document.getElementById('toolbar-print-btn');
             if (toolbarPrintBtn) toolbarPrintBtn.addEventListener('click', handlePrint);
@@ -7041,6 +7385,8 @@ themeCss + '\\n' +
                     if (themeBtn) {
                         themeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
                         setTimeout(() => themeBtn.click(), 100);
+                    } else if (typeof window.__openCommandPalette === 'function') {
+                        window.__openCommandPalette('theme');
                     } else if (typeof window.showToast === 'function') {
                         window.showToast(isZh ? '可在閱讀模式或開啟預覽時調整排版主題' : 'Theme style is available in reader or preview mode');
                     }
@@ -7053,6 +7399,12 @@ themeCss + '\\n' +
                     const fontBtn = document.getElementById('share-font-selector')?.querySelector('.footer-rail-switch') || document.querySelector('.share-font-switch');
                     if (fontBtn) {
                         fontBtn.click();
+                    } else if (typeof window.__setShareFont === 'function') {
+                        const nextFont = document.body.classList.contains('share-font-maple') ? 'jetbrains' : 'maple';
+                        window.__setShareFont(nextFont);
+                        window.showToast?.(isZh
+                            ? ('已切換字體：' + (nextFont === 'maple' ? 'Maple Mono' : 'JetBrains Mono'))
+                            : ('Font: ' + (nextFont === 'maple' ? 'Maple Mono' : 'JetBrains Mono')));
                     }
                 });
             }
@@ -7061,7 +7413,14 @@ themeCss + '\\n' +
             if (moreMenuUiThemeBtn) {
                 moreMenuUiThemeBtn.addEventListener('click', () => {
                     const uiBtn = document.getElementById('ui-theme-toggle-btn');
-                    if (uiBtn) uiBtn.click();
+                    if (uiBtn) {
+                        uiBtn.click();
+                    } else if (typeof window.__applyUiTheme === 'function') {
+                        const cur = document.documentElement.getAttribute('data-ui-theme');
+                        const prefersDark = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                        const nowDark = cur === 'dark' || (cur === 'auto' && prefersDark);
+                        window.__applyUiTheme(nowDark ? 'light' : 'dark', { persist: true, toast: true });
+                    }
                 });
             }
 
@@ -7386,6 +7745,7 @@ themeCss + '\\n' +
                     citePreviewText.select();
                 }
             }
+            window.__openCiteModal = openCiteModal;
 
             function closeCiteModal() {
                 if (!citeModal) return;
@@ -7450,7 +7810,7 @@ themeCss + '\\n' +
                 try { return localStorage.getItem(UI_THEME_STORAGE_KEY) || 'auto'; } catch(e) { return 'auto'; }
             }
 
-            function applyTheme(theme) {
+            function applyTheme(theme, options = {}) {
                 if (theme === 'dark') {
                     root.setAttribute('data-ui-theme', 'dark');
                 } else if (theme === 'light') {
@@ -7458,17 +7818,30 @@ themeCss + '\\n' +
                 } else {
                     root.setAttribute('data-ui-theme', 'auto');
                 }
+                if (options.persist) {
+                    try { localStorage.setItem(UI_THEME_STORAGE_KEY, theme); } catch(e) {}
+                }
                 updateIcon(theme);
                 if (typeof window.updateEditorLineNumbers === 'function') {
                     window.updateEditorLineNumbers();
                 }
+                if (options.toast && typeof window.showToast === 'function') {
+                    const msg = theme === 'dark'
+                        ? (APP_STATE.lang === 'zh-TW' ? '已切換為深色介面' : 'Switched to Dark UI')
+                        : (theme === 'light'
+                            ? (APP_STATE.lang === 'zh-TW' ? '已切換為淺色介面' : 'Switched to Light UI')
+                            : (APP_STATE.lang === 'zh-TW' ? '已切換為跟隨系統外觀' : 'Switched to System UI'));
+                    window.showToast(msg);
+                }
             }
+            window.__applyUiTheme = applyTheme;
+            window.__getUiThemeMode = getSavedTheme;
 
             function updateIcon(theme) {
-                if (!$themeBtn) return;
                 const isDark = theme === 'dark' || (theme === 'auto' && mediaQuery.matches);
-                $themeBtn.classList.toggle('is-dark', isDark);
                 root.classList.toggle('wa-theme-dark', isDark);
+                if (!$themeBtn) return;
+                $themeBtn.classList.toggle('is-dark', isDark);
                 const titleText = isDark
                     ? (APP_STATE.lang === 'zh-TW' ? '當前：深色介面 (點擊切換淺色)' : 'Current: Dark UI (Click for Light)')
                     : (APP_STATE.lang === 'zh-TW' ? '當前：淺色介面 (點擊切換深色)' : 'Current: Light UI (Click for Dark)');
@@ -7542,6 +7915,7 @@ themeCss + '\\n' +
                 const trigger = (e && e.currentTarget) || document.activeElement;
                 openModal($mathFormatModal, { initialFocus: checkedRadio, trigger });
             }
+            window.__openMathFormatModal = openMathFormatModal;
 
             function closeMathFormatModal() {
                 if (!$mathFormatModal) return;

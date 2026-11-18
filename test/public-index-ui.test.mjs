@@ -72,16 +72,16 @@ test('share state uses a working toggle and does not interrupt preview rendering
     assert.match(baseCssSource, /\.share-menu-trigger/)
 })
 
-test('footer uses native-style rails for the requested two-state controls', () => {
-    assert.match(commonTemplateSource, /checkedText: lang === 'zh-TW' \? '開預覽' : 'On'/)
-    assert.match(commonTemplateSource, /uncheckedText: lang === 'zh-TW' \? '關預覽' : 'Off'/)
+test('footer uses flat segmented rails for two-state controls and restores labels in Option A IDE bar', () => {
+    assert.match(commonTemplateSource, /checkedText: lang === 'zh-TW' \? '預覽' : 'Preview'/)
+    assert.match(commonTemplateSource, /uncheckedText: lang === 'zh-TW' \? '純文字' : 'Plain'/)
     assert.match(commonTemplateSource, /checkedText: lang === 'zh-TW' \? '左右' : 'Side'/)
     assert.match(commonTemplateSource, /uncheckedText: lang === 'zh-TW' \? '上下' : 'Stack'/)
     assert.match(commonTemplateSource, /checkedText: '中'/)
     assert.match(commonTemplateSource, /checkedText: t\.desktop/)
     assert.match(baseTemplateSource, /const \$modeBtn = document\.querySelector\('\.opt-mode'\)/)
     assert.match(baseTemplateSource, /function setRailSwitchState\(selector, checked\)/)
-    assert.match(baseCssSource, /\.toolbar-button-label \{\s*display: none !important;/)
+    assert.match(baseCssSource, /\.footer\.footer-ide-edit \.toolbar-button-label \{\s*display: inline !important;/)
 })
 
 test('publish dialog includes public index in the unified choices', () => {
@@ -119,7 +119,7 @@ test('footer uses full theme labels and descriptive width options', () => {
     assert.match(commonTemplateSource, /value: '100%'/)
     assert.doesNotMatch(commonTemplateSource, /cp-macchiato ☀️|['"]playful-geo['"]|playful-geo ☀️/)
     assert.doesNotMatch(commonTemplateSource, /<span class="footer-control-label">Theme<\/span>/)
-    assert.match(baseCssSource, /\.footer-rail-switch \{[\s\S]*border-radius: 4px;/)
+    assert.match(baseCssSource, /\.footer-rail-switch \{[\s\S]*border-radius: 6px;/)
 })
 
 test('footer exposes markdown import export and PDF tools without reusing existing controls', () => {

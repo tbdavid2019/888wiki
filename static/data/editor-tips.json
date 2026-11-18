@@ -38,8 +38,13 @@
     },
     {
       "id": "layout-controls",
-      "zh-TW": "小訣竅：Footer 的預覽、排列與裝置已集中在同一組，可以快速切換左右、上下與桌面 / 行動預覽。",
-      "en-US": "Tip: Footer Preview, Layout, and Device controls are grouped together for quick side-by-side, stacked, desktop, or mobile previews."
+      "zh-TW": "小訣竅：底欄右側的分段開關可快速切換預覽、左右／上下排列與桌面／行動裝置模擬；按 Cmd/Ctrl + Shift + P 或點「工具」可開啟指令面板切換 20 款主題與外觀設定。",
+      "en-US": "Tip: Segmented toggles on the bottom IDE bar quickly switch Preview, Side/Stack layout, and Desktop/Mobile preview. Press Cmd/Ctrl + Shift + P or click Tools to open the Command Palette for all 20 themes and settings."
+    },
+    {
+      "id": "quick-share-url",
+      "zh-TW": "小訣竅：寫作到一半想立刻把公開連結傳給同事？直接點擊底欄「發布並複製連結／複製連結」按鈕，一鍵發布（或背景同步最新內容）並複製網址，完全不中斷打字！",
+      "en-US": "Tip: Need to send your public URL to a colleague mid-edit? Click the 'Share URL / Copy URL' button in the bottom bar to publish (or background-sync) and copy the link in one click without leaving the editor."
     },
     {
       "id": "fullscreen",
@@ -53,8 +58,8 @@
     },
     {
       "id": "math-copy",
-      "zh-TW": "小訣竅：在分享頁或預覽區直接點擊數學公式即可快速複製；透過底欄的「公式」按鈕可切換 LaTeX、MathML (Word)、純文字或 Notion 格式。",
-      "en-US": "Tip: Click any math equation in preview or share view to copy it instantly. Use the 'Math' button in the footer to choose LaTeX, MathML (Word), Plain, or Notion format."
+      "zh-TW": "小訣竅：在分享頁或預覽區直接點擊數學公式即可快速複製；透過指令面板（Cmd/Ctrl + Shift + P → 公式複製格式）可切換 LaTeX、MathML (Word)、純文字或 Notion 格式。",
+      "en-US": "Tip: Click any math equation in preview or share view to copy it instantly. Open the Command Palette (Cmd/Ctrl + Shift + P → Formula Copy Format) to choose LaTeX, MathML (Word), Plain, or Notion format."
     },
     {
       "id": "citation-cite",
@@ -208,8 +213,8 @@
     },
     {
       "id": "theme-personalization",
-      "zh-TW": "小訣竅：點擊底欄調色盤或進入筆記設定，即可在 GitHub、Notion、Dracula、Nord 等 20 款精選設計師主題間隨心切換，並支援亮色、暗色與跟隨系統模式。",
-      "en-US": "Tip: Click the palette icon or open note settings to switch between 20 curated themes (GitHub, Notion, Dracula, Nord, etc.) with seamless Light, Dark, or System appearance modes."
+      "zh-TW": "小訣竅：按 Cmd/Ctrl + Shift + P 開啟指令面板，即可在 20 款主題間搜尋切換、調整亮色／暗色／自動模式，並於編輯預覽即時切換 JetBrains Mono 或 Maple Mono 字體。",
+      "en-US": "Tip: Press Cmd/Ctrl + Shift + P to open the Command Palette, search 20 curated themes, switch Light/Dark/Auto appearance across the entire workspace, and toggle JetBrains Mono or Maple Mono live in edit preview."
     },
     {
       "id": "essential-shortcuts",
