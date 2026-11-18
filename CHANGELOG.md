@@ -15,6 +15,11 @@
   - **全工作區深淺極性一致化與無障礙對比度修正**：
     - 於 `src/styles/base.css.js` 與 `src/styles/editor.css.js` 建立語意化工作區 Token（`--workspace-surface`、`--divider-bg`、`--divider-border`、`--editor-bg`、`--editor-text`、`--editor-gutter-bg`、`--editor-caret`、`--text-color`、`--input-bg`），讓左編輯區、中央分隔線、右預覽殼層與底列同步跟隨 `data-ui-theme`（Light / Dark / Auto），消除暗畫布夾雜亮白分隔線與米白工具列的割裂感；同步修復搜尋列預設 `#444` 低對比、亮黃底白字（`1.8:1`）、`.bottom-sheet-content` 淺底淺字（`1.1:1`）及危險按鈕對比度缺陷，並放大頂部工具列按鈕點擊區（桌面 `28×28`、手機 `38×38`）。
   - **測試與文件同步**：更新 [`test/editor-publication-status.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/editor-publication-status.test.mjs)、[`test/export-and-theme-dropdown.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/export-and-theme-dropdown.test.mjs)、[`test/floating-controls-ui.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/floating-controls-ui.test.mjs)、[`test/public-index-ui.test.mjs`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/public-index-ui.test.mjs) 與 [`static/data/editor-tips.json`](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/data/editor-tips.json)。
+- **✨ UI 細節打磨：草稿／已發布語意圖示替換、指令面板靠左對齊與繁中字級可讀性提升**：
+  - **替換草稿雲朵圖示與移除多餘圓點（`#share-menu-btn`）**：將原本草稿按鈕的雲朵圖示更換為清晰的**草稿文件線框圖示（`SVG_ICONS.fileText`）**，已發布（`.is-published`）時自動切換為**公開地球圖示（`SVG_ICONS.globe`）**，並隱藏緊貼圖示旁的多餘 `.sync-status-dot` 圓點（同步進行時改以圖示呼吸閃爍示意）。
+  - **修正 `⌘⇧P` 指令面板列表置中與開啟捲動偏移問題**：明確覆寫全域按鈕的置中繼承，強制 `.cp-item` 與 `.cp-item-copy` `justify-content: flex-start !important; text-align: left !important;` 完整靠左對齊；並於 `openCommandPalette()` 先展開面板再過濾並將 `#command-palette-list` 重設 `scrollTop = 0`，避免頂部「打開簡報／書本模式」在開啟時被捲動裁切。
+  - **調大繁體中文介面字級與列高**：全面放大指令面板（標題 `14px`、副標 `12.5px`、搜尋框 `15px`、分段切換按鈕 `12.5px / height: 30px`、主題名稱 `13.5px`）與 IDE 工作底列（標籤 `13px`、分段值 `12.5px`、游標狀態 `12.5px`、`44px` 列高）的繁中文字尺規，徹底改善中文字過小擁擠問題。
+  - **深色排版主題自動聯動編輯區深色模式（`DARK_PREVIEW_THEMES` Polarity Sync）**：切換 `tokyo-night`（東京夜景）、`x-ai`、`terminal`、`kanagawa`、`catppuccin-macchiato` 等暗色排版主題時，系統自動將 `data-ui-theme` 聯動切換為深色模式，使左側 Markdown 編輯區與工具列同步進入深藍灰護眼畫布（切換回淺色排版主題時自動恢復原外觀設定；使用者亦可隨時透過指令面板「外觀深淺」手動覆寫）。
 
 ## [2026-11-17]
 

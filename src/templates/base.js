@@ -2,7 +2,7 @@
  * src/templates/base.js
  * HTML wrapper function (base page structure for editor/share pages)
  */
-import { CDN_PREFIX, SUPPORTED_LANG, APP_NAME, DEFAULT_PREVIEW_WIDTH, getFlowTrackerScript } from '../constant.js'
+import { CDN_PREFIX, SUPPORTED_LANG, APP_NAME, DEFAULT_PREVIEW_WIDTH, DARK_PREVIEW_THEMES, getFlowTrackerScript } from '../constant.js'
 import { THEMES } from '../theme_data.js'
 import { EDITOR_TOOLBAR, FOOTER, MODAL, EDITOR_PREFERENCE_MODAL, MATH_FORMAT_MODAL, URL_IMPORT_MODAL, CITE_MODAL, VAULT_PRESETS_MODAL, COMMAND_PALETTE_MODAL, SVG_ICONS } from './common.js'
 import { getBaseCss } from '../styles/base.css.js'
@@ -204,8 +204,14 @@ export const HTML = ({ lang = 'zh-TW', title, content = '', ext = {}, tips, isEd
     <script>
         (function() {
             try {
+                var darkThemes = ${JSON.stringify(DARK_PREVIEW_THEMES)};
+                var pageTheme = ${JSON.stringify(pageTheme)};
+                var isDarkPreviewTheme = darkThemes.indexOf(pageTheme) !== -1;
+                document.documentElement.setAttribute('data-preview-theme', pageTheme);
                 var t = localStorage.getItem('cf-notepad-ui-theme') || 'auto';
-                if (t === 'dark' || (t === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                var syncedFromPreview = localStorage.getItem('cf-notepad-ui-theme-sync') === '1';
+                var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (t === 'dark' || (t === 'auto' && (prefersDark || isDarkPreviewTheme)) || (syncedFromPreview && isDarkPreviewTheme)) {
                     document.documentElement.setAttribute('data-ui-theme', 'dark');
                 } else if (t === 'light') {
                     document.documentElement.setAttribute('data-ui-theme', 'light');
@@ -1142,9 +1148,10 @@ ${getMarkdownCss()}
             wrapper.appendChild(toolbar);
         };
 
+        const DARK_PREVIEW_THEMES = ${JSON.stringify(DARK_PREVIEW_THEMES)};
+        const isDarkPreviewTheme = (themeName) => DARK_PREVIEW_THEMES.includes(themeName);
         const isDarkContext = (themeName) => {
-            const darkThemes = ['tokyo-night', 'x-ai', 'terminal', 'kanagawa', 'catppuccin-macchiato'];
-            if (darkThemes.includes(themeName)) return true;
+            if (isDarkPreviewTheme(themeName)) return true;
             const uiTheme = document.documentElement.getAttribute('data-ui-theme');
             if (uiTheme === 'dark') return true;
             if (uiTheme === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return true;
@@ -6735,13 +6742,14 @@ ${getMarkdownCss()}
                 btn.disabled = isMobilePreview;
             });
         };
+        window.__syncCommandPaletteQuickStates = syncCommandPaletteQuickStates;
 
         const getVisibleCpItems = () => {
             if (!$cpList) return [];
             return Array.from($cpList.querySelectorAll('.cp-item')).filter(el => !el.hidden);
         };
 
-        const updateCpSelection = (nextIndex) => {
+        const updateCpSelection = (nextIndex, { scroll = true } = {}) => {
             const items = getVisibleCpItems();
             items.forEach(el => el.classList.remove('is-selected'));
             if (!items.length) {
@@ -6751,10 +6759,12 @@ ${getMarkdownCss()}
             cpSelectedIndex = ((nextIndex % items.length) + items.length) % items.length;
             const activeEl = items[cpSelectedIndex];
             activeEl.classList.add('is-selected');
-            activeEl.scrollIntoView({ block: 'nearest' });
+            if (scroll && typeof activeEl.scrollIntoView === 'function') {
+                activeEl.scrollIntoView({ block: 'nearest' });
+            }
         };
 
-        const filterCommandPalette = (rawQuery = '') => {
+        const filterCommandPalette = (rawQuery = '', { scrollSelection = true } = {}) => {
             if (!$cpList) return;
             const query = String(rawQuery || '').trim().toLowerCase();
             const groups = $cpList.querySelectorAll('.cp-group');
@@ -6776,15 +6786,16 @@ ${getMarkdownCss()}
                 totalVisible += groupVisible;
             });
             if ($cpEmpty) $cpEmpty.hidden = totalVisible > 0;
-            updateCpSelection(0);
+            updateCpSelection(0, { scroll: scrollSelection });
         };
 
         const openCommandPalette = (presetQuery = '') => {
             if (!$cpModal) return;
             syncCommandPaletteQuickStates();
             if ($cpSearch) $cpSearch.value = presetQuery;
-            filterCommandPalette(presetQuery);
             openModal($cpModal, { initialFocus: $cpSearch || $cpModal, trigger: $cpTrigger || document.activeElement });
+            filterCommandPalette(presetQuery, { scrollSelection: false });
+            if ($cpList) $cpList.scrollTop = 0;
             if ($cpSearch) {
                 $cpSearch.focus();
                 $cpSearch.select();
@@ -6829,7 +6840,7 @@ ${getMarkdownCss()}
                 const uiThemeBtn = e.target.closest('[data-cp-ui-theme]');
                 if (uiThemeBtn) {
                     const mode = uiThemeBtn.getAttribute('data-cp-ui-theme');
-                    window.__applyUiTheme?.(mode, { persist: true, toast: true });
+                    window.__applyUiTheme?.(mode, { persist: true, manual: true, toast: true });
                     syncCommandPaletteQuickStates();
                     return;
                 }
@@ -7124,6 +7135,30 @@ ${getMarkdownCss()}
 
                 APP_STATE.theme = theme;
                 if (themeStyleNode) themeStyleNode.textContent = THEMES[theme];
+                document.documentElement.setAttribute('data-preview-theme', theme);
+
+                try {
+                    const syncKey = 'cf-notepad-ui-theme-sync';
+                    const prevKey = 'cf-notepad-ui-theme-prev';
+                    const currentUiMode = typeof window.__getUiThemeMode === 'function'
+                        ? window.__getUiThemeMode()
+                        : (localStorage.getItem('cf-notepad-ui-theme') || 'auto');
+                    if (isDarkPreviewTheme(theme)) {
+                        if (currentUiMode !== 'dark') {
+                            localStorage.setItem(prevKey, currentUiMode || 'auto');
+                            localStorage.setItem(syncKey, '1');
+                            window.__applyUiTheme?.('dark', { persist: true, toast: false });
+                        } else {
+                            window.__applyUiTheme?.('dark', { persist: false, toast: false });
+                        }
+                    } else if (localStorage.getItem(syncKey) === '1') {
+                        const prevMode = localStorage.getItem(prevKey) || 'light';
+                        localStorage.removeItem(syncKey);
+                        localStorage.removeItem(prevKey);
+                        window.__applyUiTheme?.(prevMode, { persist: true, toast: false });
+                    }
+                    window.__syncCommandPaletteQuickStates?.();
+                } catch (syncErr) {}
 
                 document.querySelectorAll('.theme-item').forEach(el => {
                     const active = el.dataset.themeName === theme;
@@ -7811,12 +7846,19 @@ themeCss + '\\n' +
             }
 
             function applyTheme(theme, options = {}) {
-                if (theme === 'dark') {
+                const isDark = theme === 'dark' || (theme === 'auto' && (mediaQuery.matches || isDarkPreviewTheme(APP_STATE.theme)));
+                if (theme === 'dark' || (theme === 'auto' && isDark)) {
                     root.setAttribute('data-ui-theme', 'dark');
                 } else if (theme === 'light') {
                     root.setAttribute('data-ui-theme', 'light');
                 } else {
                     root.setAttribute('data-ui-theme', 'auto');
+                }
+                if (options.manual) {
+                    try {
+                        localStorage.removeItem('cf-notepad-ui-theme-sync');
+                        localStorage.removeItem('cf-notepad-ui-theme-prev');
+                    } catch(e) {}
                 }
                 if (options.persist) {
                     try { localStorage.setItem(UI_THEME_STORAGE_KEY, theme); } catch(e) {}
@@ -7838,7 +7880,7 @@ themeCss + '\\n' +
             window.__getUiThemeMode = getSavedTheme;
 
             function updateIcon(theme) {
-                const isDark = theme === 'dark' || (theme === 'auto' && mediaQuery.matches);
+                const isDark = theme === 'dark' || (theme === 'auto' && (mediaQuery.matches || isDarkPreviewTheme(APP_STATE.theme)));
                 root.classList.toggle('wa-theme-dark', isDark);
                 if (!$themeBtn) return;
                 $themeBtn.classList.toggle('is-dark', isDark);
@@ -7860,8 +7902,7 @@ themeCss + '\\n' +
                     const nowIsDark = root.getAttribute('data-ui-theme') === 'dark' ||
                         (root.getAttribute('data-ui-theme') === 'auto' && mediaQuery.matches);
                     const nextTheme = nowIsDark ? 'light' : 'dark';
-                    try { localStorage.setItem(UI_THEME_STORAGE_KEY, nextTheme); } catch(e) {}
-                    applyTheme(nextTheme);
+                    applyTheme(nextTheme, { persist: true, manual: true });
                     if (typeof window.showToast === 'function') {
                         const msg = nextTheme === 'dark'
                             ? (APP_STATE.lang === 'zh-TW' ? '已切換為深色介面' : 'Switched to Dark UI')
@@ -7874,7 +7915,7 @@ themeCss + '\\n' +
             if (typeof mediaQuery.addEventListener === 'function') {
                 mediaQuery.addEventListener('change', () => {
                     if (getSavedTheme() === 'auto') {
-                        updateIcon('auto');
+                        applyTheme('auto');
                     }
                 });
             }

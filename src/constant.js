@@ -627,3 +627,5 @@ export const SUPPORTED_LANG = {
         turnstileFailed: '安全驗證失敗，請重新嘗試。',
     }
 }
+
+export const DARK_PREVIEW_THEMES = ['tokyo-night', 'x-ai', 'terminal', 'kanagawa', 'catppuccin-macchiato']
