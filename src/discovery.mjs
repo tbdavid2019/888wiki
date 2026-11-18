@@ -74,6 +74,16 @@ export function buildLlmsTxt(origin = 'https://wiki.david888.com') {
 - [Canvas MCP Tools](${siteOrigin}${MCP_PATH}): Use \`validate_canvas\`, \`write_canvas\`, and \`read_canvas\` for JSON Canvas validation, publishing, and edge inspection. Canvas notes can be linked as read-only chapters in Book Mode.
 - [Whiteboard MCP Tools](${siteOrigin}${MCP_PATH}): Use \`validate_whiteboard\`, \`write_whiteboard\`, and \`read_whiteboard\` for Excalidraw whiteboard validation, hand-drawn sketch generation, and text inspection.
 - [Vault & Secret MCP Tools](${siteOrigin}${MCP_PATH}): Native MCP tools for configuring vault modes (\`standard\`, \`burn\`, \`timelock\`, \`deadman\`), setting expiration/unlock timers, and sending \`pulse_deadman_switch\` heartbeats.
+
+## Visual Tools for LLMs: How to Call Canvas & Excalidraw Whiteboard
+
+- **JSON Canvas 1.0 (Node/Edge Diagrams)**:
+  - **MCP** (\`POST ${siteOrigin}${MCP_PATH}\`, method \`tools/call\`): call \`write_canvas\` with \`{"path":"<slug>","document":{"nodes":[...],"edges":[...]}}\`, \`read_canvas\`, \`validate_canvas\`, or \`generate_canvas_from_wikilinks\` (\`{"source_path":"<md-slug>"}\`).
+  - **REST** (\`POST ${siteOrigin}/api/<slug>\`): send \`{"editorFormat":"canvas","share":true,"text": JSON.stringify({ nodes, edges })}\`.
+- **Excalidraw Whiteboard (Hand-drawn Sketches & Wireframes)**:
+  - **MCP** (\`POST ${siteOrigin}${MCP_PATH}\`, method \`tools/call\`): call \`write_whiteboard\` with \`{"path":"<slug>","document":{"type":"excalidraw","version":2,"elements":[...],"appState":{}}}\`, \`read_whiteboard\`, or \`validate_whiteboard\`.
+  - **REST** (\`POST ${siteOrigin}/api/<slug>\`): send \`{"editorFormat":"whiteboard","share":true,"text": JSON.stringify({ type: "excalidraw", version: 2, elements, appState })}\`.
+- Both REST & MCP return \`shareUrl\` (plus \`editUrl\`) that humans can open directly in the browser.
 - [API Catalog](${siteOrigin}${API_CATALOG_PATH}): RFC 9727 Linkset catalog for API discovery.
 - [API Documentation](${siteOrigin}${API_DOCS_PATH}): Concise Markdown reference for the REST API.
 - [OpenAPI Specification](${siteOrigin}${OPENAPI_PATH}): Machine-readable OpenAPI 3.1.0 contract.
@@ -136,6 +146,10 @@ export function buildLlmsFullTxt(origin = 'https://wiki.david888.com') {
   Allocates a random short slug (4 chars) and initializes a BlockNote rich document.
 - **New Markdown Note**: \`${siteOrigin}/new/markdown\`
   Allocates a random short slug and initializes a raw Markdown document.
+- **New JSON Canvas**: \`${siteOrigin}/new/canvas\`
+  Allocates a random short slug and initializes a JSON Canvas 1.0 2D card-and-edge graph workspace.
+- **New Excalidraw Whiteboard**: \`${siteOrigin}/new/whiteboard\`
+  Allocates a random short slug and initializes an Excalidraw freeform sketching whiteboard workspace.
 - **Read & Edit Note**: \`${siteOrigin}/{slug}\`
   View or edit a note at \`/{slug}\`. Supports passcodes for view-locking (\`vpw\`) and edit-locking (\`pw\`).
 - **Public Share View**: \`${siteOrigin}/share/{shareSlug}\`
@@ -153,6 +167,21 @@ export function buildLlmsFullTxt(origin = 'https://wiki.david888.com') {
   Payload fields: \`text\` / \`content\`, \`append\` (boolean), \`share\` (boolean), \`publicIndex\` (boolean), \`pw\`, \`vpw\`, \`theme\`, \`width\`, \`shareMode\` (\`standard\`, \`burn\`, \`timelock\`, \`deadman\`), \`shareExpiresIn\`, \`shareBurnAfterReading\`, \`shareUnlockIn\`, \`sharePulseInterval\`.
   For Canvas, send the complete JSON Canvas document as a JSON-stringified \`text\` value with \`editorFormat: \"canvas\"\`; use \`GET /api/{path}\` to read it back.
   For Whiteboard, send the complete Excalidraw JSON document as a JSON-stringified \`text\` value with \`editorFormat: \"whiteboard\"\`; use \`GET /api/{path}\` to read it back.
+
+### Calling Canvas (JSON Canvas 1.0) & Excalidraw Whiteboard (MCP & REST)
+
+- **Native MCP JSON-RPC Endpoint**: \`POST ${siteOrigin}${MCP_PATH}\`
+  - **JSON Canvas Tools**:
+    - \`write_canvas\`: \`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"write_canvas","arguments":{"path":"arch-map","document":{"nodes":[{"id":"n1","type":"text","x":80,"y":80,"width":280,"height":140,"text":"# Service A"}],"edges":[]}}}}\`
+    - \`read_canvas\`: \`{"path":"arch-map"}\`
+    - \`validate_canvas\`: \`{"document":{"nodes":[...],"edges":[...]}}\`
+    - \`generate_canvas_from_wikilinks\`: \`{"source_path":"my-md-note","canvas_path":"my-md-note-graph"}\`
+  - **Excalidraw Whiteboard Tools**:
+    - \`write_whiteboard\`: \`{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"write_whiteboard","arguments":{"path":"sketch-1","document":{"type":"excalidraw","version":2,"elements":[{"id":"r1","type":"rectangle","x":100,"y":80,"width":260,"height":120,"strokeColor":"#1e1e1e"}],"appState":{"viewBackgroundColor":"#ffffff"}}}}}\`
+    - \`read_whiteboard\`: \`{"path":"sketch-1"}\`
+    - \`validate_whiteboard\`: \`{"document":{"type":"excalidraw","version":2,"elements":[...]}}\`
+- **REST Write Example (Excalidraw / Canvas)**:
+  - \`POST ${siteOrigin}/api/{path}\` with JSON body \`{"editorFormat":"whiteboard","share":true,"text":"{\\"type\\":\\"excalidraw\\",\\"version\\":2,\\"elements\\":[...]}"}\` (or \`"editorFormat":"canvas"\` with \`nodes\` / \`edges\`). Both return \`url\` / \`shareUrl\`.
 - **Upload Image**: \`POST ${siteOrigin}/api/upload\`
   Uploads an image file to R2 storage and returns the image CDN URL.
 - **Share Vault & Temporal Lifecycle Endpoints**:

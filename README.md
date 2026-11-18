@@ -24,7 +24,7 @@ The same import choices can create Markdown notes or convert content into editab
 | Mode | Best for | What you get |
 | --- | --- | --- |
 | **Markdown** | Articles, research, and technical notes | Live preview, live voice dictation, math, ultra-fast Pele/Mermaid diagrams (sub-millisecond rendering with theme-aware PNG/SVG export), citations, imports, search and replace, and flexible layouts. |
-| **Block** | Structured pages and mixed media | Rich editable blocks, live voice dictation (`/dictate`), slash commands, floating formatting toolbar, drag-to-reorder, editable embeds, and direct exports. |
+| **Block** | Structured pages and mixed media | Rich editable blocks with native Light/Dark mode, `--preview-max-width` columns, 20-theme palette styling, live voice dictation (`/dictate`), slash commands, floating formatting toolbar, drag-to-reorder, editable embeds, and direct exports. |
 | **Canvas** | Maps, plans, and connected ideas | Eight kinds of thought cards, labeled relationships, media cards, undo/redo, and `.canvas` / PNG / SVG export. |
 | **Whiteboard** | Sketches and visual explanations | Excalidraw drawing tools, read-only sharing, and PNG / SVG export. |
 

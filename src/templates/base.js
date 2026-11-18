@@ -7841,6 +7841,7 @@ themeCss + '\\n' +
                 }
                 updateIcon(theme);
                 window.__syncAppearanceStates?.();
+                try { window.dispatchEvent(new Event('cf-notepad-ui-theme-change')); } catch(e) {}
                 if (typeof window.updateEditorLineNumbers === 'function') {
                     window.updateEditorLineNumbers();
                 }

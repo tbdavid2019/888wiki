@@ -178,3 +178,16 @@ test('BlockNote editor provides complete dictionary with generic.ctrl_shortcut a
         })
     }
 })
+
+test('block editor inherits light/dark --editor-surface tokens, preview width, and all 20 preview themes', () => {
+    const baseCss = readFileSync(new URL('../src/styles/base.css.js', import.meta.url), 'utf8')
+    const editorCss = readFileSync(new URL('../src/styles/editor.css.js', import.meta.url), 'utf8')
+    const blockJs = readFileSync(new URL('../static/js/blocknote-editor.jsx', import.meta.url), 'utf8')
+
+    assert.match(baseCss, /html\[data-ui-theme="dark"\][\s\S]*--editor-surface:\s*#161d26;/)
+    assert.match(editorCss, /\.david-blocknote-view\s+\.bn-editor[\s\S]*max-width:\s*var\(--preview-max-width/)
+    assert.match(editorCss, /\[data-preview-theme="tokyo-night"\][\s\S]*--block-theme-bg:\s*#1a1b26;/)
+    assert.match(editorCss, /\[data-preview-theme="catppuccin-macchiato"\][\s\S]*--block-theme-bg:\s*#24273a;/)
+    assert.match(blockJs, /data-preview-theme/)
+    assert.match(blockJs, /__isDarkPreviewTheme/)
+})

@@ -1,6 +1,6 @@
 ---
 name: david888-wiki-publisher
-description: Publish, read, and append markdown content directly to the David888 Wiki using its REST API. Continuous feature evolution is active—always fetch the latest live SKILL.md before execution to leverage newly released formatting syntax, layouts, and tools.
+description: Publish, read, and append content directly to David888 Wiki (`wiki.david888.com`) across Markdown, Block notes, JSON Canvas 1.0 node-edge diagrams (`write_canvas` / `editorFormat: "canvas"`), and Excalidraw hand-drawn whiteboards (`write_whiteboard` / `editorFormat: "whiteboard"`) via REST API or MCP (`POST /mcp`). Always fetch the latest live SKILL.md before execution.
 ---
 
 # David888 Wiki Publisher Skill
@@ -52,6 +52,16 @@ Apply the fetched version's instructions for the rest of the task. If the canoni
 >      ```
 
 ## Quick Start Guide
+
+### 0. Choose the Right Document Format & Tool (`Markdown` / `Canvas` / `Whiteboard`)
+
+| Use Case | Format | REST API (`POST /api/<path>`) | Native MCP (`POST /mcp`) |
+| :--- | :--- | :--- | :--- |
+| Articles, reports, slides (`/present`), eBooks (`/book`), Mermaid charts | **Markdown** | `"editorFormat": "markdown"` (default) | `write_note`, `append_note`, `read_note` |
+| Structured architecture graphs, concept maps, connected cards, `[[WikiLink]]` graphs | **JSON Canvas 1.0** | `"editorFormat": "canvas"` + JSON-stringified `text` | `write_canvas`, `read_canvas`, `validate_canvas`, `generate_canvas_from_wikilinks` |
+| Freeform hand-drawn sketches, UI wireframes, brainstorming whiteboards | **Excalidraw Whiteboard** | `"editorFormat": "whiteboard"` + JSON-stringified `text` | `write_whiteboard`, `read_whiteboard`, `validate_whiteboard` |
+
+**MCP Endpoint**: `POST https://wiki.david888.com/mcp` (JSON-RPC 2.0 `tools/call` — returns `editUrl` and `shareUrl`).
 
 ### 1. Read a Wiki Page (GET)
 ```bash
@@ -110,16 +120,50 @@ Canvas is a separate JSON Canvas 1.0 document format, not Markdown. A Canvas wri
 
 The interoperable core accepts `text`, `file`, `link`, `group`, and edge records. DAVID888 sticky-note appearance is stored in an optional `david888` extension object, which other JSON Canvas tools can safely ignore. In the browser, all card types share React Flow UI-style `BaseNode` anatomy and visible four-sided `BaseHandle` points; selected nodes expose color, duplicate, delete, and Undo/Redo controls; selected edges expose the native `EdgeToolbar` for label, arrow direction, line-style, width, color, and delete controls. Relationship edges render visible SVG strokes and forward React Flow marker URLs as strings, so arrowheads do not become invalid `[object Object]` SVG attributes; the edge layer and SVG drawing surface are explicitly sized to the flow viewport to prevent a `0px` edge canvas. Canvas supports an editable title, box selection, multi-drag, bulk color/delete, Cmd/Ctrl+F search, SVG/PNG export, WikiLink graph generation, and Camera Tour playback. On narrow viewports, fit view uses a `0.85x` minimum initial zoom so card labels remain readable while the canvas remains pannable. Unpublished `draft`/`pending` Canvas records are restored from the local cache after reload and the viewport refits after node measurement; unpublished drafts remain local until publishing or published-note autosave syncs them to the cloud. Canvas assets use cache-busted `?v=3.9` URLs. Use `/new/canvas` to create one; use its Canvas toolbar to import or export `.canvas` files. The Canvas surface follows the selected light/dark UI theme and its starter template follows the page language. The Footer `Import content` menu remains available for Markdown, audio, URL, Office, and PDF workflows; from Canvas those actions follow the existing Markdown-note import behavior and do not mutate the Canvas JSON.
 
-```json
-{
-  "text": "{\"nodes\":[{\"id\":\"card-1\",\"type\":\"text\",\"x\":0,\"y\":0,\"width\":320,\"height\":180,\"text\":\"# Card\"}],\"edges\":[]}",
-  "editorFormat": "canvas"
-}
+#### Canvas REST API Example (`POST /api/<path>`)
+
+Send the complete JSON Canvas document serialized as a JSON string in `text`, with `editorFormat: "canvas"`:
+
+```bash
+curl -X POST "https://wiki.david888.com/api/arch-map-2026" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "editorFormat": "canvas",
+    "share": true,
+    "text": "{\"nodes\":[{\"id\":\"n1\",\"type\":\"text\",\"x\":80,\"y\":80,\"width\":300,\"height\":150,\"text\":\"# API Gateway\\nRoutes traffic\"},{\"id\":\"n2\",\"type\":\"text\",\"x\":460,\"y\":80,\"width\":260,\"height\":150,\"color\":\"#fff9c4\",\"text\":\"Workers KV & D1\",\"david888\":{\"cardType\":\"sticky\"}}],\"edges\":[{\"id\":\"e1\",\"fromNode\":\"n1\",\"fromSide\":\"right\",\"toNode\":\"n2\",\"toSide\":\"left\",\"toEnd\":\"arrow\",\"label\":\"reads/writes\"}]}"
+  }'
 ```
 
-### 2.3.1 Canvas Tools for Agents and WebMCP
+### 2.3.1 Canvas Tools via Native MCP (`POST https://wiki.david888.com/mcp`)
 
-The native MCP endpoint exposes `validate_canvas`, `write_canvas`, `read_canvas`, and `generate_canvas_from_wikilinks`. Use these tools when a user asks for a visual relationship map, architecture canvas, concept graph, connected card diagram, or a graph generated from Markdown `[[WikiLink]]` references. Return the generated `shareUrl` so the human can open the Canvas.
+The native MCP endpoint exposes `validate_canvas`, `write_canvas`, `read_canvas`, and `generate_canvas_from_wikilinks`. Use these tools whenever a user asks for a visual relationship map, architecture canvas, concept graph, connected card diagram, or a graph generated from Markdown `[[WikiLink]]` references. Return the generated `shareUrl` so the human can open the interactive Canvas.
+
+```bash
+curl -X POST "https://wiki.david888.com/mcp" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "write_canvas",
+      "arguments": {
+        "path": "system-arch-canvas",
+        "document": {
+          "nodes": [
+            { "id": "client", "type": "text", "x": 80, "y": 100, "width": 260, "height": 140, "text": "# Client App\nWeb / Mobile" },
+            { "id": "worker", "type": "text", "x": 440, "y": 100, "width": 280, "height": 140, "color": "#dbeafe", "text": "# Cloudflare Worker\nEdge API + SSR" }
+          ],
+          "edges": [
+            { "id": "e-req", "fromNode": "client", "toNode": "worker", "fromSide": "right", "toSide": "left", "toEnd": "arrow", "label": "HTTPS" }
+          ]
+        }
+      }
+    }
+  }'
+```
+
+To turn `[[WikiLink]]` references inside an existing Markdown note into a visual Canvas automatically, call MCP tool `generate_canvas_from_wikilinks` with `{"source_path": "<md-path>", "canvas_path": "<target-canvas-path>"}`.
 
 Canvas notes can also be Book Mode chapters. Include the Canvas note path or share URL in a Markdown chapter list, then open the hub with `/book`; the chapter iframe loads the read-only interactive Canvas surface.
 
@@ -127,12 +171,53 @@ Canvas interaction capabilities include box selection and multi-drag, bulk color
 
 Resource nodes use standard JSON Canvas `file` records with `david888.asset` metadata for `image`, `file`, `audio`, and `video` assets. The Canvas toolbar uploads images through R2 first and other assets through the 888box fallback chain.
 
-### 2.3.2 Excalidraw Whiteboard Tools for Agents and WebMCP
+### 2.3.2 Excalidraw Whiteboard Tools & REST API (`editorFormat: "whiteboard"`)
 
-The native MCP endpoint exposes `validate_whiteboard`, `write_whiteboard`, and `read_whiteboard`. Use these tools when a user asks for a freeform hand-drawn sketch, wireframe, brainstorming doodle, or visual illustration.
-- Use `write_whiteboard` with `editorFormat: "whiteboard"` and an Excalidraw document payload (containing `elements` and optional `appState`).
-- The call returns `shareUrl`; provide that URL to the human so they can view and interact with the whiteboard.
+The native MCP endpoint exposes `validate_whiteboard`, `write_whiteboard`, and `read_whiteboard`, and the REST API accepts `editorFormat: "whiteboard"` at `POST /api/<path>`. Use these whenever a user asks for an Excalidraw diagram, freeform hand-drawn sketch, UI wireframe, brainstorming doodle, or visual whiteboard.
+
+- **Document schema**: `{"type": "excalidraw", "version": 2, "elements": [...], "appState": {"viewBackgroundColor": "#ffffff"}}`.
+- Every element in `elements` must include valid Excalidraw fields (`id`, `type` such as `"rectangle"`, `"ellipse"`, `"diamond"`, `"text"`, `"arrow"`, `"line"`, plus `x`, `y`, `width`, `height`, `strokeColor`, etc.).
+- Calls return both `editUrl` and `shareUrl`; always give `shareUrl` to the user.
 - Excalidraw whiteboards are 100% compatible with Obsidian Excalidraw JSON.
+
+#### Excalidraw MCP Example (`POST https://wiki.david888.com/mcp`)
+
+```bash
+curl -X POST "https://wiki.david888.com/mcp" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "tools/call",
+    "params": {
+      "name": "write_whiteboard",
+      "arguments": {
+        "path": "wireframe-sketch-2026",
+        "document": {
+          "type": "excalidraw",
+          "version": 2,
+          "elements": [
+            { "id": "box-1", "type": "rectangle", "x": 100, "y": 80, "width": 260, "height": 120, "strokeColor": "#1e1e1e", "backgroundColor": "#e7f5ff", "fillStyle": "solid", "strokeWidth": 2, "roughness": 1, "opacity": 100, "seed": 11, "version": 1, "versionNonce": 1, "isDeleted": false },
+            { "id": "txt-1", "type": "text", "x": 130, "y": 122, "width": 200, "height": 36, "fontSize": 20, "fontFamily": 1, "text": "User Dashboard", "strokeColor": "#1e1e1e", "opacity": 100, "seed": 12, "version": 1, "versionNonce": 2, "isDeleted": false }
+          ],
+          "appState": { "viewBackgroundColor": "#ffffff", "gridSize": 20 }
+        }
+      }
+    }
+  }'
+```
+
+#### Excalidraw REST API Example (`POST /api/<path>`)
+
+```bash
+curl -X POST "https://wiki.david888.com/api/wireframe-sketch-2026" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "editorFormat": "whiteboard",
+    "share": true,
+    "text": "{\"type\":\"excalidraw\",\"version\":2,\"elements\":[{\"id\":\"box-1\",\"type\":\"rectangle\",\"x\":100,\"y\":80,\"width\":280,\"height\":140,\"strokeColor\":\"#1e1e1e\",\"backgroundColor\":\"#fff3bf\",\"fillStyle\":\"solid\"}],\"appState\":{\"viewBackgroundColor\":\"#ffffff\"}}"
+  }'
+```
 
 **Format selection guidance:**
 - **Markdown**: Use for linear text, structured reports, code samples, slide presentations (`/present`), and multi-article books (`/book`).

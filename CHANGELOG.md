@@ -25,6 +25,10 @@
     - 將原本分散在指令面板內的「介面深淺（淺色／深色／自動）」、「預覽字體（JetBrains Mono / Maple Mono）」、「預覽寬度（100% / 960px / 1200px / 1440px）」與「20 套排版主題兩欄網格」完整收束至編輯底列獨立按鈕 **`[ 🎨 主題 ▾ ]`（`#theme-dropdown`）**，高頻換色只需一點、不進「工具」。
     - **清除 `[ 工具 ]` 面板重複項目**：移除與外側 `+ 新增`、`草稿／已發布`、`複製`、`匯出`、`主題`、`中 / EN` 重複的按鈕，`工具 ⌘⇧P` 僅保留字數統計、引用 `Cite`、公式複製格式與 `/docs` / `API` / `SKILL.md` / `GitHub` / `PWA` 安裝等專屬工具。
     - **修復深色主題聯動編輯區失效 Bug**：將 `window.__isDarkPreviewTheme` 提升至 `<head>` 全域建立（解決先前跨 `<script type="module">` 作用域拋出 `ReferenceError` 被靜默吞掉的問題），確保點選 `catppuccin-macchiato`、`tokyo-night` 等暗色主題時左側 Markdown 編輯區立即同步切換為深色護眼畫布。
+  - **🧱 BlockNote 區塊編輯器補齊深淺切換、欄寬與 20 套主題視覺支援**：
+    - 於 [src/styles/base.css.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/styles/base.css.js) 明確定義 Light／Dark `--editor-surface`、`--editor-surface-muted` 與 `--accent-color`，並於 [src/styles/editor.css.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/styles/editor.css.js) 及 [static/js/blocknote-editor.jsx](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/js/blocknote-editor.jsx) 映射 `--bn-colors-*`、20 套主題背景／文字／強調色變數與 `--preview-max-width` 欄寬上限，使 `/new/block` 在編輯模式也能即時套用 20 套主題與暗／亮雙極性。
+  - **🤖 補齊 LLM `SKILL.md` 與 `/llms.txt` / `/llms-full.txt` 之 Canvas 與 Excalidraw 完整調用指南**：
+    - 更新 [skills/SKILL.md](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/skills/SKILL.md) 與 [src/discovery.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/discovery.mjs)：於 frontmatter、`## Quick Start Guide` 格式選擇速查表、`/llms.txt` 與 `/llms-full.txt` 加入可直接複製呼叫的 REST (`POST /api/<path>` + `editorFormat: "canvas" | "whiteboard"`) 與 MCP JSON-RPC 2.0 (`POST /mcp` -> `write_canvas`、`generate_canvas_from_wikilinks`、`write_whiteboard`、`read_whiteboard`、`validate_whiteboard`) 範例與 JSON Schema。
 
 ## [2026-11-17]
 

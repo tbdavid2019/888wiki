@@ -37,3 +37,13 @@ test('MCP documentation explains how editor chart Markdown is transported', () =
     assert.match(mcpReadme, /echarts[\s\S]*Markdown[\s\S]*does not render the chart itself/i)
     assert.match(mcpServer, /complete markdown content/i)
 })
+
+test('agent skill provides direct copy-pasteable Canvas and Excalidraw Whiteboard MCP & REST calls', () => {
+    assert.match(skill, /write_canvas/)
+    assert.match(skill, /generate_canvas_from_wikilinks/)
+    assert.match(skill, /write_whiteboard/)
+    assert.match(skill, /"editorFormat":\s*"canvas"/)
+    assert.match(skill, /"editorFormat":\s*"whiteboard"/)
+    assert.match(skill, /"type":\s*"excalidraw"/)
+    assert.match(skill, /tools\/call/)
+})

@@ -271,13 +271,68 @@ export const getEditorCss = () => `
     .block-type-select { max-width: 150px; }
 }
 
-/* Tiptap Block Editor */
-.block-editor-pane { background: var(--editor-surface, #fff); }
+/* BlockNote Block Editor (with Light/Dark + 20-Theme Palette Support) */
+html[data-ui-theme="light"] .block-editor-pane,
+html:not([data-ui-theme="dark"]) .block-editor-pane { background: var(--block-theme-bg, var(--editor-surface, #fdfbf6)); }
+html[data-ui-theme="dark"] .block-editor-pane { background: var(--block-theme-bg, var(--editor-surface, #161d26)); }
 .block-editor { width: 100%; max-width: none; padding: 0; }
 .block-editor-pane .block-editor { overflow: auto; }
 .david-blocknote-app { min-height: 100%; }
-.david-blocknote-view.bn-mantine { min-height: 100%; padding: 34px clamp(20px, 6vw, 76px) 80px; background: var(--bn-colors-editor-background, var(--editor-surface, #fff)); color: var(--bn-colors-editor-text, var(--text-color, #24292f)); }
-.david-blocknote-view .bn-editor { min-height: calc(100vh - 230px); padding: 0; font-family: var(--editor-font-family); font-size: 17px; line-height: 1.8; }
+.david-blocknote-view.bn-mantine {
+    min-height: 100%;
+    padding: 34px clamp(20px, 6vw, 76px) 80px;
+    --bn-colors-editor-background: var(--block-theme-bg, var(--editor-surface, #fdfbf6));
+    --bn-colors-editor-text: var(--block-theme-text, var(--editor-text, #24211b));
+    --bn-colors-menu-background: var(--modal-bg, #fff9e8);
+    --bn-colors-menu-text: var(--modal-text, #2b251a);
+    --bn-colors-tooltip-background: var(--modal-bg, #fff9e8);
+    --bn-colors-tooltip-text: var(--modal-text, #2b251a);
+    --bn-colors-hovered-background: var(--modal-surface-hover, #f5ebd2);
+    --bn-colors-selected-background: var(--toolbar-active-bg, rgba(255, 176, 16, 0.24));
+    --bn-colors-selected-text: var(--toolbar-active-text, #17324d);
+    --bn-colors-border: var(--modal-border, #ddc58b);
+    background: var(--bn-colors-editor-background);
+    color: var(--bn-colors-editor-text);
+}
+.david-blocknote-view .bn-editor {
+    min-height: calc(100vh - 230px);
+    width: 100%;
+    max-width: var(--preview-max-width, 100%);
+    margin: 0 auto;
+    padding: 0;
+    font-family: var(--editor-font-family);
+    font-size: 17px;
+    line-height: 1.8;
+    background: transparent !important;
+    color: var(--bn-colors-editor-text);
+}
+.david-blocknote-view .bn-editor :is(h1, h2, h3) { color: var(--block-theme-accent, inherit); }
+.david-blocknote-view .bn-editor a { color: var(--block-theme-accent, var(--toolbar-accent, #a9471d)); }
+.david-blocknote-view .bn-editor blockquote { border-left-color: var(--block-theme-accent, var(--toolbar-accent, #a9471d)); }
+
+/* Light Preview Themes mapped onto Block Editor */
+html:not([data-ui-theme="dark"])[data-preview-theme="ayu-light"] { --block-theme-bg: #fcfcfc; --block-theme-text: #5c6166; --block-theme-accent: #a05600; }
+html:not([data-ui-theme="dark"])[data-preview-theme="claude-canvas"] { --block-theme-bg: #faf8f5; --block-theme-text: #2c2a29; --block-theme-accent: #c8654b; }
+html:not([data-ui-theme="dark"])[data-preview-theme="catppuccin-latte"] { --block-theme-bg: #eff1f5; --block-theme-text: #4c4f69; --block-theme-accent: #1e66f5; }
+html:not([data-ui-theme="dark"])[data-preview-theme="botanical"] { --block-theme-bg: #f4f6f0; --block-theme-text: #2d382c; --block-theme-accent: #4c7246; }
+html:not([data-ui-theme="dark"])[data-preview-theme="shopify-mint"] { --block-theme-bg: #f3faf6; --block-theme-text: #1c352d; --block-theme-accent: #008060; }
+html:not([data-ui-theme="dark"])[data-preview-theme="newsprint"] { --block-theme-bg: #f7f4eb; --block-theme-text: #1e1e1e; --block-theme-accent: #8b2635; }
+html:not([data-ui-theme="dark"])[data-preview-theme="notion-clean"] { --block-theme-bg: #ffffff; --block-theme-text: #37352f; --block-theme-accent: #2383e2; }
+html:not([data-ui-theme="dark"])[data-preview-theme="retro"] { --block-theme-bg: #f4efe0; --block-theme-text: #1f2430; --block-theme-accent: #000080; }
+html:not([data-ui-theme="dark"])[data-preview-theme="organic"] { --block-theme-bg: #faf5ef; --block-theme-text: #3d312a; --block-theme-accent: #b85d3b; }
+html:not([data-ui-theme="dark"])[data-preview-theme="green-simple"] { --block-theme-bg: #f6faf7; --block-theme-text: #243629; --block-theme-accent: #236b3e; }
+html:not([data-ui-theme="dark"])[data-preview-theme="professional"] { --block-theme-bg: #f8fafc; --block-theme-text: #1e293b; --block-theme-accent: #1d4ed8; }
+html:not([data-ui-theme="dark"])[data-preview-theme="bauhaus"] { --block-theme-bg: #fbf8f1; --block-theme-text: #1b1b18; --block-theme-accent: #c93b2b; }
+html:not([data-ui-theme="dark"])[data-preview-theme="neo-brutalism"] { --block-theme-bg: #fffdf5; --block-theme-text: #111111; --block-theme-accent: #d9480f; }
+html:not([data-ui-theme="dark"])[data-preview-theme="playful-geometric"] { --block-theme-bg: #fdf8fc; --block-theme-text: #2f243a; --block-theme-accent: #9d174d; }
+html:not([data-ui-theme="dark"])[data-preview-theme="sketch"] { --block-theme-bg: #fdfcf7; --block-theme-text: #2b2b2b; --block-theme-accent: #495057; }
+
+/* Dark Preview Themes mapped onto Block Editor */
+html[data-ui-theme="dark"][data-preview-theme="tokyo-night"] { --block-theme-bg: #1a1b26; --block-theme-text: #a9b1d6; --block-theme-accent: #7aa2f7; }
+html[data-ui-theme="dark"][data-preview-theme="catppuccin-macchiato"] { --block-theme-bg: #24273a; --block-theme-text: #cad3f5; --block-theme-accent: #8aadf4; }
+html[data-ui-theme="dark"][data-preview-theme="terminal"] { --block-theme-bg: #0d1117; --block-theme-text: #c9d1d9; --block-theme-accent: #58a6ff; }
+html[data-ui-theme="dark"][data-preview-theme="kanagawa"] { --block-theme-bg: #1f1f28; --block-theme-text: #dcd7ba; --block-theme-accent: #7e9cd8; }
+html[data-ui-theme="dark"][data-preview-theme="x-ai"] { --block-theme-bg: #0a0b0e; --block-theme-text: #e6e8ec; --block-theme-accent: #a0c3ec; }
 .david-blocknote-view .bn-side-menu { z-index: 12; }
 .david-blocknote-view .bn-suggestion-menu { max-height: min(420px, calc(100dvh - 28px)); }
 .david-blocknote-view .bn-formatting-toolbar { border-radius: 9px; box-shadow: 0 10px 28px rgba(15, 23, 42, .16); }

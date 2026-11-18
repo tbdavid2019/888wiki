@@ -17,6 +17,8 @@ const resolveBlockNoteTheme = () => {
     const selectedTheme = document.documentElement.getAttribute('data-ui-theme')
     if (selectedTheme === 'dark') return 'dark'
     if (selectedTheme === 'light') return 'light'
+    const currentPreviewTheme = document.documentElement.getAttribute('data-preview-theme') || window.APP_STATE?.theme
+    if (currentPreviewTheme && window.__isDarkPreviewTheme?.(currentPreviewTheme)) return 'dark'
     return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
@@ -27,7 +29,7 @@ function useBlockNoteTheme() {
         const syncTheme = () => setTheme(resolveBlockNoteTheme())
         const rootThemeObserver = new MutationObserver(syncTheme)
         const mediaQuery = window.matchMedia?.('(prefers-color-scheme: dark)')
-        rootThemeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-ui-theme'] })
+        rootThemeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-ui-theme', 'data-preview-theme'] })
         mediaQuery?.addEventListener?.('change', syncTheme)
         window.addEventListener('cf-notepad-ui-theme-change', syncTheme)
         return () => {
