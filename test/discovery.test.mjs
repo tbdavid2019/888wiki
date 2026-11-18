@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 
 import {
     AGENT_SKILL_MARKDOWN,
@@ -71,6 +71,8 @@ test('llms-full.txt provides extended system documentation, API schemas, and arc
     assert.match(llmsFull, /Calling Canvas \(JSON Canvas 1\.0\) & Excalidraw Whiteboard/)
     assert.match(llmsFull, /tools\/call[\s\S]*write_canvas[\s\S]*write_whiteboard/)
     assert.match(llmsFull, /## 3\. Agent Integration & Machine APIs/)
+    assert.equal(existsSync(new URL('../static/llms.txt', import.meta.url)), false, 'static/llms.txt must not shadow Worker /llms.txt route')
+    assert.equal(existsSync(new URL('../static/llms-full.txt', import.meta.url)), false, 'static/llms-full.txt must not shadow Worker /llms-full.txt route')
     assert.match(llmsFull, /## 4\. Security & Access Control Model/)
     assert.match(llmsFull, /## 5\. Development & Maintenance Team Credits/)
     assert.match(llmsFull, /https:\/\/wiki\.david888\.com\/api\/{path}/)
