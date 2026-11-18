@@ -3672,6 +3672,9 @@ html[data-ui-theme="dark"] .share-menu-trigger.is-published {
 #language-selector .footer-rail-switch {
     --rail-checked-bg: var(--toolbar-active-bg);
 }
+.footer.footer-ide-edit #language-selector .footer-rail-switch {
+    border-radius: 6px;
+}
 .autosave-rail-switch {
     min-width: 48px;
     --rail-checked-bg: var(--toolbar-active-bg);

@@ -598,6 +598,25 @@ export const DEV_INFO_DROPDOWN_MENU = (lang, t = getLangText(lang)) => {
     `
 }
 
+const LANGUAGE_SELECTOR_CONTROL = (lang, t) => `
+    <div class="footer-control-group footer-toggle-control-group">
+        <div id="language-selector">
+            ${RAIL_SWITCH({
+                checked: lang === 'zh-TW',
+                checkedTitle: 'Language / 語言：中文 → English',
+                uncheckedTitle: 'Language / 語言：English → 中文',
+                checkedText: '中 / EN',
+                uncheckedText: 'EN / 中',
+                ariaLabel: `${t.language} (中文 / English)`,
+                checkedValue: 'zh-TW',
+                uncheckedValue: 'en-US',
+                checkedIcon: SVG_ICONS.languages,
+                uncheckedIcon: SVG_ICONS.languages,
+            })}
+        </div>
+    </div>
+`
+
 export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, path, theme, width, sharePath, noteHistoryEnabled, publicIndex, authPath, autosave, viewCount, annotationsEnabled, editorFormat = 'markdown', shareExpiresAt, shareExpiresIn = 'none', shareBurnAfterReading = false, shareMode = 'standard', shareUnlockIn = '1d', sharePulseInterval = 604800, sharePulseDueAt, sharePulseToken, shareMaxViews = 1 }) => {
     const t = getLangText(lang)
     const effectiveShareMode = (shareBurnAfterReading === true || shareMode === 'burn_after_reading' || shareMode === 'burn') ? 'burn' : (shareMode || 'standard')
@@ -1080,6 +1099,7 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                             <span class="toolbar-button-label">${lang === 'zh-TW' ? '工具' : 'Tools'}</span>
                             <kbd class="ide-kbd" aria-hidden="true">⌘⇧P</kbd>
                         </button>
+                        ${LANGUAGE_SELECTOR_CONTROL(lang, t)}
                         ${MORE_DROPDOWN_MENU(lang, { isEdit })}
                     ` : `
                         ${sharePath ? `
@@ -1101,22 +1121,7 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                                 </div>
                             </div>
                         ` : ''}
-                        <div class="footer-control-group footer-toggle-control-group">
-                            <div id="language-selector">
-                                ${RAIL_SWITCH({
-                                    checked: lang === 'zh-TW',
-                                    checkedTitle: 'Lang',
-                                    uncheckedTitle: 'Lang',
-                                    checkedText: '中',
-                                    uncheckedText: 'En',
-                                    ariaLabel: t.language,
-                                    checkedValue: 'zh-TW',
-                                    uncheckedValue: 'en-US',
-                                    checkedIcon: SVG_ICONS.languages,
-                                    uncheckedIcon: SVG_ICONS.languages,
-                                })}
-                            </div>
-                        </div>
+                        ${LANGUAGE_SELECTOR_CONTROL(lang, t)}
                         ${THEME_DROPDOWN_MENU(lang, theme, getThemeLabel)}
                         <button type="button" id="ui-theme-toggle-btn" class="toolbar-icon-button ui-theme-toggle-btn" data-tooltip="${lang === 'zh-TW' ? '切換介面深淺模式' : 'Toggle UI theme'}" title="${lang === 'zh-TW' ? '切換介面深淺模式' : 'Toggle UI theme'}" aria-label="${lang === 'zh-TW' ? '切換介面深淺模式' : 'Toggle UI theme'}">
                             <span class="ui-theme-icon-sun" aria-hidden="true">${SVG_ICONS.sun}</span>

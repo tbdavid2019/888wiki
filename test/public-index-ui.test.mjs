@@ -77,7 +77,7 @@ test('footer uses flat segmented rails for two-state controls and restores label
     assert.match(commonTemplateSource, /uncheckedText: lang === 'zh-TW' \? '純文字' : 'Plain'/)
     assert.match(commonTemplateSource, /checkedText: lang === 'zh-TW' \? '左右' : 'Side'/)
     assert.match(commonTemplateSource, /uncheckedText: lang === 'zh-TW' \? '上下' : 'Stack'/)
-    assert.match(commonTemplateSource, /checkedText: '中'/)
+    assert.match(commonTemplateSource, /checkedText: '中 \/ EN'/)
     assert.match(commonTemplateSource, /checkedText: t\.desktop/)
     assert.match(baseTemplateSource, /const \$modeBtn = document\.querySelector\('\.opt-mode'\)/)
     assert.match(baseTemplateSource, /function setRailSwitchState\(selector, checked\)/)

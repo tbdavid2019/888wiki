@@ -20,6 +20,7 @@
   - **修正 `⌘⇧P` 指令面板列表置中與開啟捲動偏移問題**：明確覆寫全域按鈕的置中繼承，強制 `.cp-item` 與 `.cp-item-copy` `justify-content: flex-start !important; text-align: left !important;` 完整靠左對齊；並於 `openCommandPalette()` 先展開面板再過濾並將 `#command-palette-list` 重設 `scrollTop = 0`，避免頂部「打開簡報／書本模式」在開啟時被捲動裁切。
   - **調大繁體中文介面字級與列高**：全面放大指令面板（標題 `14px`、副標 `12.5px`、搜尋框 `15px`、分段切換按鈕 `12.5px / height: 30px`、主題名稱 `13.5px`）與 IDE 工作底列（標籤 `13px`、分段值 `12.5px`、游標狀態 `12.5px`、`44px` 列高）的繁中文字尺規，徹底改善中文字過小擁擠問題。
   - **深色排版主題自動聯動編輯區深色模式（`DARK_PREVIEW_THEMES` Polarity Sync）**：切換 `tokyo-night`（東京夜景）、`x-ai`、`terminal`、`kanagawa`、`catppuccin-macchiato` 等暗色排版主題時，系統自動將 `data-ui-theme` 聯動切換為深色模式，使左側 Markdown 編輯區與工具列同步進入深藍灰護眼畫布（切換回淺色排版主題時自動恢復原外觀設定；使用者亦可隨時透過指令面板「外觀深淺」手動覆寫）。
+  - **IDE 底列還原頂層雙語快速切換（`#language-selector` `中 / EN`）**：將語系切換鈕直接置回編輯模式底部右側常駐區（`工具 ⌘⇧P` 旁）並採用雙語並陳文字 **`中 / EN`**（搭配翻譯圖示），讓海外／英文訪客無須進指令面板即可一鍵直覺切換介面語系。
 
 ## [2026-11-17]
 

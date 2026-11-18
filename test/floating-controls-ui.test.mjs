@@ -308,6 +308,7 @@ test('Option A IDE edit footer places quick public URL action beside publish cap
 
     const appearanceSection = editDoc.querySelector('.footer-section-appearance')
     assert.ok(appearanceSection.querySelector('#command-palette-btn'), '#command-palette-btn must exist in IDE bar')
+    assert.ok(appearanceSection.querySelector('#language-selector'), '#language-selector must remain directly accessible on IDE bottom bar')
     assert.ok(appearanceSection.querySelector('#export-dropdown'), '#export-dropdown must exist in IDE bar')
     assert.ok(appearanceSection.querySelector('#copy-dropdown'), '#copy-dropdown must exist in IDE bar')
 })
