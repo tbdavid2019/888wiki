@@ -263,7 +263,38 @@ export const SWITCHER = (text, open, className = '') => `
 <span class="footer-control-label">${text}</span>
 `
 
-export const COPY_DROPDOWN_MENU = (lang) => {
+export const QUICK_COPY_URLS_ITEMS = (lang, { idPrefix = '', role = '' } = {}) => {
+    const isZh = lang === 'zh-TW'
+    const copyShareTitle = isZh ? '複製分享連結' : 'Copy share link'
+    const copyPresentTitle = isZh ? '複製簡報連結' : 'Copy presentation link'
+    const copyBookTitle = isZh ? '複製書本連結' : 'Copy Book URL'
+    const roleAttr = role ? ` role="${role}"` : ''
+    return `
+        <button type="button" id="${idPrefix}copy-share-btn" class="dropdown-item dropdown-item-rich" data-copy-url-kind="share" title="${copyShareTitle}"${roleAttr}>
+            ${SVG_ICONS.copy}
+            <span class="dropdown-item-copy">
+                <strong>${copyShareTitle}</strong>
+                <small>${isZh ? '閱讀頁面網址' : 'Copy share URL'}</small>
+            </span>
+        </button>
+        <button type="button" id="${idPrefix}copy-present-share-btn" class="dropdown-item dropdown-item-rich" data-copy-url-kind="present" title="${copyPresentTitle}"${roleAttr}>
+            ${SVG_ICONS.play}
+            <span class="dropdown-item-copy">
+                <strong>${copyPresentTitle}</strong>
+                <small>${isZh ? '簡報播放網址' : 'Copy presentation URL'}</small>
+            </span>
+        </button>
+        <button type="button" id="${idPrefix}copy-book-share-btn" class="dropdown-item dropdown-item-rich" data-copy-url-kind="book" title="${copyBookTitle}"${roleAttr}>
+            ${SVG_ICONS.book}
+            <span class="dropdown-item-copy">
+                <strong>${copyBookTitle}</strong>
+                <small>${isZh ? '書本閱讀網址' : 'Copy book mode URL'}</small>
+            </span>
+        </button>
+    `
+}
+
+export const COPY_DROPDOWN_MENU = (lang, { isPublished = false } = {}) => {
     const isZh = lang === 'zh-TW'
     return `
         <div class="footer-control-group">
@@ -320,6 +351,11 @@ export const COPY_DROPDOWN_MENU = (lang) => {
                             <small>${isZh ? '2x 高解析度複製至剪貼簿' : 'Copy 2x high-res image to clipboard'}</small>
                         </span>
                     </button>
+                    <div class="copy-quick-urls-section" ${isPublished ? '' : 'hidden'}>
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-menu-label">${isZh ? '快速複製連結' : 'Quick Copy URLs'}</div>
+                        ${QUICK_COPY_URLS_ITEMS(lang, { idPrefix: 'copy-menu-', role: 'menuitem' })}
+                    </div>
                 </div>
             </div>
         </div>
@@ -658,8 +694,6 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
     const shareFontAriaLabel = lang === 'zh-TW' ? '分享頁字型' : 'Share font'
     const jetbrainsTitle = lang === 'zh-TW' ? '切換為 JetBrains Mono' : 'Switch to JetBrains Mono'
     const mapleTitle = lang === 'zh-TW' ? '切換為 Maple Mono' : 'Switch to Maple Mono'
-    const copyShareTitle = lang === 'zh-TW' ? '複製分享連結' : 'Copy share link'
-    const copyPresentTitle = lang === 'zh-TW' ? '複製簡報連結' : 'Copy presentation link'
     const unpublishTitle = lang === 'zh-TW' ? '取消發布' : 'Unpublish'
     const publicIndexTitle = publicIndex === true ? t.publicIndexDisable : t.publicIndexEnable
     const isBlockEditor = isEdit && editorFormat === 'block'
@@ -904,27 +938,7 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                                         </div>
                                         <div class="dropdown-menu-label">${lang === 'zh-TW' ? '快速複製連結' : 'Quick Copy URLs'}</div>
                                         <div class="dropdown-group-card">
-                                            <button type="button" id="copy-share-btn" class="dropdown-item dropdown-item-rich" title="${copyShareTitle}">
-                                                ${SVG_ICONS.copy}
-                                                <span class="dropdown-item-copy">
-                                                    <strong>${copyShareTitle}</strong>
-                                                    <small>${lang === 'zh-TW' ? '閱讀頁面網址' : 'Copy share URL'}</small>
-                                                </span>
-                                            </button>
-                                            <button type="button" id="copy-present-share-btn" class="dropdown-item dropdown-item-rich" title="${copyPresentTitle}">
-                                                ${SVG_ICONS.play}
-                                                <span class="dropdown-item-copy">
-                                                    <strong>${copyPresentTitle}</strong>
-                                                    <small>${lang === 'zh-TW' ? '簡報播放網址' : 'Copy presentation URL'}</small>
-                                                </span>
-                                            </button>
-                                            <button type="button" id="copy-book-share-btn" class="dropdown-item dropdown-item-rich" title="${lang === 'zh-TW' ? '複製書本連結' : 'Copy Book URL'}">
-                                                ${SVG_ICONS.book}
-                                                <span class="dropdown-item-copy">
-                                                    <strong>${lang === 'zh-TW' ? '複製書本連結' : 'Copy Book URL'}</strong>
-                                                    <small>${lang === 'zh-TW' ? '書本閱讀網址' : 'Copy book mode URL'}</small>
-                                                </span>
-                                            </button>
+                                            ${QUICK_COPY_URLS_ITEMS(lang)}
                                         </div>
                                         <div class="dropdown-menu-label">${lang === 'zh-TW' ? '版本與紀錄' : 'History & Records'}</div>
                                         <div class="dropdown-group-card">
@@ -1036,7 +1050,7 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                     ` : (path ? `
                         ${TOOLBAR_PRINT_BUTTON(lang)}
                         ${EXPORT_DROPDOWN_MENU(lang)}
-                        ${COPY_DROPDOWN_MENU(lang)}
+                        ${COPY_DROPDOWN_MENU(lang, { isPublished: Boolean(shareId) })}
                         <button type="button" id="cite-share-btn" class="toolbar-icon-button cite-share-btn" data-tooltip="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}" title="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}" aria-label="${lang === 'zh-TW' ? '引用此文章 (Cite)' : 'Cite this note'}">
                             ${SVG_ICONS.quote}
                             <span class="toolbar-button-label">${lang === 'zh-TW' ? '引用' : 'Cite'}</span>
@@ -1125,7 +1139,7 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                             ` : ''}
                         </div>
                         ${THEME_DROPDOWN_MENU(lang, theme, getThemeLabel, { width: effectiveWidth })}
-                        ${COPY_DROPDOWN_MENU(lang)}
+                        ${COPY_DROPDOWN_MENU(lang, { isPublished: Boolean(share && shareId) })}
                         ` : `
                         ${THEME_DROPDOWN_MENU(lang, theme, getThemeLabel, { width: effectiveWidth })}
                         `}

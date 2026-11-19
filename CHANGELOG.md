@@ -1,5 +1,20 @@
 # Changelog
 
+## [2026-11-19]
+
+- **🔗 右下角「複製」選單同步納入「快速複製連結」區塊（Quick Copy URLs in Copy Dropdown Menu）**：
+  - 於 [src/templates/common.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/common.js) 抽出共用 `QUICK_COPY_URLS_ITEMS()` 元件，將「已發布」選單中的**快速複製連結**（複製分享連結、複製簡報連結、複製書本連結）同步放進右下角「複製」按鈕選單（`COPY_DROPDOWN_MENU`）底部（使用獨立 ID `#copy-menu-copy-*-btn` 與共用 `data-copy-url-kind` 委派事件，支援編輯頁即時發布後透過 `syncShareMenuUI()` 自動顯示，以及公開分享頁直接快速複製三種模式網址）。
+  - 同步於 [src/templates/base.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/base.js) 收斂點擊事件處理、於 [src/styles/base.css.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/styles/base.css.js) 補齊 `.copy-quick-urls-section` 排版與 `[hidden]` 樣式，並於 [test/export-and-theme-dropdown.test.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/export-and-theme-dropdown.test.mjs) 補上完整單元測試。
+- **🛠️ 修復發布網路瞬斷錯誤提示與隨機深色主題首次載入未同步編輯區深色之問題（Publish Fetch Resilience & Initial Dark Theme Polarity Sync）**：
+  - **隨機深色主題首次載入即同步左側編輯區（Initial Dark Theme UI Sync）**：
+    - 修復於新筆記隨機選中 `tokyo-night`、`x-ai`、`terminal`、`kanagawa`、`catppuccin-macchiato` 等深色排版主題時，若使用者 `localStorage['cf-notepad-ui-theme']` 先前曾記錄為 `light`，左側編輯區仍保持淺色、必須手動再次點擊主題才會轉深色的問題。
+    - 於 [src/templates/base.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/base.js) `<head>` 初始化、`.theme-item` 點選邏輯與 `initUiTheme()` 改採非侵入式、單一分頁隔離的同步計算：載入或切換至深色排版主題時，只要使用者未在該分頁手動切回淺色（`sessionStorage['cf-notepad-ui-theme-manual-override']`），即自動將 `data-ui-theme` 同步為 `dark` 而不覆寫跨分頁共用的 `cf-notepad-ui-theme` 偏好（並相容清理舊版 `cf-notepad-ui-theme-sync` 殘留鍵值，且於儲存受限時仍保證完成屬性設定）。
+  - **發布請求穩定性強化、併發鎖定與友善錯誤提示（Publish Fetch Retry, Concurrency Lock & Error Clarity）**：
+    - 於 [src/templates/base.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/base.js) 新增 `getNormalizedPathname()` 並統一讓 `publishCurrentNote()`、`setPublicIndex()`、模式切換與取消發布改走 `getSettingPath()`，避免結尾斜線導致錯誤的 `/setting` 路徑；同步修復 `summarizeErrorText()` 模板字串正規式 `/\s+/g` 逸出缺陷。
+    - 為 `fetchJson()` 補上以 `didTimeout` 嚴格區分逾時的傳輸層 `TypeError` 單次自動重試（`retries: 1`，僅在未收到 HTTP 回應且在線時觸發），並於 `publishCurrentNote()` 加入共用 `publishInFlight` 併發鎖、發布前 `await persistOfflineDraft()` 寫入本機暫存、以及以實際送出之 `currentContent` 快照更新 `savedContent`（避免發布途中繼續編輯遭到誤標為已同步）。
+    - 由 `formatPublishNetworkError()` 依據實際 IndexedDB 持久化狀態與錯誤類型（`TypeError` 瞬斷、離線、`HTTP 502/503/504`、逾時）顯示清楚中英文指引，並讓發布提示彈窗（`#publish-nudge-modal`）點擊發布時同步顯示「發布中...」忙碌狀態且鎖定重複點擊。
+  - **測試同步**：於 [test/random-editor-theme.test.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/random-editor-theme.test.mjs) 與 [test/share-publish-state-ui.test.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/share-publish-state-ui.test.mjs) 補齊 `<head>` VM 實測（含跨分頁／分享頁不汙染、`QuotaExceededError` 容錯與手動覆寫）與 `fetchJson` 重試／逾時／502／離線行為測試。
+
 ## [2026-11-18]
 
 - **🎛️ 方案 A：單層 IDE 底列重構、一鍵發布複製公開連結、`⌘⇧P` 指令面板與全工作區深淺極性一致化（Single-Layer IDE Bottom Bar, Quick Public Share URL, Command Palette & Unified Polarity）**：

@@ -83,6 +83,42 @@ test('published share copy actions keep titles and avoid repeating the copy verb
     assert.equal(englishDoc.querySelector('#copy-share-btn small').textContent, 'Copy share URL')
 })
 
+test('COPY_DROPDOWN_MENU includes Quick Copy URLs section synced with published state without duplicate DOM IDs', () => {
+    const draftDoc = new JSDOM(COPY_DROPDOWN_MENU('zh-TW', { isPublished: false })).window.document
+    const draftSection = draftDoc.querySelector('.copy-quick-urls-section')
+    assert.ok(draftSection)
+    assert.equal(draftSection.hidden, true)
+    assert.equal(draftDoc.querySelector('#copy-menu-copy-share-btn')?.getAttribute('data-copy-url-kind'), 'share')
+    assert.equal(draftDoc.querySelector('#copy-menu-copy-present-share-btn')?.getAttribute('data-copy-url-kind'), 'present')
+    assert.equal(draftDoc.querySelector('#copy-menu-copy-book-share-btn')?.getAttribute('data-copy-url-kind'), 'book')
+
+    const pubDoc = new JSDOM(FOOTER({
+        lang: 'zh-TW',
+        isEdit: true,
+        share: true,
+        shareId: 'abc123',
+    })).window.document
+    const pubCopySection = pubDoc.querySelector('#copy-dropdown .copy-quick-urls-section')
+    assert.ok(pubCopySection)
+    assert.equal(pubCopySection.hidden, false)
+    assert.equal(pubDoc.querySelectorAll('#copy-share-btn').length, 1)
+    assert.equal(pubDoc.querySelectorAll('#copy-menu-copy-share-btn').length, 1)
+    assert.equal(pubDoc.querySelector('#copy-menu-copy-share-btn strong')?.textContent, '複製分享連結')
+    assert.equal(pubDoc.querySelector('#copy-menu-copy-present-share-btn strong')?.textContent, '複製簡報連結')
+    assert.equal(pubDoc.querySelector('#copy-menu-copy-book-share-btn strong')?.textContent, '複製書本連結')
+
+    const shareViewDoc = new JSDOM(FOOTER({
+        lang: 'en-US',
+        isEdit: false,
+        share: true,
+        shareId: 'abc123',
+        path: 'abc',
+    })).window.document
+    assert.equal(shareViewDoc.querySelector('#copy-dropdown .copy-quick-urls-section')?.hidden, false)
+    assert.equal(shareViewDoc.querySelector('#copy-menu-copy-share-btn strong')?.textContent, 'Copy share link')
+    assert.match(baseTemplateSource, /document\.querySelectorAll\('\.copy-quick-urls-section'\)/)
+})
+
 test('MATH_FORMAT_MODAL renders all 7 formula copy formats', () => {
     const htmlZh = MATH_FORMAT_MODAL('zh-TW')
     const domZh = new JSDOM(htmlZh)

@@ -210,12 +210,29 @@ export const HTML = ({ lang = 'zh-TW', title, content = '', ext = {}, tips, isEd
                 var pageTheme = ${JSON.stringify(pageTheme)};
                 var isDarkPreviewTheme = window.__isDarkPreviewTheme(pageTheme);
                 document.documentElement.setAttribute('data-preview-theme', pageTheme);
-                var t = localStorage.getItem('cf-notepad-ui-theme') || 'auto';
-                var syncedFromPreview = localStorage.getItem('cf-notepad-ui-theme-sync') === '1';
-                var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-                if (t === 'dark' || (t === 'auto' && (prefersDark || isDarkPreviewTheme)) || (syncedFromPreview && isDarkPreviewTheme)) {
+                var syncKey = 'cf-notepad-ui-theme-sync';
+                var prevKey = 'cf-notepad-ui-theme-prev';
+                var overrideKey = 'cf-notepad-ui-theme-manual-override';
+                var t = 'auto';
+                var manualOverrideForTheme = '';
+                try {
+                    t = localStorage.getItem('cf-notepad-ui-theme') || 'auto';
+                    if (localStorage.getItem(syncKey) === '1') {
+                        var restoredMode = localStorage.getItem(prevKey) || 'auto';
+                        localStorage.setItem('cf-notepad-ui-theme', restoredMode);
+                        localStorage.removeItem(syncKey);
+                        localStorage.removeItem(prevKey);
+                        t = restoredMode;
+                    }
+                } catch(e) {}
+                try { manualOverrideForTheme = sessionStorage.getItem(overrideKey) || ''; } catch(e) {}
+                var prefersDark = false;
+                try { prefersDark = Boolean(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches); } catch(e) {}
+                var previewForcesDark = isDarkPreviewTheme && manualOverrideForTheme !== pageTheme;
+                var effectiveIsDark = t === 'dark' || previewForcesDark || (t === 'auto' && prefersDark);
+                if (effectiveIsDark) {
                     document.documentElement.setAttribute('data-ui-theme', 'dark');
-                } else if (t === 'light') {
+                } else if (t === 'light' || (isDarkPreviewTheme && manualOverrideForTheme === pageTheme)) {
                     document.documentElement.setAttribute('data-ui-theme', 'light');
                 } else {
                     document.documentElement.setAttribute('data-ui-theme', 'auto');
@@ -1815,10 +1832,43 @@ ${getMarkdownCss()}
         window.location.reload()
     }
 
+    const isTransportNetworkError = error => {
+        if (!error) return false
+        const msg = String(error.message || error)
+        if (error.name === 'TypeError' && /fetch|network|load|connect|protocol|socket/i.test(msg)) return true
+        return /failed to fetch|networkerror|load failed|network request failed/i.test(msg)
+    }
+
+    const isGatewayOrTimeoutError = error => {
+        const msg = String(error?.message || error || '')
+        return /Request timeout|^HTTP 50[234]\\b/i.test(msg)
+    }
+
+    const formatPublishNetworkError = (error, { localSaved = false } = {}) => {
+        if (!isTransportNetworkError(error) && !isGatewayOrTimeoutError(error)) return error
+        const isZh = APP_STATE.lang === 'zh-TW'
+        const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false
+        const draftHintZh = localSaved
+            ? '您的筆記內容已安全儲存在目前編輯器與本機離線草稿中'
+            : '您的筆記內容仍保留在目前編輯器中（關閉分頁前請先複製備份）'
+        const draftHintEn = localSaved
+            ? 'Your note is safely kept in the editor and local draft storage'
+            : 'Your note is still in the current editor (copy a backup before closing this tab)'
+        if (isOffline) {
+            return isZh
+                ? '目前裝置處於離線狀態，無法連線至伺服器。' + draftHintZh + '，請恢復網路連線後再試一次。'
+                : 'You appear to be offline and cannot reach the server. ' + draftHintEn + ' — please reconnect and try again.'
+        }
+        const detail = summarizeErrorText(error?.message || error || 'Failed to fetch')
+        return isZh
+            ? '無法連線至伺服器完成操作（可能是網路瞬斷、連線逾時、VPN／Proxy 或瀏覽器擴充功能阻擋）。' + draftHintZh + '，請再試一次。（詳細：' + detail + '）'
+            : 'Could not reach the server (transient network drop, timeout, VPN/proxy, or a browser extension may have blocked the request). ' + draftHintEn + ' — please try again. (Details: ' + detail + ')'
+    }
+
     const errHandle = (err) => { window.showAppDialog({ title: getI18n('err'), message: String(err), kind: 'error' }) }
 
     const summarizeErrorText = text => {
-        const normalized = String(text || '').replace(/\s+/g, ' ').trim()
+        const normalized = String(text || '').replace(/\\s+/g, ' ').trim()
         if (!normalized) return 'Empty response'
         return normalized.length > 240 ? normalized.slice(0, 237) + '...' : normalized
     }
@@ -1840,17 +1890,39 @@ ${getMarkdownCss()}
         return payload
     }
 
-    const fetchJson = async (input, init, timeoutMs = 30000) => {
-        const controller = new AbortController()
-        const timeoutId = window.setTimeout(() => controller.abort(new Error('Request timeout')), timeoutMs)
-        try {
-            const response = await window.fetch(input, {
-                ...init,
-                signal: controller.signal,
-            })
-            return parseJsonResponse(response)
-        } finally {
-            window.clearTimeout(timeoutId)
+    const fetchJson = async (input, init, timeoutMs = 30000, options = {}) => {
+        const maxRetries = Number.isInteger(options?.retries) && options.retries > 0 ? options.retries : 0
+        const retryDelayMs = Number.isFinite(options?.retryDelayMs) ? options.retryDelayMs : 450
+        let attempt = 0
+        while (true) {
+            const controller = new AbortController()
+            let didTimeout = false
+            const timeoutId = window.setTimeout(() => {
+                didTimeout = true
+                controller.abort(new Error('Request timeout'))
+            }, timeoutMs)
+            let response
+            try {
+                response = await window.fetch(input, {
+                    ...init,
+                    signal: controller.signal,
+                })
+            } catch (error) {
+                window.clearTimeout(timeoutId)
+                const canRetry = attempt < maxRetries
+                    && !didTimeout
+                    && isTransportNetworkError(error)
+                    && (typeof navigator === 'undefined' || navigator.onLine !== false)
+                if (!canRetry) throw error
+                attempt += 1
+                await new Promise(resolve => window.setTimeout(resolve, retryDelayMs))
+                continue
+            }
+            try {
+                return await parseJsonResponse(response)
+            } finally {
+                window.clearTimeout(timeoutId)
+            }
         }
     }
 
@@ -1980,8 +2052,13 @@ ${getMarkdownCss()}
         }
     }
 
-        const getAuthPath = () => APP_STATE.authPath || (location.pathname + '/auth')
-        const getSettingPath = () => APP_STATE.settingPath || (location.pathname + '/setting')
+        const getNormalizedPathname = () => {
+            let p = String(location.pathname || '')
+            while (p.endsWith('/')) p = p.slice(0, -1)
+            return p
+        }
+        const getAuthPath = () => APP_STATE.authPath || (getNormalizedPathname() + '/auth')
+        const getSettingPath = () => APP_STATE.settingPath || (getNormalizedPathname() + '/setting')
         const canPersistSettings = APP_STATE.isEdit === true
         const persistSetting = async nextSettings => {
             if (!canPersistSettings) return null
@@ -1989,7 +2066,7 @@ ${getMarkdownCss()}
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(nextSettings),
-            })
+            }, 30000, { retries: 1 })
             if (payload.err !== 0) throw new Error(payload.msg || 'setting update failed')
             APP_STATE.noteSettings = { ...APP_STATE.noteSettings, ...nextSettings }
             if (Object.prototype.hasOwnProperty.call(nextSettings, 'autosave')) {
@@ -2650,6 +2727,7 @@ ${getMarkdownCss()}
         let savedContent = $textarea ? $textarea.value : ''
         let autosaveTimer = null
         let saveInFlight = null
+        let publishInFlight = null
         let saveQueued = false
         let allowUnload = false
         const hasUnsavedChanges = () => Boolean($textarea && $textarea.value !== savedContent)
@@ -2742,7 +2820,7 @@ ${getMarkdownCss()}
                     method: 'POST',
                     headers: headers,
                     body: new URLSearchParams(bodyParams),
-                })
+                }, 30000, { retries: 1 })
             })()
                 .then(async res => {
                     if (res.needTurnstile) {
@@ -2770,30 +2848,15 @@ ${getMarkdownCss()}
                     window.showToast?.(APP_STATE.lang === 'zh-TW' ? '文章已同步至雲端' : 'Note synced to cloud')
                     window.dispatchEvent(new CustomEvent('canvas:synced'))
                     if (window.offlineStore) {
-                        const title = String(content || '').split(new RegExp('[\\\\r\\\\n]+'))[0]?.replace(new RegExp('^#*\\\\s*'), '').trim() || APP_STATE.path
-                        window.offlineStore.saveNote(APP_STATE.path, {
-                            title,
-                            content,
-                            theme: APP_STATE.theme,
-                            format: APP_STATE.editorFormat,
-                            syncStatus: 'synced'
-                        })
+                        window.offlineStore.saveNote(APP_STATE.path, buildOfflineDraftRecord(content, 'synced'))
                     }
                     return true
                 })
-                .catch(error => {
+                .catch(async error => {
                     showSaveStatus(error.message || 'save failed', true, 'error')
-                    if (window.offlineStore) {
-                        const title = String(content || '').split(new RegExp('[\\\\r\\\\n]+'))[0]?.replace(new RegExp('^#*\\\\s*'), '').trim() || APP_STATE.path
-                        window.offlineStore.saveNote(APP_STATE.path, {
-                            title,
-                            content,
-                            theme: APP_STATE.theme,
-                            format: APP_STATE.editorFormat,
-                            syncStatus: 'pending'
-                        })
-                    }
-                    errHandle(error.message || error)
+                    const localSaved = await persistOfflineDraft(content, 'pending')
+                    const formatted = formatPublishNetworkError(error, { localSaved })
+                    errHandle(typeof formatted === 'string' ? formatted : (error.message || error))
                     return false
                 })
                 .finally(() => {
@@ -2815,14 +2878,10 @@ ${getMarkdownCss()}
             localSaveTimer = setTimeout(() => {
                 if (!$textarea || !window.offlineStore) return
                 const draftContent = $textarea.value
-                const draftTitle = String(draftContent || '').split(new RegExp('[\\\\r\\\\n]+'))[0]?.replace(new RegExp('^#*\\\\s*'), '').trim() || APP_STATE.path
-                window.offlineStore.saveNote(APP_STATE.path, {
-                    title: draftTitle,
-                    content: draftContent,
-                    theme: APP_STATE.theme,
-                    format: APP_STATE.editorFormat,
-                    syncStatus: hasUnsavedChanges() ? (APP_STATE.isPublished ? 'pending' : 'draft') : 'synced'
-                })
+                window.offlineStore.saveNote(
+                    APP_STATE.path,
+                    buildOfflineDraftRecord(draftContent, hasUnsavedChanges() ? (APP_STATE.isPublished ? 'pending' : 'draft') : 'synced')
+                )
                 if (hasUnsavedChanges()) {
                     showSaveStatus(APP_STATE.lang === 'zh-TW' ? '🟢 本機已存' : '🟢 Saved locally', false, 'local')
                 }
@@ -4065,11 +4124,11 @@ ${getMarkdownCss()}
         }
 
         const setPublicIndex = async enabled => {
-            const payload = await fetchJson(window.location.pathname + '/setting', {
+            const payload = await fetchJson(getSettingPath(), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ publicIndex: enabled })
-            })
+            }, 30000, { retries: 1 })
             if (payload.err !== 0) throw new Error(payload.msg || 'public index update failed')
             APP_STATE.publicIndex = enabled === true
             return payload
@@ -4176,6 +4235,9 @@ ${getMarkdownCss()}
 
             if (publishedMenu) publishedMenu.hidden = !isPublished
             if (unpublishedMenu) unpublishedMenu.hidden = isPublished
+            document.querySelectorAll('.copy-quick-urls-section').forEach(section => {
+                section.hidden = !isPublished
+            })
 
             const shareOpenLink = document.querySelector('#share-open-link')
             if (shareOpenLink) {
@@ -4288,134 +4350,181 @@ ${getMarkdownCss()}
             syncPublicationStatus()
         }
 
-        const publishCurrentNote = async (preferences = defaultPublishPreferences, explicitToken = '') => {
-            window.canvasBridge?.flush?.()
+        const buildOfflineDraftRecord = (content, syncStatus, themeOverride = '') => {
+            const text = typeof content === 'string' ? content : ''
+            const draftTitle = text.split(new RegExp('[\\\\r\\\\n]+'))[0]?.replace(new RegExp('^#*\\\\s*'), '').trim() || APP_STATE.path
+            return {
+                title: draftTitle,
+                content: text,
+                theme: themeOverride || APP_STATE.theme,
+                format: APP_STATE.editorFormat,
+                syncStatus,
+            }
+        }
+
+        const persistOfflineDraft = async (content, syncStatus, themeOverride = '') => {
+            if (!window.offlineStore) return false
             try {
-                await uploadPendingAudiosToCloud()
+                await window.offlineStore.saveNote(APP_STATE.path, buildOfflineDraftRecord(content, syncStatus, themeOverride))
+                return Boolean(window.offlineStore.db)
             } catch (e) {
-                console.warn('Upload pending audios error before publish:', e)
+                return false
             }
-            const wasPublished = APP_STATE.isPublished === true
-            const currentWidth = APP_STATE.noteSettings.width || (APP_STATE.isEdit ? '1200px' : '100%')
-            const currentTheme = APP_STATE.theme || 'claude-canvas'
-            const draftModeSelect = document.querySelector('#share-vault-mode-select-draft')
-            const draftExpiresSelect = document.querySelector('#share-expires-select-draft')
-            const draftBurnBtn = document.querySelector('#burn-after-reading-btn-draft')
-            const draftUnlockSelect = document.querySelector('#share-unlock-select-draft')
-            const draftPulseSelect = document.querySelector('#share-pulse-select-draft')
-            const shareMode = draftModeSelect ? draftModeSelect.value : (APP_STATE.shareMode || 'standard')
-            const shareExpiresIn = draftExpiresSelect ? draftExpiresSelect.value : (APP_STATE.shareExpiresIn || 'none')
-            const shareBurnAfterReading = draftBurnBtn ? draftBurnBtn.getAttribute('data-burn-after-reading') === 'true' : (APP_STATE.shareBurnAfterReading === true || shareMode === 'burn')
-            const shareUnlockIn = draftUnlockSelect ? draftUnlockSelect.value : (APP_STATE.shareUnlockIn || '1d')
-            const sharePulseInterval = draftPulseSelect ? draftPulseSelect.value : (APP_STATE.sharePulseInterval || '7d')
+        }
 
-            let turnstileToken = explicitToken || ''
-            if (!turnstileToken && APP_STATE.turnstileSiteKey && !hasTurnstileClearance()) {
-                turnstileToken = await window.getTurnstileToken?.().catch(() => '')
-            }
-            const headers = { 'Content-Type': 'application/json' }
-            if (turnstileToken) {
-                headers['cf-turnstile-response'] = turnstileToken
-            }
+        const publishCurrentNote = async (preferences = defaultPublishPreferences, explicitToken = '') => {
+            if (!explicitToken && publishInFlight) return publishInFlight
+            const runPublish = async (preferences, tokenOverride = '') => {
+                window.canvasBridge?.flush?.()
+                try {
+                    await uploadPendingAudiosToCloud()
+                } catch (e) {
+                    console.warn('Upload pending audios error before publish:', e)
+                }
+                const wasPublished = APP_STATE.isPublished === true
+                const currentWidth = APP_STATE.noteSettings.width || (APP_STATE.isEdit ? '1200px' : '100%')
+                const currentTheme = APP_STATE.theme || 'claude-canvas'
+                const draftModeSelect = document.querySelector('#share-vault-mode-select-draft')
+                const draftExpiresSelect = document.querySelector('#share-expires-select-draft')
+                const draftBurnBtn = document.querySelector('#burn-after-reading-btn-draft')
+                const draftUnlockSelect = document.querySelector('#share-unlock-select-draft')
+                const draftPulseSelect = document.querySelector('#share-pulse-select-draft')
+                const shareMode = draftModeSelect ? draftModeSelect.value : (APP_STATE.shareMode || 'standard')
+                const shareExpiresIn = draftExpiresSelect ? draftExpiresSelect.value : (APP_STATE.shareExpiresIn || 'none')
+                const shareBurnAfterReading = draftBurnBtn ? draftBurnBtn.getAttribute('data-burn-after-reading') === 'true' : (APP_STATE.shareBurnAfterReading === true || shareMode === 'burn')
+                const shareUnlockIn = draftUnlockSelect ? draftUnlockSelect.value : (APP_STATE.shareUnlockIn || '1d')
+                const sharePulseInterval = draftPulseSelect ? draftPulseSelect.value : (APP_STATE.sharePulseInterval || '7d')
 
-            return fetchJson(window.location.pathname + '/setting', {
-                method: 'POST',
-                headers: headers,
-                body: JSON.stringify({
-                    share: true,
-                    content: $textarea ? $textarea.value : '',
-                    width: currentWidth,
-                    theme: currentTheme,
-                    autosave: preferences.autosave,
-                    publicIndex: preferences.publicIndex,
-                    shareMode,
-                    shareExpiresIn,
-                    shareBurnAfterReading,
-                    shareUnlockIn,
-                    sharePulseInterval,
-                    'cf-turnstile-response': turnstileToken || undefined,
-                })
-            })
-                .then(async res => {
-                    if (res.needTurnstile) {
-                        clearTurnstileClearance()
-                        const token = await openTurnstileVerificationModal()
-                        if (token) {
-                            markTurnstileCleared()
-                            return publishCurrentNote(preferences, token)
+                let turnstileToken = tokenOverride || ''
+                if (!turnstileToken && APP_STATE.turnstileSiteKey && !hasTurnstileClearance()) {
+                    turnstileToken = await window.getTurnstileToken?.().catch(() => '')
+                }
+                const currentContent = $textarea ? $textarea.value : ''
+                const localSaved = currentContent
+                    ? await persistOfflineDraft(currentContent, APP_STATE.isPublished ? 'pending' : 'draft', currentTheme)
+                    : false
+                const headers = { 'Content-Type': 'application/json' }
+                if (turnstileToken) {
+                    headers['cf-turnstile-response'] = turnstileToken
+                }
+
+                return fetchJson(getSettingPath(), {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({
+                        share: true,
+                        content: currentContent,
+                        width: currentWidth,
+                        theme: currentTheme,
+                        autosave: preferences.autosave,
+                        publicIndex: preferences.publicIndex,
+                        shareMode,
+                        shareExpiresIn,
+                        shareBurnAfterReading,
+                        shareUnlockIn,
+                        sharePulseInterval,
+                        'cf-turnstile-response': turnstileToken || undefined,
+                    })
+                }, 30000, { retries: 1 })
+                    .then(async res => {
+                        if (res.needTurnstile) {
+                            clearTurnstileClearance()
+                            const token = await openTurnstileVerificationModal()
+                            if (token) {
+                                markTurnstileCleared()
+                                return runPublish(preferences, token)
+                            }
+                            if ($shareBtn) {
+                                $shareBtn.classList.remove('is-checked')
+                                $shareBtn.setAttribute('aria-pressed', 'false')
+                            }
+                            window.showToast?.(APP_STATE.lang === 'zh-TW' ? '已取消安全驗證，筆記未發布' : 'Verification cancelled, note not published')
+                            return false
                         }
+                        if (res.err !== 0) {
+                            if ($shareBtn) {
+                                $shareBtn.classList.remove('is-checked')
+                                $shareBtn.setAttribute('aria-pressed', 'false')
+                            }
+                            errHandle(res.msg);
+                            return false;
+                        }
+                        markTurnstileCleared()
+                        const nextShareId = typeof res.data === 'string' ? res.data.trim() : ''
+                        if (!nextShareId) {
+                            errHandle(APP_STATE.lang === 'zh-TW' ? '發布失敗：伺服器未回傳分享連結' : 'Publish failed: the server did not return a share link')
+                            return false
+                        }
+                        APP_STATE.isPublished = true;
+                        APP_STATE.shareId = nextShareId;
+                        APP_STATE.shareMode = shareMode;
+                        APP_STATE.shareExpiresIn = shareExpiresIn;
+                        APP_STATE.shareBurnAfterReading = shareBurnAfterReading;
+                        APP_STATE.shareUnlockIn = shareUnlockIn;
+                        APP_STATE.sharePulseInterval = sharePulseInterval;
+                        const liveModeSelect = document.querySelector('#share-vault-mode-select')
+                        if (liveModeSelect && shareMode) {
+                            liveModeSelect.value = shareMode
+                            if (typeof syncVaultModeUI === 'function') syncVaultModeUI(shareMode, false)
+                        }
+                        const liveExpiresSelect = document.querySelector('#share-expires-select')
+                        if (liveExpiresSelect && shareExpiresIn) liveExpiresSelect.value = shareExpiresIn
+                        const liveBurnBtn = document.querySelector('#burn-after-reading-btn')
+                        if (liveBurnBtn) {
+                            liveBurnBtn.classList.toggle('opt-button-accent', shareBurnAfterReading)
+                            liveBurnBtn.setAttribute('data-burn-after-reading', String(shareBurnAfterReading))
+                            liveBurnBtn.setAttribute('aria-pressed', String(shareBurnAfterReading))
+                            liveBurnBtn.textContent = shareBurnAfterReading ? (getI18n('burnAfterReadingOn') || 'On') : (getI18n('burnAfterReadingOff') || 'Off')
+                        }
+                        const liveUnlockSelect = document.querySelector('#share-unlock-select')
+                        if (liveUnlockSelect && shareUnlockIn) liveUnlockSelect.value = shareUnlockIn
+                        const livePulseSelect = document.querySelector('#share-pulse-select')
+                        if (livePulseSelect && sharePulseInterval) livePulseSelect.value = sharePulseInterval
+                        if (!wasPublished) APP_STATE.annotationsEnabled = true;
+                        APP_STATE.autosave = preferences.autosave === true;
+                        APP_STATE.publicIndex = preferences.publicIndex === true;
+                        APP_STATE.updateAt = Math.floor(Date.now() / 1000);
+                        if ($textarea) {
+                            savedContent = currentContent;
+                            if ($textarea.value === currentContent) {
+                                clearAutosaveTimer();
+                                window.offlineStore?.updateSyncStatus?.(APP_STATE.path, 'synced');
+                            } else {
+                                showSaveStatus(APP_STATE.lang === 'zh-TW' ? '尚未儲存' : 'Unsaved changes');
+                                scheduleAutosave();
+                            }
+                        } else {
+                            clearAutosaveTimer();
+                        }
+                        if ($shareBtn) {
+                            $shareBtn.classList.add('is-checked')
+                            $shareBtn.setAttribute('aria-pressed', 'true')
+                        }
+                        syncShareStateUI();
+                        recordShareHistory('created', getCurrentShareUrl(), APP_STATE.title);
+                        syncPublicIndexButton();
+                        syncAnnotationsEnabledButton();
+                        refreshPublicationVersionCount();
+                        window.showToast?.(getI18n('publicationPublished'));
+                        return true;
+                    })
+                    .catch(err => {
                         if ($shareBtn) {
                             $shareBtn.classList.remove('is-checked')
                             $shareBtn.setAttribute('aria-pressed', 'false')
                         }
-                        window.showToast?.(APP_STATE.lang === 'zh-TW' ? '已取消安全驗證，筆記未發布' : 'Verification cancelled, note not published')
-                        return false
-                    }
-                    if (res.err !== 0) {
-                        if ($shareBtn) {
-                            $shareBtn.classList.remove('is-checked')
-                            $shareBtn.setAttribute('aria-pressed', 'false')
-                        }
-                        errHandle(res.msg);
+                        errHandle(formatPublishNetworkError(err, { localSaved }));
                         return false;
-                    }
-                    markTurnstileCleared()
-                    const nextShareId = typeof res.data === 'string' ? res.data.trim() : ''
-                    if (!nextShareId) {
-                        errHandle(APP_STATE.lang === 'zh-TW' ? '發布失敗：伺服器未回傳分享連結' : 'Publish failed: the server did not return a share link')
-                        return false
-                    }
-                    APP_STATE.isPublished = true;
-                    APP_STATE.shareId = nextShareId;
-                    APP_STATE.shareMode = shareMode;
-                    APP_STATE.shareExpiresIn = shareExpiresIn;
-                    APP_STATE.shareBurnAfterReading = shareBurnAfterReading;
-                    APP_STATE.shareUnlockIn = shareUnlockIn;
-                    APP_STATE.sharePulseInterval = sharePulseInterval;
-                    const liveModeSelect = document.querySelector('#share-vault-mode-select')
-                    if (liveModeSelect && shareMode) {
-                        liveModeSelect.value = shareMode
-                        if (typeof syncVaultModeUI === 'function') syncVaultModeUI(shareMode, false)
-                    }
-                    const liveExpiresSelect = document.querySelector('#share-expires-select')
-                    if (liveExpiresSelect && shareExpiresIn) liveExpiresSelect.value = shareExpiresIn
-                    const liveBurnBtn = document.querySelector('#burn-after-reading-btn')
-                    if (liveBurnBtn) {
-                        liveBurnBtn.classList.toggle('opt-button-accent', shareBurnAfterReading)
-                        liveBurnBtn.setAttribute('data-burn-after-reading', String(shareBurnAfterReading))
-                        liveBurnBtn.setAttribute('aria-pressed', String(shareBurnAfterReading))
-                        liveBurnBtn.textContent = shareBurnAfterReading ? (getI18n('burnAfterReadingOn') || 'On') : (getI18n('burnAfterReadingOff') || 'Off')
-                    }
-                    const liveUnlockSelect = document.querySelector('#share-unlock-select')
-                    if (liveUnlockSelect && shareUnlockIn) liveUnlockSelect.value = shareUnlockIn
-                    const livePulseSelect = document.querySelector('#share-pulse-select')
-                    if (livePulseSelect && sharePulseInterval) livePulseSelect.value = sharePulseInterval
-                    if (!wasPublished) APP_STATE.annotationsEnabled = true;
-                    APP_STATE.autosave = preferences.autosave === true;
-                    APP_STATE.publicIndex = preferences.publicIndex === true;
-                    APP_STATE.updateAt = Math.floor(Date.now() / 1000);
-                    savedContent = $textarea ? $textarea.value : savedContent;
-                    clearAutosaveTimer();
-                    if ($shareBtn) {
-                        $shareBtn.classList.add('is-checked')
-                        $shareBtn.setAttribute('aria-pressed', 'true')
-                    }
-                    syncShareStateUI();
-                    recordShareHistory('created', getCurrentShareUrl(), APP_STATE.title);
-                    syncPublicIndexButton();
-                    syncAnnotationsEnabledButton();
-                    refreshPublicationVersionCount();
-                    window.showToast?.(getI18n('publicationPublished'));
-                    return true;
+                    })
+            }
+            if (explicitToken) {
+                return runPublish(preferences, explicitToken)
+            }
+            publishInFlight = runPublish(preferences, '')
+                .finally(() => {
+                    publishInFlight = null
                 })
-                .catch(err => {
-                    if ($shareBtn) {
-                        $shareBtn.classList.remove('is-checked')
-                        $shareBtn.setAttribute('aria-pressed', 'false')
-                    }
-                    errHandle(err);
-                    return false;
-                })
+            return publishInFlight
         }
 
         const confirmUnpublish = async () => {
@@ -4447,7 +4556,7 @@ ${getMarkdownCss()}
         }
 
         const openPublishOptions = () => {
-            if (!$publishNudgeModal || APP_STATE.isPublished || !APP_STATE.isEdit) return;
+            if (!$publishNudgeModal || APP_STATE.isPublished || !APP_STATE.isEdit || publishInFlight) return;
             if (!$textarea || !$textarea.value.trim()) {
                 window.showToast?.(APP_STATE.lang === 'zh-TW' ? '請先輸入筆記內容後再發布並同步' : 'Please enter note content before publishing & syncing')
                 return;
@@ -4479,11 +4588,30 @@ ${getMarkdownCss()}
         }
 
         if ($publishNudgePublish) {
-            $publishNudgePublish.addEventListener('click', () => {
+            $publishNudgePublish.addEventListener('click', async () => {
+                if (publishInFlight) return;
                 const preferences = readPublishPreferencesFromDialog()
                 savePublishPreferences(preferences)
                 closePublishNudge();
-                if (preferences.publish) publishCurrentNote(preferences);
+                if (!preferences.publish) return;
+                $publishNudgePublish.disabled = true
+                const quickBtn = document.querySelector('#quick-share-url-btn')
+                const quickLabel = document.querySelector('#quick-share-url-label')
+                if (quickBtn) {
+                    quickBtn.classList.add('is-busy')
+                    quickBtn.disabled = true
+                }
+                if (quickLabel) quickLabel.textContent = APP_STATE.lang === 'zh-TW' ? '發布中...' : 'Publishing...'
+                try {
+                    await publishCurrentNote(preferences);
+                } finally {
+                    $publishNudgePublish.disabled = false
+                    if (quickBtn) {
+                        quickBtn.classList.remove('is-busy')
+                        quickBtn.disabled = false
+                    }
+                    syncShareStateUI()
+                }
             });
         }
         $publishPreferenceInputs.forEach(input => {
@@ -5376,7 +5504,7 @@ ${getMarkdownCss()}
                 const isMd = !previousIsMd
                 this.classList.toggle('is-checked', isMd)
                 this.setAttribute('aria-pressed', isMd ? 'true' : 'false')
-                fetchJson(window.location.pathname + '/setting', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: isMd ? 'md' : 'plain' }) })
+                fetchJson(getSettingPath(), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: isMd ? 'md' : 'plain' }) }, 30000, { retries: 1 })
                     .then(res => {
                         if (res.err !== 0) {
                             this.classList.toggle('is-checked', previousIsMd)
@@ -5388,15 +5516,13 @@ ${getMarkdownCss()}
                     .catch(err => {
                         this.classList.toggle('is-checked', previousIsMd)
                         this.setAttribute('aria-pressed', previousIsMd ? 'true' : 'false')
-                        errHandle(err)
+                        errHandle(formatPublishNetworkError(err))
                     })
             }
         }
 
         // Published share URL
         const $shareOpenLink = document.querySelector('#share-open-link');
-        const $shareCopyBtn = document.querySelector('#copy-share-btn');
-        const $copyPresentShareBtn = document.querySelector('#copy-present-share-btn');
         const $copyEmbedCodeBtn = document.querySelector('#copy-embed-code-btn');
         const $embedModal = document.querySelector('.embed-modal');
         const $embedModalCode = $embedModal?.querySelector('.embed-modal-code');
@@ -5463,23 +5589,28 @@ ${getMarkdownCss()}
                 $shareBookOpenLink.href = shareUrl + '/book'
             })
         }
-        const $copyBookShareBtn = document.querySelector('#copy-book-share-btn');
         if (initialShareUrl) recordShareHistory('created', initialShareUrl, APP_STATE.title);
-        if ($shareCopyBtn) {
-            $shareCopyBtn.addEventListener('click', async () => {
-                const shareUrl = getCurrentShareUrl()
-                if (!shareUrl) {
-                    errHandle(APP_STATE.lang === 'zh-TW' ? '請先發布文章' : 'Publish this note first')
-                    return
-                }
-                try { 
-                    await clipboardCopy(shareUrl); 
-                    window.showToast(getI18n('copied') || 'Copied!'); 
-                } catch (e) { 
-                    window.showAppDialog({ title: getI18n('err'), message: getI18n('copyFailed'), kind: 'error' });
-                }
-            });
+        const copyShareTargetUrl = async (kind) => {
+            const presentationUrl = getCurrentShareUrl()
+            if (!presentationUrl) {
+                errHandle(APP_STATE.lang === 'zh-TW' ? '請先發布文章' : 'Publish this note first')
+                return
+            }
+            const targetUrl = kind === 'present'
+                ? presentationUrl + '/present'
+                : (kind === 'book' ? presentationUrl + '/book' : presentationUrl)
+            try {
+                await clipboardCopy(targetUrl)
+                window.showToast(getI18n('copied') || 'Copied!')
+            } catch (e) {
+                window.showAppDialog({ title: getI18n('err'), message: getI18n('copyFailed'), kind: 'error' })
+            }
         }
+        document.addEventListener('click', (event) => {
+            const btn = event.target.closest('[data-copy-url-kind]')
+            if (!btn) return
+            copyShareTargetUrl(btn.getAttribute('data-copy-url-kind'))
+        })
         const $quickShareUrlBtn = document.querySelector('#quick-share-url-btn');
         let quickShareResetTimer = null;
         const triggerQuickShareUrl = async () => {
@@ -5577,36 +5708,6 @@ ${getMarkdownCss()}
         };
         if ($quickShareUrlBtn) {
             $quickShareUrlBtn.addEventListener('click', triggerQuickShareUrl);
-        }
-        if ($copyPresentShareBtn) {
-            $copyPresentShareBtn.addEventListener('click', async () => {
-                const presentationUrl = getCurrentShareUrl()
-                if (!presentationUrl) {
-                    errHandle(APP_STATE.lang === 'zh-TW' ? '請先發布文章' : 'Publish this note first')
-                    return
-                }
-                try { 
-                    await clipboardCopy(presentationUrl + '/present'); 
-                    window.showToast(getI18n('copied') || 'Copied!'); 
-                } catch (e) { 
-                    window.showAppDialog({ title: getI18n('err'), message: getI18n('copyFailed'), kind: 'error' });
-                }
-            });
-        }
-        if ($copyBookShareBtn) {
-            $copyBookShareBtn.addEventListener('click', async () => {
-                const bookUrl = getCurrentShareUrl()
-                if (!bookUrl) {
-                    errHandle(APP_STATE.lang === 'zh-TW' ? '請先發布文章' : 'Publish this note first')
-                    return
-                }
-                try { 
-                    await clipboardCopy(bookUrl + '/book'); 
-                    window.showToast(getI18n('copied') || 'Copied!'); 
-                } catch (e) { 
-                    window.showAppDialog({ title: getI18n('err'), message: getI18n('copyFailed'), kind: 'error' });
-                }
-            });
         }
         if ($copyEmbedCodeBtn && $embedModal && $embedModalCode) {
             const getEmbedCode = () => {
@@ -6345,8 +6446,8 @@ ${getMarkdownCss()}
             if (unpublishBtn) {
                 e.preventDefault();
                 if (!await confirmUnpublish()) return;
-                fetchJson(window.location.pathname + '/setting', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ share: false }) })
-                    .then(res => { if (res.err !== 0) { return errHandle(res.msg); } allowUnload = true; window.location.reload(); }).catch(err => errHandle(err));
+                fetchJson(getSettingPath(), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ share: false }) }, 30000, { retries: 1 })
+                    .then(res => { if (res.err !== 0) { return errHandle(res.msg); } allowUnload = true; window.location.reload(); }).catch(err => errHandle(formatPublishNetworkError(err)));
                 return;
             }
             const publishMenuBtn = e.target.closest('.share-publish-menu-btn');
@@ -7115,6 +7216,7 @@ ${getMarkdownCss()}
                 const theme = item.dataset.themeName;
                 if (!theme || !THEMES[theme]) return;
 
+                const prevPreviewTheme = APP_STATE.theme;
                 APP_STATE.theme = theme;
                 if (themeStyleNode) themeStyleNode.textContent = THEMES[theme];
                 document.documentElement.setAttribute('data-preview-theme', theme);
@@ -7122,25 +7224,21 @@ ${getMarkdownCss()}
                 try {
                     const syncKey = 'cf-notepad-ui-theme-sync';
                     const prevKey = 'cf-notepad-ui-theme-prev';
-                    const currentUiMode = typeof window.__getUiThemeMode === 'function'
+                    const overrideKey = 'cf-notepad-ui-theme-manual-override';
+                    if (theme !== prevPreviewTheme) {
+                        try { sessionStorage.removeItem(overrideKey); } catch(err) {}
+                    }
+                    let currentUiMode = typeof window.__getUiThemeMode === 'function'
                         ? window.__getUiThemeMode()
                         : (localStorage.getItem('cf-notepad-ui-theme') || 'auto');
-                    if (window.__isDarkPreviewTheme?.(theme)) {
-                        if (currentUiMode !== 'dark') {
-                            if (localStorage.getItem(syncKey) !== '1') {
-                                localStorage.setItem(prevKey, currentUiMode || 'auto');
-                            }
-                            localStorage.setItem(syncKey, '1');
-                            window.__applyUiTheme?.('dark', { persist: true, toast: false });
-                        } else {
-                            window.__applyUiTheme?.('dark', { persist: false, toast: false });
-                        }
-                    } else if (localStorage.getItem(syncKey) === '1') {
-                        const prevMode = localStorage.getItem(prevKey) || 'light';
+                    if (localStorage.getItem(syncKey) === '1') {
+                        const restoredMode = localStorage.getItem(prevKey) || 'auto';
+                        localStorage.setItem('cf-notepad-ui-theme', restoredMode);
                         localStorage.removeItem(syncKey);
                         localStorage.removeItem(prevKey);
-                        window.__applyUiTheme?.(prevMode, { persist: true, toast: false });
+                        currentUiMode = restoredMode;
                     }
+                    window.__applyUiTheme?.(currentUiMode, { persist: false, toast: false });
                     window.__syncAppearanceStates?.();
                 } catch (syncErr) {}
 
@@ -7829,23 +7927,37 @@ themeCss + '\\n' +
                 try { return localStorage.getItem(UI_THEME_STORAGE_KEY) || 'auto'; } catch(e) { return 'auto'; }
             }
 
+            function getManualOverrideTheme() {
+                try { return sessionStorage.getItem('cf-notepad-ui-theme-manual-override') || ''; } catch(e) { return ''; }
+            }
+
+            function isPreviewDarkActive() {
+                return Boolean(window.__isDarkPreviewTheme?.(APP_STATE.theme)) && getManualOverrideTheme() !== (APP_STATE.theme || '');
+            }
+
             function applyTheme(theme, options = {}) {
-                const isDark = theme === 'dark' || (theme === 'auto' && (mediaQuery.matches || Boolean(window.__isDarkPreviewTheme?.(APP_STATE.theme))));
-                if (theme === 'dark' || (theme === 'auto' && isDark)) {
-                    root.setAttribute('data-ui-theme', 'dark');
-                } else if (theme === 'light') {
-                    root.setAttribute('data-ui-theme', 'light');
-                } else {
-                    root.setAttribute('data-ui-theme', 'auto');
-                }
                 if (options.manual) {
                     try {
                         localStorage.removeItem('cf-notepad-ui-theme-sync');
                         localStorage.removeItem('cf-notepad-ui-theme-prev');
+                        if (theme === 'light' && window.__isDarkPreviewTheme?.(APP_STATE.theme)) {
+                            sessionStorage.setItem('cf-notepad-ui-theme-manual-override', APP_STATE.theme || '');
+                        } else {
+                            sessionStorage.removeItem('cf-notepad-ui-theme-manual-override');
+                        }
                     } catch(e) {}
                 }
                 if (options.persist) {
                     try { localStorage.setItem(UI_THEME_STORAGE_KEY, theme); } catch(e) {}
+                }
+                const previewIsDark = isPreviewDarkActive();
+                const isDark = theme === 'dark' || previewIsDark || (theme === 'auto' && mediaQuery.matches);
+                if (isDark) {
+                    root.setAttribute('data-ui-theme', 'dark');
+                } else if (theme === 'light' || (window.__isDarkPreviewTheme?.(APP_STATE.theme) && getManualOverrideTheme() === (APP_STATE.theme || ''))) {
+                    root.setAttribute('data-ui-theme', 'light');
+                } else {
+                    root.setAttribute('data-ui-theme', 'auto');
                 }
                 updateIcon(theme);
                 window.__syncAppearanceStates?.();
@@ -7866,7 +7978,7 @@ themeCss + '\\n' +
             window.__getUiThemeMode = getSavedTheme;
 
             function updateIcon(theme) {
-                const isDark = theme === 'dark' || (theme === 'auto' && (mediaQuery.matches || Boolean(window.__isDarkPreviewTheme?.(APP_STATE.theme))));
+                const isDark = theme === 'dark' || isPreviewDarkActive() || (theme === 'auto' && mediaQuery.matches);
                 root.classList.toggle('wa-theme-dark', isDark);
                 if (!$themeBtn) return;
                 $themeBtn.classList.toggle('is-dark', isDark);
@@ -7886,7 +7998,7 @@ themeCss + '\\n' +
                 $themeBtn.addEventListener('click', (e) => {
                     e.preventDefault();
                     const nowIsDark = root.getAttribute('data-ui-theme') === 'dark' ||
-                        (root.getAttribute('data-ui-theme') === 'auto' && mediaQuery.matches);
+                        (root.getAttribute('data-ui-theme') === 'auto' && (mediaQuery.matches || isPreviewDarkActive()));
                     const nextTheme = nowIsDark ? 'light' : 'dark';
                     applyTheme(nextTheme, { persist: true, manual: true });
                     if (typeof window.showToast === 'function') {
