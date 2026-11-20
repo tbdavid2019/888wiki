@@ -2,7 +2,7 @@ import dayjs from 'dayjs'
 import { Router } from 'itty-router'
 import { Cookies } from './cookie_compat.mjs'
 import jwt from '@tsndr/cloudflare-worker-jwt'
-import { queryNote, MD5, checkAuth, genRandomStr, returnPage, returnJSON, saltPw, passwordMatches, getPasswordRole, getI18n, deleteEmptyPages, deleteNoteHistoryForPath } from './helper.js'
+import { queryNote, MD5, checkAuth, genRandomStr, returnPage, returnJSON, saltPw, passwordMatches, constantTimeStringCompare, getPasswordRole, getI18n, deleteEmptyPages, deleteNoteHistoryForPath } from './helper.js'
 import { APP_NAME, getSlugLength, getAdminPath, getAdminPassword, getEnableR2, getR2Domain, getGaMeasurementId, getWebtalkConfig, getSecret, DEFAULT_PREVIEW_WIDTH, normalizePreviewWidth, isTurnstileEnabled } from './constant.js'
 import { verifyTurnstileAccess } from './turnstile.mjs'
 import { NOTEPAD_ICON_SVG } from './icon.js'
@@ -13,9 +13,12 @@ import {
     base64UrlToBytes,
     bytesToBase64Url,
     parseAttestationObject,
+    verifyFidoRegistration,
     verifyFidoAssertion,
+    extractFidoSignCount,
     getFidoCredentials,
     saveFidoCredential,
+    updateFidoCredentialSignCount,
     deleteFidoCredential,
     storeFidoChallenge,
     verifyAndConsumeFidoChallenge,
@@ -40,7 +43,7 @@ import { renderBlockToHtml, blockToMarkdown, parseBlockDocument, validateBlockDo
 import { canvasToMarkdown, validateCanvasDocument, parseCanvasDocument } from './canvas_document.mjs'
 import { whiteboardToMarkdown, validateWhiteboardDocument, parseWhiteboardDocument, DEFAULT_WHITEBOARD_DOCUMENT } from './whiteboard_document.mjs'
 import { renderMarkdownToHtml, parseHtmlToMarkdown, extractMarkdownData, lintMarkdownText } from './markdown-processor.mjs'
-import { driverQueryNote, driverPutNote, driverDeleteNote, driverQueryShare, driverPutShare, driverDeleteShare, driverSetShareStatus, driverGetShareStatus, driverFindNoteByShareId, driverClaimBurnShare } from './storage_driver.mjs'
+import { driverQueryNote, driverPutNote, driverDeleteNote, driverListNotes, driverQueryShare, driverPutShare, driverDeleteShare, driverSetShareStatus, driverGetShareStatus, driverFindNoteByShareId, driverClaimBurnShare, driverRecordBurnView } from './storage_driver.mjs'
 import { summarizeHistoryContent } from './note_history_presenter.js'
 import {
     AGENT_SKILL_MARKDOWN,
@@ -103,6 +106,7 @@ import {
 } from './ai_assistant_policy.mjs'
 import {
     executeLlmWithFallback,
+    extractAiText,
 } from './llm_gateway.mjs'
 
 // init
@@ -181,80 +185,6 @@ function readApiPassword(request, bodyPassword) {
     const authHeader = request.headers.get('Authorization')
     const headerPw = authHeader ? authHeader.replace('Bearer ', '').trim() : null
     return queryPw || headerPw || bodyPassword || null
-}
-
-function normalizeAiText(value) {
-    if (typeof value !== 'string') return ''
-    return value.replace(/\u0000/g, '').trim()
-}
-
-function extractAiText(payload) {
-    if (!payload) return ''
-    if (typeof payload === 'string') return normalizeAiText(payload)
-
-    const directCandidates = [
-        payload.response,
-        payload.output_text,
-        payload.text,
-        payload.content,
-        payload.answer,
-        payload.result?.response,
-        payload.result?.output_text,
-        payload.result?.text,
-        payload.result?.content,
-        payload.choices?.[0]?.message?.content,
-        payload.choices?.[0]?.text,
-    ]
-
-    for (const candidate of directCandidates) {
-        if (typeof candidate === 'string') {
-            const normalized = normalizeAiText(candidate)
-            if (normalized) return normalized
-        }
-
-        if (Array.isArray(candidate)) {
-            const joined = candidate
-                .map(item => {
-                    if (typeof item === 'string') return item
-                    if (typeof item?.text === 'string') return item.text
-                    if (typeof item?.content === 'string') return item.content
-                    return ''
-                })
-                .filter(Boolean)
-                .join('\n')
-            const normalized = normalizeAiText(joined)
-            if (normalized) return normalized
-        }
-    }
-
-    const outputCandidates = [
-        payload.output,
-        payload.result?.output,
-        payload.response?.output,
-    ]
-
-    for (const output of outputCandidates) {
-        if (!Array.isArray(output)) continue
-
-        const text = output
-            .flatMap(item => {
-                if (typeof item?.text === 'string') return [item.text]
-                if (!Array.isArray(item?.content)) return []
-                return item.content
-                    .map(part => {
-                        if (typeof part?.text === 'string') return part.text
-                        if (typeof part?.output_text === 'string') return part.output_text
-                        return ''
-                    })
-                    .filter(Boolean)
-            })
-            .join('\n')
-
-        const normalized = normalizeAiText(text)
-        if (normalized) return normalized
-    }
-
-    return ''
 }
 
 function resolveAiBinding(env) {
@@ -484,14 +414,7 @@ function formatSitemapLastmod(updateAt) {
 }
 
 async function buildSitemapEntries(origin) {
-    const keys = []
-    let cursor
-
-    do {
-        const page = await getNotesNamespace().list(cursor ? { cursor } : undefined)
-        keys.push(...page.keys)
-        cursor = page.list_complete ? undefined : page.cursor
-    } while (cursor)
+    const keys = await driverListNotes({ includeContent: false })
 
     const publicKeys = keys.filter(note =>
         note?.metadata?.share === true && note?.metadata?.publicIndex === true
@@ -787,7 +710,6 @@ router.get('/app.webmanifest', () => {
 
 async function verifyAdminSession(cookie, adminPassword) {
     if (!cookie || !cookie.admin_session || !adminPassword) return false
-    if (cookie.admin_session === adminPassword) return true
     try {
         const secret = getSecret() || adminPassword
         const valid = await jwt.verify(cookie.admin_session, secret)
@@ -833,17 +755,8 @@ const handleAdminGet = async (request) => {
     return returnPage('Admin', { lang, adminPath, fidoCredentials, fidoCredentialsCount: fidoCredentials.length })
 }
 
-async function listAllAdminNotes() {
-    const notes = []
-    let cursor
-
-    do {
-        const page = await getNotesNamespace().list(cursor ? { cursor } : undefined)
-        notes.push(...(page.keys || []))
-        cursor = page.list_complete ? undefined : page.cursor
-    } while (cursor)
-
-    return notes
+async function listAllAdminNotes(includeContent = false) {
+    return driverListNotes({ includeContent })
 }
 
 async function mapWithConcurrency(items, worker, concurrency = 20) {
@@ -870,12 +783,12 @@ function isValidAdminNotePath(path) {
 
 async function buildAdminData(request) {
     const query = normalizeAdminQuery(new URL(request.url).searchParams)
-    const listedNotes = await listAllAdminNotes()
+    const needsContentScan = Boolean(query.title || query.text || query.sort === 'title')
+    const listedNotes = await listAllAdminNotes(needsContentScan)
     const historyConfig = getNoteHistoryConfig()
     const versionCounts = historyConfig.enabled && historyConfig.db
         ? await getNoteHistoryCounts(historyConfig.db, listedNotes.map(note => note.name))
         : new Map()
-    const needsContentScan = Boolean(query.title || query.text || query.sort === 'title')
 
     const records = await mapWithConcurrency(listedNotes, async note => {
         const metadata = note.metadata || {}
@@ -884,7 +797,7 @@ async function buildAdminData(request) {
 
         if (needsContentScan) {
             try {
-                content = await getNotesNamespace().get(note.name) || ''
+                content = note.hasContent ? (note.content || '') : ((await driverQueryNote(note.name)).value || '')
                 title = extractNoteTitle(content, title, decodeURIComponent(note.name))
             } catch (error) {
                 console.warn(`Admin note read failed for ${note.name}:`, error?.message || error)
@@ -913,10 +826,10 @@ async function buildAdminData(request) {
     if (!needsContentScan) {
         pagination.items = await mapWithConcurrency(pagination.items, async note => {
             try {
-                const content = await getNotesNamespace().get(note.path) || ''
+                const { value: content } = await driverQueryNote(note.path)
                 return {
                     ...note,
-                    title: extractNoteTitle(content, note.title, decodeURIComponent(note.path)),
+                    title: extractNoteTitle(content || '', note.title, decodeURIComponent(note.path)),
                 }
             } catch (error) {
                 return note
@@ -1104,7 +1017,11 @@ const handleAdminFido = async (request, adminPath) => {
                     expectedChallenge: clientData.challenge,
                     expectedOrigin: url.origin,
                     expectedRpId: url.hostname,
+                    previousSignCount: matchedCred.signCount || 0,
                 })
+
+                const nextSignCount = extractFidoSignCount(authenticatorData)
+                await updateFidoCredentialSignCount(kv, matchedCred.id, nextSignCount)
 
                 // Login successful! Set cookie
                 return new Response(JSON.stringify({ success: true, redirect: adminPath }), {
@@ -1146,31 +1063,30 @@ const handleAdminFido = async (request, adminPath) => {
             try {
                 const body = await request.json()
                 const { credential, name } = body || {}
-                if (!credential || !credential.id) {
-                    return new Response(JSON.stringify({ success: false, message: '缺少憑證資訊' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
+                if (!credential || !credential.id || !credential.response?.attestationObject || !credential.response?.clientDataJSON) {
+                    return new Response(JSON.stringify({ success: false, message: '缺少完整的 FIDO 註冊驗證資料' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
                 }
 
-                let publicKeyRaw = credential.publicKeyRaw
-                if (!publicKeyRaw && credential.response?.attestationObject) {
-                    const attestationBytes = base64UrlToBytes(credential.response.attestationObject)
-                    const parsed = parseAttestationObject(attestationBytes)
-                    publicKeyRaw = parsed.publicKeyRaw
+                const clientData = JSON.parse(new TextDecoder('utf-8').decode(base64UrlToBytes(credential.response.clientDataJSON)))
+                const challengeValid = await verifyAndConsumeFidoChallenge(kv, clientData.challenge, 'register')
+                if (!challengeValid) {
+                    return new Response(JSON.stringify({ success: false, message: '註冊 Challenge 驗證失敗或已逾期，請重試' }), { status: 403, headers: { 'Content-Type': 'application/json' } })
                 }
 
-                if (!publicKeyRaw) {
-                    return new Response(JSON.stringify({ success: false, message: '無法解析公鑰資訊' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
-                }
-
-                if (credential.response?.clientDataJSON) {
-                    const clientData = JSON.parse(new TextDecoder('utf-8').decode(base64UrlToBytes(credential.response.clientDataJSON)))
-                    await verifyAndConsumeFidoChallenge(kv, clientData.challenge, 'register')
-                }
+                const parsed = await verifyFidoRegistration({
+                    attestationObjectBase64: credential.response.attestationObject,
+                    clientDataJsonBase64: credential.response.clientDataJSON,
+                    expectedChallenge: clientData.challenge,
+                    expectedOrigin: url.origin,
+                    expectedRpId: url.hostname,
+                })
 
                 const updatedList = await saveFidoCredential(kv, {
                     id: credential.id,
-                    publicKeyRaw,
+                    publicKeyRaw: parsed.publicKeyRaw,
                     name: name || 'Touch ID 裝置',
                     createdAt: Date.now(),
+                    signCount: parsed.signCount || 0,
                 })
 
                 return new Response(JSON.stringify({ success: true, message: '裝置綁定成功！', credentials: updatedList }), { headers: { 'Content-Type': 'application/json' } })
@@ -1207,31 +1123,66 @@ const ALLOWED_IMAGE_MIME_MAP = {
     'image/avif': 'avif',
 }
 
-router.post('/upload', async (request) => {
-    if (!getEnableR2()) return returnJSON(403, 'R2 Upload Disabled')
+router.get('/img/*', async (request) => {
+    if (!getEnableR2()) return returnJSON(403, 'R2 Disabled')
+    const bucket = getImagesBucket()
+    if (!bucket) return new Response('R2 Bucket Not Configured', { status: 404 })
+    const url = new URL(request.url)
+    const key = decodeURIComponent(url.pathname.slice('/img/'.length)).replace(/^\/+/, '')
+    if (!key || key.includes('..')) {
+        return new Response('Invalid image key', { status: 400 })
+    }
+    const obj = await bucket.get(key)
+    if (!obj) {
+        return new Response('Not Found', { status: 404 })
+    }
+    const contentType = String(obj.httpMetadata?.contentType || 'application/octet-stream').toLowerCase()
+    const headers = {
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=31536000, immutable',
+        'X-Content-Type-Options': 'nosniff',
+    }
+    if (contentType.includes('svg') || contentType.includes('html') || contentType.includes('xml')) {
+        headers['Content-Security-Policy'] = "default-src 'none'; sandbox"
+        headers['Content-Disposition'] = `attachment; filename="${key.split('/').pop() || 'file'}"`
+    }
+    return new Response(obj.body, { headers })
+})
 
-    const cookie = Cookies.parse(request.headers.get('Cookie') || '')
-    const { valid, role } = await checkAuth(cookie, '')
-    const isAuthedUser = Boolean((valid && role === 'edit') || (cookie?.auth && (await jwt.verify(cookie.auth, getSecret()).catch(() => false))) || cookie?.admin_session)
+async function handleR2ImageUpload(request, { requireTurnstile = false } = {}) {
+    if (!getEnableR2()) return returnJSON(403, 'R2 Upload Disabled')
 
     let turnstileSetCookie = null
     let formData = null
-    if (isTurnstileEnabled() && !isAuthedUser) {
-        const headerToken = request.headers.get('cf-turnstile-response') || request.headers.get('x-turnstile-token')
-        let bodyToken = headerToken
-        if (!bodyToken) {
-            formData = await request.formData().catch(() => null)
-            bodyToken = formData?.get('cf-turnstile-response') || null
+
+    if (requireTurnstile) {
+        const cookie = Cookies.parse(request.headers.get('Cookie') || '')
+        const { valid, role } = await checkAuth(cookie, '')
+        let hasValidNoteAuth = Boolean(valid && role === 'edit')
+        if (!hasValidNoteAuth && cookie?.auth && getSecret()) {
+            const verifiedAuth = await jwt.verify(cookie.auth, getSecret()).catch(() => null)
+            hasValidNoteAuth = Boolean(verifiedAuth && verifiedAuth.payload?.path && verifiedAuth.payload?.role === 'edit')
         }
-        const turnstileCheck = await verifyTurnstileAccess(request, bodyToken)
-        if (!turnstileCheck.ok) {
-            return returnJSON(403, 'Turnstile verification required', { status: 403 }, {
-                needTurnstile: true,
-                reason: turnstileCheck.reason,
-            })
-        }
-        if (turnstileCheck.setCookieHeader) {
-            turnstileSetCookie = turnstileCheck.setCookieHeader
+        const isAdminAuthed = await verifyAdminSession(cookie, getAdminPassword())
+        const isAuthedUser = Boolean(hasValidNoteAuth || isAdminAuthed)
+
+        if (isTurnstileEnabled() && !isAuthedUser) {
+            const headerToken = request.headers.get('cf-turnstile-response') || request.headers.get('x-turnstile-token')
+            let bodyToken = headerToken
+            if (!bodyToken) {
+                formData = await request.formData().catch(() => null)
+                bodyToken = formData?.get('cf-turnstile-response') || null
+            }
+            const turnstileCheck = await verifyTurnstileAccess(request, bodyToken)
+            if (!turnstileCheck.ok) {
+                return returnJSON(403, 'Turnstile verification required', { status: 403 }, {
+                    needTurnstile: true,
+                    reason: turnstileCheck.reason,
+                })
+            }
+            if (turnstileCheck.setCookieHeader) {
+                turnstileSetCookie = turnstileCheck.setCookieHeader
+            }
         }
     }
 
@@ -1239,8 +1190,8 @@ router.post('/upload', async (request) => {
         if (!formData) {
             formData = await request.formData()
         }
-        const image = formData.get('image')
-        if (!image) return returnJSON(400, 'No image found')
+        const image = formData.get('image') || (!requireTurnstile ? formData.get('file') : null)
+        if (!image) return returnJSON(400, requireTurnstile ? 'No image found' : 'No image/file found in form data')
 
         const rawType = String(image.type || '').split(';')[0].trim().toLowerCase()
         const ext = ALLOWED_IMAGE_MIME_MAP[rawType]
@@ -1254,8 +1205,12 @@ router.post('/upload', async (request) => {
 
         const filename = `${dayjs().format('YYYY/MM')}/${genRandomStr(16)}.${ext}`
 
+        const putMetadata = { contentType: rawType }
+        if (rawType === 'image/svg+xml') {
+            putMetadata.contentDisposition = `attachment; filename="${filename.split('/').pop()}"`
+        }
         await getImagesBucket().put(filename, image, {
-            httpMetadata: { contentType: rawType }
+            httpMetadata: putMetadata
         })
         const url = getR2Domain() ? `${getR2Domain()}/${filename}` : `/img/${filename}`
 
@@ -1264,7 +1219,9 @@ router.post('/upload', async (request) => {
     } catch (e) {
         return returnJSON(500, e.message)
     }
-})
+}
+
+router.post('/upload', async (request) => handleR2ImageUpload(request, { requireTurnstile: true }))
 
 // URL to Markdown Conversion (Primary: 2md.aiurl.tw, Backup 1: 2md.glsoft.ai, Backup 2: create360.ai)
 async function processUrlToMarkdown(targetUrl) {
@@ -1277,9 +1234,9 @@ async function processUrlToMarkdown(targetUrl) {
     }
 
     try {
-        new URL(cleanUrl)
-    } catch (_) {
-        return returnJSON(400, '網址格式無效')
+        normalizeMetadataUrl(cleanUrl)
+    } catch (err) {
+        return returnJSON(400, err?.message || '網址格式無效或為不支援的內部位址')
     }
 
     const services = [
@@ -1602,14 +1559,41 @@ async function formatAudioSmartMarkdown(arg1, arg2, arg3 = {}) {
 
 router.post('/api/audio/transcribe', async (request, context = {}) => handleAudioTranscription(request, context))
 
+function isBlockedIpv4Octets(a, b) {
+    return a === 0 || a === 10 || a === 100 && b >= 64 && b <= 127 || a === 127 || a === 169 && b === 254 || a === 172 && b >= 16 && b <= 31 || a === 192 && b === 168 || a >= 224
+}
+
 function isBlockedMetadataHost(hostname) {
-    const host = String(hostname || '').toLowerCase().replace(/\.$/, '')
-    if (!host || host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal')) return true
-    if (host === '::1' || host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80:')) return true
-    const octets = host.split('.').map(Number)
-    if (octets.length !== 4 || octets.some(value => !Number.isInteger(value) || value < 0 || value > 255)) return false
-    const [a, b] = octets
-    return a === 0 || a === 10 || a === 127 || a === 169 && b === 254 || a === 172 && b >= 16 && b <= 31 || a === 192 && b === 168
+    const rawHost = String(hostname || '').toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '')
+    if (!rawHost || rawHost === 'localhost' || rawHost.endsWith('.local') || rawHost.endsWith('.internal')) return true
+    if (rawHost === '::' || rawHost === '::1' || rawHost.startsWith('fc') || rawHost.startsWith('fd') || rawHost.startsWith('fe80:')) return true
+    // IPv4-mapped IPv6 (e.g. ::ffff:127.0.0.1 or ::ffff:7f00:1)
+    if (rawHost.startsWith('::ffff:')) {
+        const mapped = rawHost.slice('::ffff:'.length)
+        if (mapped.includes('.')) return isBlockedMetadataHost(mapped)
+        const hexParts = mapped.split(':')
+        if (hexParts.length === 2) {
+            const hi = parseInt(hexParts[0], 16)
+            const lo = parseInt(hexParts[1], 16)
+            if (Number.isFinite(hi) && Number.isFinite(lo)) {
+                return isBlockedIpv4Octets((hi >> 8) & 0xff, hi & 0xff)
+            }
+        }
+        return true
+    }
+    // Single-integer or hex IPv4 (e.g. 2130706433, 0x7f000001)
+    if (/^(?:0x[0-9a-f]+|\d+)$/i.test(rawHost)) {
+        const num = rawHost.startsWith('0x') ? parseInt(rawHost, 16) : Number(rawHost)
+        if (!Number.isFinite(num) || num < 0 || num > 0xffffffff) return true
+        return isBlockedIpv4Octets((num >>> 24) & 0xff, (num >>> 16) & 0xff)
+    }
+    const parts = rawHost.split('.')
+    if (parts.length === 4 && parts.every(p => /^(?:0x[0-9a-f]+|0[0-7]*|\d+)$/i.test(p))) {
+        const octets = parts.map(p => (p.startsWith('0x') ? parseInt(p, 16) : p.startsWith('0') && p.length > 1 ? parseInt(p, 8) : Number(p)))
+        if (octets.some(v => !Number.isInteger(v) || v < 0 || v > 255)) return true
+        return isBlockedIpv4Octets(octets[0], octets[1])
+    }
+    return false
 }
 
 function normalizeMetadataUrl(value) {
@@ -1890,6 +1874,11 @@ async function handleDirectPdfExport(request) {
             markdown = url.searchParams.get('text')
         }
 
+        const MAX_PDF_INPUT_CHARS = 512 * 1024
+        if ((typeof markdown === 'string' && markdown.length > MAX_PDF_INPUT_CHARS) || (typeof html === 'string' && html.length > MAX_PDF_INPUT_CHARS)) {
+            return returnJSON(413, 'PDF input payload exceeds 512KB limit')
+        }
+
         if (!title || title === 'Document') {
             title = extractNoteTitle(markdown || html, 'Document')
         }
@@ -1970,7 +1959,7 @@ router.post('/share/:shareId/auth', async request => {
                     role,
                 }, {
                     'Set-Cookie': Cookies.serialize('auth', token, {
-                        path: role === 'edit' ? `/${path}` : `/share/${shareId}`,
+                        path: '/',
                         expires: dayjs().add(7, 'day').toDate(),
                         httpOnly: true,
                         secure: true,
@@ -2114,14 +2103,18 @@ async function renderSharePage(request, presentationMode = false, execution = {}
 
     if (metadata.shareBurnAfterReading === true && !isAuthor) {
         if (burnUnlocked) {
-            const claimed = await driverClaimBurnShare(shareId, path, now)
-            if (!claimed) {
+            const maxViews = Number(metadata.shareMaxViews) || 1
+            const burnResult = await driverRecordBurnView(shareId, path, maxViews, now)
+            if (!burnResult.claimed) {
                 return returnPage('ShareBurned', { lang, title: 'Share Destroyed', shareId, path, ext: { ...metadata, isAuthor: false } }, { status: 410 })
             }
-            metadata.share = false
-            metadata.shareBurnedAt = now
-            await syncShareMappings(path, { share: false }, metadata)
-            burnActiveNotice = true
+            metadata.shareViewCount = burnResult.viewCount
+            if (burnResult.burned) {
+                metadata.share = false
+                metadata.shareBurnedAt = now
+                await syncShareMappings(path, { share: false }, metadata)
+                burnActiveNotice = true
+            }
         }
     }
 
@@ -2239,7 +2232,18 @@ router.head('/share/:shareId', async (request, execution) => {
     return renderSharePage(request, false, execution)
 })
 
+function isSameOriginPost(request) {
+    const originHeader = request.headers.get('Origin')
+    if (!originHeader) return true
+    try {
+        return new URL(originHeader).origin === new URL(request.url).origin
+    } catch {
+        return false
+    }
+}
+
 router.post('/share/:shareId/reveal', async (request, execution) => {
+    if (!isSameOriginPost(request)) return returnJSON(403, 'Cross-origin reveal blocked', { status: 403 })
     return renderSharePage(request, false, execution, false, { burnUnlocked: true })
 })
 
@@ -2252,6 +2256,7 @@ router.head('/share/:shareId/present', async (request, execution) => {
 })
 
 router.post('/share/:shareId/present/reveal', async (request, execution) => {
+    if (!isSameOriginPost(request)) return returnJSON(403, 'Cross-origin reveal blocked', { status: 403 })
     return renderSharePage(request, true, execution, false, { burnUnlocked: true })
 })
 
@@ -2264,6 +2269,7 @@ router.head('/share/:shareId/book', async (request, execution) => {
 })
 
 router.post('/share/:shareId/book/reveal', async (request, execution) => {
+    if (!isSameOriginPost(request)) return returnJSON(403, 'Cross-origin reveal blocked', { status: 403 })
     return renderSharePage(request, false, execution, true, { burnUnlocked: true })
 })
 
@@ -2286,7 +2292,7 @@ async function handlePulseRequest(request) {
     const bearerToken = authHeader ? authHeader.replace('Bearer ', '').trim() : null
     const token = queryToken || bearerToken
 
-    const tokenMatches = token && metadata.sharePulseToken && token === metadata.sharePulseToken
+    const tokenMatches = Boolean(token && metadata.sharePulseToken && constantTimeStringCompare(String(token), String(metadata.sharePulseToken)))
     if (!isAuthor && !tokenMatches) {
         return returnJSON(403, 'Permission denied: invalid pulse token or author session', { status: 403 })
     }
@@ -2300,7 +2306,7 @@ async function handlePulseRequest(request) {
     metadata.sharePulseDueAt = nextDueAt
     metadata.shareLastPulseAt = now
     if (!metadata.sharePulseToken) {
-        metadata.sharePulseToken = (await MD5(path + now + 'pulse')).substring(0, 24)
+        metadata.sharePulseToken = genRandomStr(24)
     }
     await driverPutNote(path, value, metadata)
     await driverSetShareStatus(shareId, null)
@@ -2400,13 +2406,17 @@ router.post('/api/shares/:shareId/reveal', async request => {
     }
 
     if (metadata.shareBurnAfterReading === true && !isAuthor) {
-        const claimed = await driverClaimBurnShare(shareId, path, now)
-        if (!claimed) {
+        const maxViews = Number(metadata.shareMaxViews) || 1
+        const burnResult = await driverRecordBurnView(shareId, path, maxViews, now)
+        if (!burnResult.claimed) {
             return returnJSON(410, 'Share has been burned and destroyed', { status: 410 })
         }
-        metadata.share = false
-        metadata.shareBurnedAt = now
-        await syncShareMappings(path, { share: false }, metadata)
+        metadata.shareViewCount = burnResult.viewCount
+        if (burnResult.burned) {
+            metadata.share = false
+            metadata.shareBurnedAt = now
+            await syncShareMappings(path, { share: false }, metadata)
+        }
     }
 
     const title = extractNoteTitle(value, metadata?.title, decodeURIComponent(path))
@@ -2506,13 +2516,17 @@ async function handleSharePdfExport(request) {
 
         // Claim and burn share only after PDF generation succeeds
         if (metadata.shareBurnAfterReading === true && !isAuthor) {
-            const claimed = await driverClaimBurnShare(shareId, path, now)
-            if (!claimed) {
+            const maxViews = Number(metadata.shareMaxViews) || 1
+            const burnResult = await driverRecordBurnView(shareId, path, maxViews, now)
+            if (!burnResult.claimed) {
                 return returnJSON(410, 'Share has been burned and destroyed', { status: 410 })
             }
-            metadata.share = false
-            metadata.shareBurnedAt = now
-            await syncShareMappings(path, { share: false }, metadata)
+            metadata.shareViewCount = burnResult.viewCount
+            if (burnResult.burned) {
+                metadata.share = false
+                metadata.shareBurnedAt = now
+                await syncShareMappings(path, { share: false }, metadata)
+            }
         }
 
         const filename = `${title.replace(/[\/\\:*?"<>|]/g, '_') || shareId}.pdf`
@@ -2832,9 +2846,12 @@ router.delete('/api/shares/:shareId/annotations/:threadId', async request => {
 
 router.post('/api/shares/:shareId/ai-assistant', async (request, context = {}) => {
     const ai = resolveAiBinding(context?.env) || context?.env?.AI || globalThis.AI
-    const shareKv = context?.env?.SHARE || getShareNamespace()
     const shareId = decodeURIComponent(request.params.shareId)
-    let path = shareKv ? await shareKv.get(shareId) : null
+    let path = await driverQueryShare(shareId)
+    if (!path) {
+        const found = await driverFindNoteByShareId(shareId)
+        if (found) path = found.path
+    }
     if (!path) {
         const directNote = await queryNote(shareId)
         if (directNote?.metadata?.share === true) {
@@ -3268,12 +3285,16 @@ router.get('/api/:path', async (request) => {
         const queryPw = url.searchParams.get('pw')
         const authHeader = request.headers.get('Authorization')
         const headerPw = authHeader ? authHeader.replace('Bearer ', '').trim() : null
+        const cookie = Cookies.parse(request.headers.get('Cookie') || '')
+        const { valid: cookieAuthed } = await checkAuth(cookie, path)
 
-        const providedPw = queryPw || headerPw;
-        if (!providedPw) return returnJSON(401, 'Unauthorized: Password required')
+        const providedPw = queryPw || headerPw
+        if (!cookieAuthed && !providedPw) return returnJSON(401, 'Unauthorized: Password required')
 
-        const hasViewAccess = (metadata.vpw && await passwordMatches(providedPw, metadata.vpw)) ||
+        const hasViewAccess = cookieAuthed || (
+            (metadata.vpw && await passwordMatches(providedPw, metadata.vpw)) ||
             (metadata.pw && await passwordMatches(providedPw, metadata.pw))
+        )
 
         if (!hasViewAccess) return returnJSON(403, 'Forbidden: Incorrect password')
     }
@@ -3333,7 +3354,7 @@ async function handleNotePdfExport(request) {
             const { valid } = await checkAuth(cookie, path)
 
             const providedPw = queryPw || headerPw
-            const hasViewAccess = valid || (providedPw && (
+            const hasViewAccess = valid || isAuthor || (providedPw && (
                 (metadata.vpw && await passwordMatches(providedPw, metadata.vpw)) ||
                 (metadata.pw && await passwordMatches(providedPw, metadata.pw))
             ))
@@ -3379,35 +3400,7 @@ async function handleNotePdfExport(request) {
 router.get('/:path/export/pdf', async (request) => handleNotePdfExport(request))
 router.get('/api/:path/pdf', async (request) => handleNotePdfExport(request))
 
-router.post('/api/upload', async (request) => {
-    if (!getEnableR2()) return returnJSON(403, 'R2 Upload Disabled')
-    try {
-        const formData = await request.formData()
-        const image = formData.get('image') || formData.get('file')
-        if (!image) return returnJSON(400, 'No image/file found in form data')
-
-        const rawType = String(image.type || '').split(';')[0].trim().toLowerCase()
-        const ext = ALLOWED_IMAGE_MIME_MAP[rawType]
-        if (!ext) {
-            return returnJSON(400, 'Invalid or unsupported image MIME type')
-        }
-
-        if (image.size && image.size > 10 * 1024 * 1024) {
-            return returnJSON(413, 'File size exceeds 10MB limit')
-        }
-
-        const filename = `${dayjs().format('YYYY/MM')}/${genRandomStr(16)}.${ext}`
-
-        await getImagesBucket().put(filename, image, {
-            httpMetadata: { contentType: rawType }
-        })
-        const url = getR2Domain() ? `${getR2Domain()}/${filename}` : `/img/${filename}`
-
-        return returnJSON(0, url)
-    } catch (e) {
-        return returnJSON(500, e.message)
-    }
-})
+router.post('/api/upload', async (request) => handleR2ImageUpload(request, { requireTurnstile: false }))
 
 router.post('/api/:path', async (request) => {
     const { path } = request.params
@@ -3621,7 +3614,7 @@ router.post('/api/:path', async (request) => {
         updateMetadata.sharePulseDueAt = dayjs().unix() + pulseSec
         updateMetadata.shareLastPulseAt = dayjs().unix()
         if (!updateMetadata.sharePulseToken) {
-            updateMetadata.sharePulseToken = (await MD5(path + dayjs().unix() + 'pulse')).substring(0, 24)
+            updateMetadata.sharePulseToken = genRandomStr(24)
         }
     }
 
@@ -3695,37 +3688,12 @@ router.post('/api/:path', async (request) => {
         return returnJSON(0, responseData, { 'Set-Cookie': authorCookie })
     } catch (error) {
         console.error('API Error:', error)
-        return returnJSON(500, `API Internal Error: ${error.message}${error.stack ? '\n' + error.stack : ''}`)
+        return returnJSON(500, `API Internal Error: ${error.message}`)
     }
 })
 
-// Cloudflare bindings are populated in fetch() after this module is loaded.
-// Resolve the configured admin path per request so SCN_ADMIN_PATH is not
-// frozen to the local fallback during module evaluation.
-router.all('*', async (request) => {
-    const adminPath = getAdminPath()
-    const requestPath = new URL(request.url).pathname
-
-    if (requestPath.startsWith(adminPath + '/fido/')) {
-        return handleAdminFido(request, adminPath)
-    }
-
-    if (requestPath !== adminPath) return
-
-    if (request.method === 'GET' || request.method === 'HEAD') {
-        return handleAdminGet(request)
-    }
-
-    if (request.method === 'POST') {
-        return handleAdminPost(request)
-    }
-
-    return new Response('Method Not Allowed', { status: 405 })
-})
-
-router.get('/:path', async (request) => {
+async function handleDirectNoteRequest(request, { isHead = false } = {}) {
     const lang = getI18n(request)
-
     const { path } = request.params
 
     const cookie = Cookies.parse(request.headers.get('Cookie') || '')
@@ -3739,15 +3707,15 @@ router.get('/:path', async (request) => {
         : extractNoteTitle(value, metadata?.title, decodeURIComponent(path))
     const pageMetadata = newEntry ? { ...metadata, isNewEntry: true } : metadata
 
-    // Calculate shareId and auto-heal share mappings if note is published
+    // Calculate shareId and auto-heal share mappings only when missing
     let activeMetadata = metadata
-    if (metadata.share === true) {
+    if (metadata.share === true && !isHead) {
         const nextMeta = await ensureShareMetadata(path, metadata)
         if (nextMeta.shareSlug !== metadata.shareSlug) {
             activeMetadata = nextMeta
             await driverPutNote(path, value, nextMeta).catch(() => {})
+            await syncShareMappings(path, activeMetadata, metadata).catch(() => {})
         }
-        await syncShareMappings(path, activeMetadata, metadata).catch(() => {})
     }
     const shareId = await getShareIdForPath(path, activeMetadata)
 
@@ -3756,24 +3724,28 @@ router.get('/:path', async (request) => {
 
     if (!isAuthor && (metadata.share === true || metadata.shareMode || metadata.shareBurnAfterReading || metadata.shareBurnedAt || metadata.shareExpiresAt)) {
         if (metadata.shareBurnedAt) {
+            if (isHead) return new Response(null, { status: 410, headers: { 'content-type': 'text/html; charset=UTF-8' } })
             if (requestAcceptsMarkdown(request)) {
                 return new Response('Share has been burned and destroyed', { status: 410, headers: { 'content-type': 'text/plain; charset=UTF-8' } })
             }
             return returnPage('Page404', { lang, title: 'Burned', message: 'This share was configured to burn after reading and has already been destroyed.' }, { status: 410 })
         }
         if (metadata.shareExpiresAt && metadata.shareExpiresAt <= now) {
+            if (isHead) return new Response(null, { status: 410, headers: { 'content-type': 'text/html; charset=UTF-8' } })
             if (requestAcceptsMarkdown(request)) {
                 return new Response('Share has expired', { status: 410, headers: { 'content-type': 'text/plain; charset=UTF-8' } })
             }
             return returnPage('Page404', { lang, title: 'Expired', message: 'This shared note has expired and is no longer available.' }, { status: 410 })
         }
         if (isShareTimeLocked(metadata, now)) {
+            if (isHead) return new Response(null, { status: 423, headers: { 'content-type': 'text/html; charset=UTF-8' } })
             if (requestAcceptsMarkdown(request)) {
                 return new Response('Share is time-locked and cannot be viewed yet', { status: 423, headers: { 'content-type': 'text/plain; charset=UTF-8' } })
             }
             return returnPage('ShareTimeLocked', { lang, title: 'Time-Locked Note', shareId, path, ext: { ...pageMetadata, ...blockPageExt, isAuthor: false } }, { status: 423 })
         }
         if (metadata.shareMode === 'deadman' && metadata.sharePulseDueAt && metadata.sharePulseDueAt > now) {
+            if (isHead) return new Response(null, { status: 423, headers: { 'content-type': 'text/html; charset=UTF-8' } })
             if (requestAcceptsMarkdown(request)) {
                 return new Response("Dead Man's Switch is active. Vault is sealed until check-in expires.", { status: 423, headers: { 'content-type': 'text/plain; charset=UTF-8' } })
             }
@@ -3784,7 +3756,7 @@ router.get('/:path', async (request) => {
         }
     }
 
-    const embedMode = new URL(request.url).searchParams.get('embed') === '1'
+    const embedMode = !isHead && new URL(request.url).searchParams.get('embed') === '1'
 
     if (!metadata.pw && !metadata.vpw) {
         if (embedMode) {
@@ -3838,7 +3810,7 @@ router.get('/:path', async (request) => {
             )
         }
 
-        const authorCookie = await createAuthorCookie(path)
+        const headers = isHead ? undefined : { 'Set-Cookie': await createAuthorCookie(path) }
         return returnPage('Edit', {
             lang,
             title,
@@ -3846,7 +3818,7 @@ router.get('/:path', async (request) => {
             ext: { ...pageMetadata, ...blockPageExt, enableR2: getEnableR2(), ...await getEditorPublicationStats(path, metadata) },
             shareId,
             path,
-        }, { 'Set-Cookie': authorCookie })
+        }, headers)
     }
 
     if (valid && role === 'view') {
@@ -3870,109 +3842,35 @@ router.get('/:path', async (request) => {
         shareId,
         path,
     })
+}
+
+// Cloudflare bindings are populated in fetch() after this module is loaded.
+// Resolve the configured admin path per request so SCN_ADMIN_PATH is not
+// frozen to the local fallback during module evaluation.
+router.all('*', async (request) => {
+    const adminPath = getAdminPath()
+    const requestPath = new URL(request.url).pathname
+
+    if (requestPath.startsWith(adminPath + '/fido/')) {
+        return handleAdminFido(request, adminPath)
+    }
+
+    if (requestPath !== adminPath) return
+
+    if (request.method === 'GET' || request.method === 'HEAD') {
+        return handleAdminGet(request)
+    }
+
+    if (request.method === 'POST') {
+        return handleAdminPost(request)
+    }
+
+    return new Response('Method Not Allowed', { status: 405 })
 })
 
-router.head('/:path', async (request) => {
-    const { path } = request.params
+router.get('/:path', async (request) => handleDirectNoteRequest(request, { isHead: false }))
 
-    const cookie = Cookies.parse(request.headers.get('Cookie') || '')
-    const { value, metadata } = await queryNote(path)
-    const blockPageExt = getBlockPageExt(value, metadata)
-    const markdownExportContent = getMarkdownExportContent(value, metadata)
-    const lang = getI18n(request)
-    const newEntry = isNewNoteEntry(request.url, value, metadata)
-    const title = !String(value || '').trim() && !metadata?.title
-        ? formatNewNoteTitle(lang)
-        : extractNoteTitle(value, metadata?.title, decodeURIComponent(path))
-    const pageMetadata = newEntry ? { ...metadata, isNewEntry: true } : metadata
-    const shareId = await getShareIdForPath(path, metadata)
-
-    const isAuthor = await isNoteAuthor(request, path, cookie)
-    const now = Math.floor(Date.now() / 1000)
-
-    if (!isAuthor && (metadata.share === true || metadata.shareMode || metadata.shareBurnAfterReading || metadata.shareBurnedAt || metadata.shareExpiresAt)) {
-        if (metadata.shareBurnedAt) {
-            return new Response(null, { status: 410, headers: { 'content-type': 'text/html; charset=UTF-8' } })
-        }
-        if (metadata.shareExpiresAt && metadata.shareExpiresAt <= now) {
-            return new Response(null, { status: 410, headers: { 'content-type': 'text/html; charset=UTF-8' } })
-        }
-        if (isShareTimeLocked(metadata, now) || (metadata.shareMode === 'deadman' && metadata.sharePulseDueAt && metadata.sharePulseDueAt > now)) {
-            return new Response(null, { status: 423, headers: { 'content-type': 'text/html; charset=UTF-8' } })
-        }
-        if (metadata.shareBurnAfterReading === true) {
-            return new Response(null, { status: 302, headers: { Location: `${new URL(request.url).origin}/share/${shareId}` } })
-        }
-    }
-
-    if (!metadata.pw && !metadata.vpw) {
-        if (requestAcceptsMarkdown(request)) {
-            return createMarkdownResponse(
-                buildMarkdownDocument(markdownExportContent, {
-                    title,
-                    note_path: path,
-                    edit_url: `${new URL(request.url).origin}/${path}`,
-                    share_url: shareId ? `${new URL(request.url).origin}/share/${shareId}` : '',
-                }),
-            )
-        }
-
-        return returnPage('Edit', {
-            lang,
-            title,
-            content: value,
-            ext: { ...pageMetadata, ...blockPageExt, enableR2: getEnableR2(), ...await getEditorPublicationStats(path, metadata) },
-            shareId,
-            path,
-        })
-    }
-
-    const { valid, role } = await checkAuth(cookie, path)
-
-    if (valid && role === 'edit') {
-        if (requestAcceptsMarkdown(request)) {
-            return createMarkdownResponse(
-                buildMarkdownDocument(markdownExportContent, {
-                    title,
-                    note_path: path,
-                    edit_url: `${new URL(request.url).origin}/${path}`,
-                    share_url: shareId ? `${new URL(request.url).origin}/share/${shareId}` : '',
-                }),
-            )
-        }
-
-        return returnPage('Edit', {
-            lang,
-            title,
-            content: value,
-            ext: { ...pageMetadata, ...blockPageExt, enableR2: getEnableR2(), ...await getEditorPublicationStats(path, metadata) },
-            shareId,
-            path,
-        })
-    }
-
-    if (valid && role === 'view') {
-        return returnPage('Share', {
-            lang,
-            title,
-            content: value,
-            ext: { ...pageMetadata, ...blockPageExt, enableR2: getEnableR2(), authPath: `/${path}/auth` },
-            shareId,
-            path,
-        })
-    }
-
-    if (metadata.vpw) return returnPage('NeedPasswd', { lang, title, path, ext: { authPath: `/${path}/auth` } })
-
-    return returnPage('Share', {
-        lang,
-        title,
-        content: value,
-        ext: { ...pageMetadata, ...blockPageExt, enableR2: getEnableR2(), authPath: `/${path}/auth` },
-        shareId,
-        path,
-    })
-})
+router.head('/:path', async (request) => handleDirectNoteRequest(request, { isHead: true }))
 
 router.post('/:path/auth', async request => {
     const { path } = request.params
@@ -3990,7 +3888,7 @@ router.post('/:path/auth', async request => {
                 role,
             }, {
                 'Set-Cookie': Cookies.serialize('auth', token, {
-                    path: `/${path}`,
+                    path: '/',
                     expires: dayjs().add(7, 'day').toDate(),
                     httpOnly: true,
                     secure: true,
@@ -4199,7 +4097,7 @@ router.post('/:path/setting', async request => {
                             nextMetadata.sharePulseDueAt = dayjs().unix() + pulseSec
                             nextMetadata.shareLastPulseAt = dayjs().unix()
                             if (!nextMetadata.sharePulseToken) {
-                                nextMetadata.sharePulseToken = (await MD5(path + dayjs().unix() + 'pulse')).substring(0, 24)
+                                nextMetadata.sharePulseToken = genRandomStr(24)
                             }
                         }
                     } else if (sharePulseInterval !== undefined || (nextMetadata.shareMode === 'deadman' && !nextMetadata.sharePulseDueAt)) {
@@ -4209,7 +4107,7 @@ router.post('/:path/setting', async request => {
                         nextMetadata.sharePulseDueAt = dayjs().unix() + pulseSec
                         nextMetadata.shareLastPulseAt = dayjs().unix()
                         if (!nextMetadata.sharePulseToken) {
-                            nextMetadata.sharePulseToken = (await MD5(path + dayjs().unix() + 'pulse')).substring(0, 24)
+                            nextMetadata.sharePulseToken = genRandomStr(24)
                         }
                     }
 

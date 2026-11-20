@@ -261,7 +261,7 @@ export const ShareDeadmanLocked = data => {
                 ${isAuthor ? `
                     <p class="share-status-author-hint">${lang === 'zh-TW' ? '您是此筆記的作者，保活狀態一切正常。您可點擊立即簽到以延長截止時間。' : 'You are the author. Heartbeat active. You can pulse now to extend deadline.'}</p>
                     <div class="share-status-actions">
-                        <button type="button" id="deadman-pulse-btn" class="opt-button opt-button-accent" onclick="fetch('/api/shares/${escapeHtml(shareId)}/pulse', { method: 'POST' }).then(function() { window.location.reload(); })">${escapeHtml(t.pulseNowBtn || '立即簽到保活 (Pulse)')}</button>
+                        <button type="button" id="deadman-pulse-btn" class="opt-button opt-button-accent" data-share-id="${escapeHtml(shareId)}">${escapeHtml(t.pulseNowBtn || '立即簽到保活 (Pulse)')}</button>
                         <a href="${escapeHtml(editUrl)}" class="opt-button">${escapeHtml(t.backToEdit || '返回編輯')}</a>
                     </div>
                 ` : `
@@ -272,6 +272,14 @@ export const ShareDeadmanLocked = data => {
             </div>
             <script>
                 (function() {
+                    var pulseBtn = document.getElementById('deadman-pulse-btn');
+                    if (pulseBtn) {
+                        pulseBtn.addEventListener('click', function() {
+                            var sid = pulseBtn.getAttribute('data-share-id') || '';
+                            if (!sid) return;
+                            fetch('/api/shares/' + encodeURIComponent(sid) + '/pulse', { method: 'POST' }).then(function() { window.location.reload(); });
+                        });
+                    }
                     var wrap = document.querySelector('.share-countdown-wrapper');
                     var target = wrap ? Number(wrap.getAttribute('data-target-timestamp')) : 0;
                     var isZh = ${lang === 'zh-TW' ? 'true' : 'false'};

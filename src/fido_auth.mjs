@@ -175,7 +175,7 @@ export function extractRawPublicKeyFromCose(coseKeyMapOrBytes) {
     const x = map.get(-2)
     const y = map.get(-3)
 
-    if (kty !== 2 || crv !== 1 || !x || !y) {
+    if (kty !== 2 || alg !== -7 || crv !== 1 || !(x instanceof Uint8Array) || !(y instanceof Uint8Array) || x.length !== 32 || y.length !== 32) {
         throw new Error(`Unsupported COSE Key: kty=${kty}, alg=${alg}, crv=${crv}`)
     }
 
@@ -228,11 +228,58 @@ export function parseAttestationObject(attestationObjectBytes) {
     return {
         rpIdHash,
         flags,
-        signCount,
+        signCount: signCount >>> 0,
         aaguid,
         credentialId: bytesToBase64Url(credentialId),
         publicKeyRaw: bytesToBase64Url(publicKeyRaw),
     }
+}
+
+export function extractFidoSignCount(authenticatorDataBase64) {
+    const authDataBytes = base64UrlToBytes(authenticatorDataBase64)
+    if (authDataBytes.length < 37) return 0
+    return ((authDataBytes[33] << 24) | (authDataBytes[34] << 16) | (authDataBytes[35] << 8) | authDataBytes[36]) >>> 0
+}
+
+export async function verifyFidoRegistration({
+    attestationObjectBase64,
+    clientDataJsonBase64,
+    expectedChallenge,
+    expectedOrigin,
+    expectedRpId,
+}) {
+    const clientDataBytes = base64UrlToBytes(clientDataJsonBase64)
+    const clientData = JSON.parse(new TextDecoder('utf-8').decode(clientDataBytes))
+
+    if (clientData.type !== 'webauthn.create') {
+        throw new Error(`Invalid registration clientData type: ${clientData.type}`)
+    }
+    if (expectedChallenge && clientData.challenge !== expectedChallenge) {
+        throw new Error('Registration challenge mismatch')
+    }
+    if (expectedOrigin) {
+        const expectedNormOrigin = new URL(expectedOrigin).origin
+        const actualNormOrigin = new URL(clientData.origin).origin
+        if (expectedNormOrigin !== actualNormOrigin) {
+            throw new Error(`Origin mismatch: expected ${expectedNormOrigin}, got ${actualNormOrigin}`)
+        }
+    }
+
+    const parsed = parseAttestationObject(base64UrlToBytes(attestationObjectBase64))
+    if (!(parsed.flags & 0x01)) {
+        throw new Error('User presence flag (UP) not set during registration')
+    }
+
+    if (expectedRpId) {
+        const expectedRpIdHash = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(expectedRpId)))
+        for (let i = 0; i < 32; i++) {
+            if (expectedRpIdHash[i] !== parsed.rpIdHash[i]) {
+                throw new Error('RP ID hash mismatch during registration')
+            }
+        }
+    }
+
+    return parsed
 }
 
 /**
@@ -246,6 +293,7 @@ export async function verifyFidoAssertion({
     expectedChallenge,
     expectedOrigin,
     expectedRpId,
+    previousSignCount = 0,
 }) {
     const clientDataBytes = base64UrlToBytes(clientDataJsonBase64)
     const clientDataText = new TextDecoder('utf-8').decode(clientDataBytes)
@@ -260,11 +308,10 @@ export async function verifyFidoAssertion({
     }
 
     if (expectedOrigin && clientData.origin !== expectedOrigin) {
-        // Tolerant matching if origin scheme or port matches
-        const expectedHost = new URL(expectedOrigin).host
-        const actualHost = new URL(clientData.origin).host
-        if (expectedHost !== actualHost) {
-            throw new Error(`Origin mismatch: expected ${expectedOrigin}, got ${clientData.origin}`)
+        const expectedNormOrigin = new URL(expectedOrigin).origin
+        const actualNormOrigin = new URL(clientData.origin).origin
+        if (expectedNormOrigin !== actualNormOrigin) {
+            throw new Error(`Origin mismatch: expected ${expectedNormOrigin}, got ${actualNormOrigin}`)
         }
     }
 
@@ -274,6 +321,11 @@ export async function verifyFidoAssertion({
     const flags = authDataBytes[32]
     if (!(flags & 0x01)) {
         throw new Error('User presence flag (UP) not set')
+    }
+
+    const currentSignCount = extractFidoSignCount(authenticatorDataBase64)
+    if (previousSignCount > 0 && currentSignCount <= previousSignCount) {
+        throw new Error('Authenticator signCount did not advance (possible cloned authenticator)')
     }
 
     // Verify rpIdHash matches SHA-256 of expectedRpId
@@ -342,11 +394,11 @@ export async function getFidoCredentials(kv) {
     }
 }
 
-export async function saveFidoCredential(kv, { id, publicKeyRaw, name = 'Touch ID Device', createdAt = Date.now() }) {
+export async function saveFidoCredential(kv, { id, publicKeyRaw, name = 'Touch ID Device', createdAt = Date.now(), signCount = 0 }) {
     if (!kv) throw new Error('KV namespace not available')
     const list = await getFidoCredentials(kv)
     const existingIndex = list.findIndex(c => c.id === id)
-    const record = { id, publicKeyRaw, name, createdAt }
+    const record = { id, publicKeyRaw, name, createdAt, signCount: Number(signCount) || 0 }
     if (existingIndex >= 0) {
         list[existingIndex] = record
     } else {
@@ -354,6 +406,18 @@ export async function saveFidoCredential(kv, { id, publicKeyRaw, name = 'Touch I
     }
     await kv.put(FIDO_CREDENTIALS_KEY, JSON.stringify(list))
     return list
+}
+
+export async function updateFidoCredentialSignCount(kv, credentialId, signCount) {
+    if (!kv || !credentialId) return
+    const nextCount = Number(signCount) || 0
+    if (nextCount <= 0) return
+    const list = await getFidoCredentials(kv)
+    const idx = list.findIndex(c => c.id === credentialId)
+    if (idx >= 0 && nextCount > (Number(list[idx].signCount) || 0)) {
+        list[idx] = { ...list[idx], signCount: nextCount }
+        await kv.put(FIDO_CREDENTIALS_KEY, JSON.stringify(list))
+    }
 }
 
 export async function deleteFidoCredential(kv, credentialId) {

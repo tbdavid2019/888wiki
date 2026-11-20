@@ -531,15 +531,14 @@ test('index.js and base.js: direct path vault enforcement and batched preset upd
     const indexSource = fs.readFileSync('src/index.js', 'utf-8')
     const baseSource = fs.readFileSync('src/templates/base.js', 'utf-8')
 
-    // Direct path GET /:path and HEAD /:path check isAuthor and vault status
-    const getPathBlock = indexSource.substring(indexSource.indexOf("router.get('/:path'"), indexSource.indexOf("router.head('/:path'"))
-    assert.match(getPathBlock, /isAuthor = await isNoteAuthor\(request, path, cookie\)/)
-    assert.match(getPathBlock, /metadata\.shareBurnedAt/)
-    assert.match(getPathBlock, /Response\.redirect\(`\$\{new URL\(request\.url\)\.origin\}\/share\/\$\{shareId\}`/)
+    // Direct path GET /:path and HEAD /:path delegate to handleDirectNoteRequest checking isAuthor and vault status
+    const directHandlerBlock = indexSource.substring(indexSource.indexOf('async function handleDirectNoteRequest'), indexSource.indexOf("router.all('*'"))
+    assert.match(directHandlerBlock, /isAuthor = await isNoteAuthor\(request, path, cookie\)/)
+    assert.match(directHandlerBlock, /metadata\.shareBurnedAt/)
+    assert.match(directHandlerBlock, /Response\.redirect\(`\$\{new URL\(request\.url\)\.origin\}\/share\/\$\{shareId\}`/)
 
-    const headPathBlock = indexSource.substring(indexSource.indexOf("router.head('/:path'"))
-    assert.match(headPathBlock, /isAuthor = await isNoteAuthor\(request, path, cookie\)/)
-    assert.match(headPathBlock, /metadata\.shareBurnedAt/)
+    assert.match(indexSource, /router\.get\('\/:path', async \(request\) => handleDirectNoteRequest\(request, \{ isHead: false \}\)\)/)
+    assert.match(indexSource, /router\.head\('\/:path', async \(request\) => handleDirectNoteRequest\(request, \{ isHead: true \}\)\)/)
 
     // Preset button click handler batches settings updates into a single persistSetting call
     const presetClickBlock = baseSource.substring(baseSource.indexOf('const presetBtn = e.target.closest'), baseSource.indexOf('const unpublishBtn'))
@@ -555,8 +554,8 @@ test('index.js and base.js: direct path vault enforcement and batched preset upd
 
 test('index.js: direct-path Seal locks dispatch to exported visitor templates', () => {
     const directPathBlock = indexSource.substring(
-        indexSource.indexOf("router.get('/:path'"),
-        indexSource.indexOf("router.head('/:path'"),
+        indexSource.indexOf('async function handleDirectNoteRequest'),
+        indexSource.indexOf("router.all('*'"),
     )
 
     assert.match(directPathBlock, /returnPage\('ShareTimeLocked'/)

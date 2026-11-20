@@ -13,8 +13,11 @@ import { renderMarkdownToHtml } from './markdown-processor.mjs'
 let cachedFonts = null
 let fontFetchPromise = null
 
+const PDF_FONT_CACHE_URL = 'https://wiki.internal/takumi-pdf-fonts/v1.json'
+
 /**
  * Ensures Google Fonts (Noto Sans TC, JetBrains Mono, Inter) are loaded
+ * Uses isolate memory + Cloudflare edge Cache API (when available) to prevent cold-start font fetch overhead.
  * @returns {Promise<Array>} Loaded font subsets
  */
 export async function getPdfFonts() {
@@ -23,8 +26,50 @@ export async function getPdfFonts() {
 
     fontFetchPromise = (async () => {
         try {
+            const edgeCache = (typeof caches !== 'undefined' && caches?.default) ? caches.default : null
+            if (edgeCache) {
+                try {
+                    const cachedResp = await edgeCache.match(PDF_FONT_CACHE_URL)
+                    if (cachedResp) {
+                        const parsed = await cachedResp.json()
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            const restored = parsed.map(item => ({
+                                ...item,
+                                data: item?.dataB64 ? Uint8Array.from(atob(item.dataB64), c => c.charCodeAt(0)).buffer : item?.data,
+                            }))
+                            cachedFonts = restored
+                            return restored
+                        }
+                    }
+                } catch {}
+            }
+
             const fonts = await googleFonts(['Noto Sans TC', 'JetBrains Mono', 'Inter'])
             cachedFonts = fonts
+
+            if (edgeCache && Array.isArray(fonts) && fonts.length > 0) {
+                try {
+                    const serializable = fonts.map(f => {
+                        if (f?.data instanceof ArrayBuffer || ArrayBuffer.isView(f?.data)) {
+                            const bytes = f.data instanceof ArrayBuffer ? new Uint8Array(f.data) : new Uint8Array(f.data.buffer, f.data.byteOffset, f.data.byteLength)
+                            let binary = ''
+                            for (let i = 0; i < bytes.length; i += 0x8000) {
+                                binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+                            }
+                            const { data, ...rest } = f
+                            return { ...rest, dataB64: btoa(binary) }
+                        }
+                        return f
+                    })
+                    await edgeCache.put(
+                        PDF_FONT_CACHE_URL,
+                        new Response(JSON.stringify(serializable), {
+                            headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=604800' },
+                        })
+                    )
+                } catch {}
+            }
+
             return fonts
         } catch (err) {
             console.warn('[takumi-pdf] Failed to fetch Google Fonts:', err)
@@ -169,6 +214,16 @@ export function buildPdfDocumentHtml(rawHtml, meta = {}) {
     `
 }
 
+const MAX_PDF_MERMAID_BLOCKS = 20
+
+function sanitizeMermaidSvg(svg) {
+    return String(svg || '')
+        .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<foreignObject\b[^>]*>[\s\S]*?<\/foreignObject>/gi, '')
+        .replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+        .replace(/(href|xlink:href)\s*=\s*(?:"\s*javascript:[^"]*"|'\s*javascript:[^']*')/gi, '$1="#"')
+}
+
 /**
  * Automatically converts Mermaid code blocks in HTML to vector SVG elements
  * @param {string} html - HTML string
@@ -177,12 +232,15 @@ export function buildPdfDocumentHtml(rawHtml, meta = {}) {
 export async function convertMermaidBlocksToSvg(html) {
     if (!html || !html.includes('mermaid')) return html
 
+    let renderedCount = 0
+
     // 1. Match <pre><code class="language-mermaid">...</code></pre>
     const codeRegex = /<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/gi
     const codeMatches = [...html.matchAll(codeRegex)]
 
     let resultHtml = html
     for (const match of codeMatches) {
+        if (renderedCount >= MAX_PDF_MERMAID_BLOCKS) break
         const fullMatch = match[0]
         const rawCode = match[1]
             .replace(/&lt;/g, '<')
@@ -195,11 +253,12 @@ export async function convertMermaidBlocksToSvg(html) {
         if (!rawCode) continue
 
         try {
+            renderedCount += 1
             const obj = { code: rawCode, mermaid: { theme: 'default' } }
             const b64 = Buffer.from(JSON.stringify(obj)).toString('base64')
             const resp = await fetch(`https://mermaid.ink/svg/${b64}`, { signal: AbortSignal.timeout(4000) })
             if (resp.ok) {
-                const svg = await resp.text()
+                const svg = sanitizeMermaidSvg(await resp.text())
                 if (svg && svg.includes('<svg')) {
                     const wrappedSvg = `<div class="diagram-mermaid-render" style="display: flex; justify-content: center; margin: 18px 0; break-inside: avoid;">${svg}</div>`
                     resultHtml = resultHtml.replace(fullMatch, wrappedSvg)
@@ -214,6 +273,7 @@ export async function convertMermaidBlocksToSvg(html) {
     const wrapperRegex = /<div class="diagram-block-wrapper diagram-mermaid-wrapper">[\s\S]*?<div class="diagram-mermaid-container diagram-source"[^>]*>([\s\S]*?)<\/div>[\s\S]*?<div class="diagram-mermaid-render"[^>]*><\/div><\/div>/gi
     const wrapperMatches = [...resultHtml.matchAll(wrapperRegex)]
     for (const match of wrapperMatches) {
+        if (renderedCount >= MAX_PDF_MERMAID_BLOCKS) break
         const fullMatch = match[0]
         const rawCode = match[1]
             .replace(/&lt;/g, '<')
@@ -226,11 +286,12 @@ export async function convertMermaidBlocksToSvg(html) {
         if (!rawCode) continue
 
         try {
+            renderedCount += 1
             const obj = { code: rawCode, mermaid: { theme: 'default' } }
             const b64 = Buffer.from(JSON.stringify(obj)).toString('base64')
             const resp = await fetch(`https://mermaid.ink/svg/${b64}`, { signal: AbortSignal.timeout(4000) })
             if (resp.ok) {
-                const svg = await resp.text()
+                const svg = sanitizeMermaidSvg(await resp.text())
                 if (svg && svg.includes('<svg')) {
                     const wrappedSvg = `<div class="diagram-mermaid-render" style="display: flex; justify-content: center; margin: 18px 0; break-inside: avoid;">${svg}</div>`
                     resultHtml = resultHtml.replace(fullMatch, wrappedSvg)

@@ -103,12 +103,47 @@ export function renderMarkdownToHtml(markdown = '', options = {}) {
         // Highlight: ==text==
         res = res.replace(/==([^=\n]+)==/g, '<mark class="markdown-highlight">$1</mark>')
 
+        const sanitizeCssColor = (val) => {
+            const s = String(val || '').trim()
+            if (/^#[0-9a-f]{3,8}$/i.test(s)) return s
+            if (/^[a-z]{1,24}$/i.test(s)) return s
+            if (/^(?:rgb|rgba|hsl|hsla)\(\s*[0-9.,%\s]+\)$/i.test(s)) return s
+            return ''
+        }
+
+        const sanitizeSafeUrl = (rawUrl, allowImageData = false) => {
+            const trimmed = String(rawUrl || '').trim()
+            if (!trimmed) return ''
+            const unescaped = trimmed.replace(/&amp;/gi, '&')
+            if (/^(?:#|\/(?!\/)|\.\/|\.\.\/)/.test(unescaped)) return trimmed
+            if (allowImageData && /^data:image\/(?:png|jpe?g|gif|webp|avif);base64,[a-z0-9+/=]+$/i.test(unescaped)) {
+                return trimmed
+            }
+            try {
+                const parsed = new URL(unescaped)
+                if (parsed.protocol === 'http:' || parsed.protocol === 'https:' || parsed.protocol === 'mailto:') {
+                    return trimmed
+                }
+            } catch {
+                // Relative path without leading slash (e.g. "docs/guide.md")
+                if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(unescaped.replace(/[\x00-\x20]/g, ''))) {
+                    return trimmed
+                }
+            }
+            return ''
+        }
+
         // Custom Color: [color=red]...[/color] or [color=red bg=yellow]...[/color]
         res = res.replace(/\[color=([#a-zA-Z0-9_().,% -]+)(?:\s+bg=([#a-zA-Z0-9_().,% -]+))?\]([\s\S]*?)\[\/color\]/gi, (m, color, bg, content) => {
-            const styles = [color ? `color: ${color}` : '', bg ? `background-color: ${bg}` : ''].filter(Boolean).join('; ')
+            const safeColor = sanitizeCssColor(color)
+            const safeBg = sanitizeCssColor(bg)
+            const styles = [safeColor ? `color: ${safeColor}` : '', safeBg ? `background-color: ${safeBg}` : ''].filter(Boolean).join('; ')
             return styles ? `<span style="${styles}">${content}</span>` : content
         })
-        res = res.replace(/\[bg=([#a-zA-Z0-9_().,% -]+)\]([\s\S]*?)\[\/bg\]/gi, '<span style="background-color: $1">$2</span>')
+        res = res.replace(/\[bg=([#a-zA-Z0-9_().,% -]+)\]([\s\S]*?)\[\/bg\]/gi, (m, bg, content) => {
+            const safeBg = sanitizeCssColor(bg)
+            return safeBg ? `<span style="background-color: ${safeBg}">${content}</span>` : content
+        })
 
         // Pandoc Citation: [@key] or [@key, locator]
         res = res.replace(/\[@([a-zA-Z0-9_\-]+)(?:,\s*([^\]]+))?\]/g, (m, key, loc) => {
@@ -121,10 +156,16 @@ export function renderMarkdownToHtml(markdown = '', options = {}) {
         res = res.replace(/\[\^([a-zA-Z0-9_\-]+)\]/g, '<sup class="footnote-ref"><a href="#fn-$1" id="fnref-$1" data-footnote-ref>$1</a></sup>')
 
         // Images: ![alt](url)
-        res = res.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" loading="lazy" />')
+        res = res.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (m, alt, rawUrl) => {
+            const safeSrc = sanitizeSafeUrl(rawUrl, true)
+            return safeSrc ? `<img src="${safeSrc}" alt="${alt}" loading="lazy" />` : escapeHtml(alt)
+        })
 
         // Links: [text](url)
-        res = res.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+        res = res.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (m, label, rawUrl) => {
+            const safeHref = sanitizeSafeUrl(rawUrl, false)
+            return safeHref ? `<a href="${safeHref}" target="_blank" rel="noopener noreferrer">${label}</a>` : label
+        })
 
         // Unescape literal dollar signs that were escaped for currency protection
         res = res.replace(/\\(\$)/g, '$1')
@@ -187,10 +228,11 @@ export function renderMarkdownToHtml(markdown = '', options = {}) {
         if (line.startsWith('>')) {
             flushList()
             const quoteContent = line.replace(/^>\s?/, '')
-            const calloutMatch = quoteContent.match(/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/i)
+            const calloutMatch = quoteContent.match(/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\](?:\s+(.*))?$/i)
             if (calloutMatch) {
                 const calloutType = calloutMatch[1].toLowerCase()
-                htmlParts.push(`<div class="markdown-alert markdown-alert-${calloutType}"><strong>${calloutType.toUpperCase()}</strong></div>`)
+                const inlineBody = calloutMatch[2] ? `<p>${renderInline(calloutMatch[2])}</p>` : ''
+                htmlParts.push(`<div class="markdown-alert markdown-alert-${calloutType}"><strong>${calloutType.toUpperCase()}</strong>${inlineBody}</div>`)
             } else {
                 htmlParts.push(`<blockquote><p>${renderInline(quoteContent)}</p></blockquote>`)
             }
@@ -448,6 +490,7 @@ export function lintMarkdownText(markdown = '') {
 
     let inCode = false
     let codeFenceChar = ''
+    let codeLang = ''
     let codeStartLine = 0
 
     for (let i = 0; i < lines.length; i++) {
@@ -461,18 +504,20 @@ export function lintMarkdownText(markdown = '') {
             if (!inCode) {
                 inCode = true
                 codeFenceChar = fenceMatch[2][0]
+                codeLang = String(fenceMatch[3] || '').trim().split(/\s+/)[0].toLowerCase()
                 codeStartLine = lineNum
-            } else if (fenceMatch[2][0] === codeFenceChar) {
+            } else if (fenceMatch[2][0] === codeFenceChar && !String(fenceMatch[3] || '').trim()) {
                 inCode = false
                 codeFenceChar = ''
+                codeLang = ''
             }
             fixedLines.push(line)
             continue
         }
 
         if (inCode) {
-            // Check Mermaid node syntax issues inside mermaid code blocks
-            if (line.includes('-->') || line.includes('---')) {
+            // Check Mermaid node syntax issues strictly inside mermaid code blocks
+            if (codeLang === 'mermaid' && (line.includes('-->') || line.includes('---'))) {
                 // Ensure node text with slash or brackets is quoted
                 const badMermaid = line.match(/([A-Za-z0-9_-]+)\[([^"\]]+)\]/g)
                 if (badMermaid) {

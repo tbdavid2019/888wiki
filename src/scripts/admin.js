@@ -117,8 +117,7 @@ export const getAdminScript = (adminPath = '/admin', isLoggedIn = true) => `
                         id: userIdBuffer
                     },
                     pubKeyCredParams: [
-                        { alg: -7, type: 'public-key' },
-                        { alg: -257, type: 'public-key' }
+                        { alg: -7, type: 'public-key' }
                     ],
                     authenticatorSelection: {
                         authenticatorAttachment: 'platform',
@@ -248,7 +247,6 @@ export const getAdminScript = (adminPath = '/admin', isLoggedIn = true) => `
          * Initialize the controller: set up event delegation and render initial state.
          */
         init() {
-            console.log('[Admin] Initializing AdminController');
             this.setupEventDelegation();
             this.updateBatchDeleteButton();
             refreshFidoDevicesList();
@@ -302,17 +300,6 @@ export const getAdminScript = (adminPath = '/admin', isLoggedIn = true) => `
                 return;
             }
 
-            // Sortable column header
-            const th = e.target.closest('th.sortable');
-            if (th) {
-                const colIndex = parseInt(th.getAttribute('data-col'));
-                if (!isNaN(colIndex)) {
-                    console.log('[Admin] Sort clicked, column:', colIndex);
-                    this.sortTable(colIndex);
-                }
-                return;
-            }
-
             // Batch delete button
             const batchBtn = e.target.closest('#batch-delete-btn');
             if (batchBtn && !batchBtn.disabled) {
@@ -335,9 +322,7 @@ export const getAdminScript = (adminPath = '/admin', isLoggedIn = true) => `
         handleChange(e) {
             // Select-all checkbox
             if (e.target && e.target.id === 'select-all') {
-                console.log('[Admin] Select-all changed:', e.target.checked);
                 const checkboxes = document.querySelectorAll('.note-checkbox');
-                console.log('[Admin] Found checkboxes:', checkboxes.length);
                 checkboxes.forEach(cb => {
                     cb.checked = e.target.checked;
                     if (e.target.checked) {
@@ -352,7 +337,6 @@ export const getAdminScript = (adminPath = '/admin', isLoggedIn = true) => `
 
             // Individual note checkbox
             if (e.target && e.target.classList.contains('note-checkbox')) {
-                console.log('[Admin] Individual checkbox changed:', e.target.value, e.target.checked);
                 if (e.target.checked) {
                     this.selectedPaths.add(e.target.value);
                 } else {
@@ -400,7 +384,6 @@ export const getAdminScript = (adminPath = '/admin', isLoggedIn = true) => `
          * @param {string} message - The success message to display
          */
         showSuccess(message) {
-            console.log('[Admin] Success:', message);
             this._showNotice(message, 'success');
         }
 
@@ -461,9 +444,7 @@ export const getAdminScript = (adminPath = '/admin', isLoggedIn = true) => `
          * Shows loading state, confirmation dialog, success/error feedback.
          */
         async batchDelete() {
-            console.log('[Admin] batchDelete called');
             const selected = document.querySelectorAll('.note-checkbox:checked');
-            console.log('[Admin] Selected items:', selected.length);
 
             if (selected.length === 0) {
                 alert('請先選擇要刪除的項目');
@@ -473,13 +454,11 @@ export const getAdminScript = (adminPath = '/admin', isLoggedIn = true) => `
             if (!confirm('確定要刪除這 ' + selected.length + ' 個筆記嗎？此操作無法撤銷！')) return;
 
             const paths = Array.from(selected).map(cb => cb.value);
-            console.log('[Admin] Paths to delete:', paths);
 
             const btn = document.getElementById('batch-delete-btn');
             this.setButtonLoading(btn, true, '⏳ 刪除中...', '🗑 刪除選中項');
 
             try {
-                console.log('[Admin] Sending batch-delete request to:', window.location.pathname);
                 const response = await fetch(window.location.pathname, {
                     method: 'POST',
                     credentials: 'same-origin',
@@ -487,9 +466,7 @@ export const getAdminScript = (adminPath = '/admin', isLoggedIn = true) => `
                     body: JSON.stringify({ action: 'batch-delete', paths })
                 });
 
-                console.log('[Admin] Response status:', response.status);
                 const result = await response.json();
-                console.log('[Admin] Response:', result);
 
                 if (result.success) {
                     this.showSuccess('✅ 成功刪除 ' + paths.length + ' 個筆記！');
@@ -506,12 +483,11 @@ export const getAdminScript = (adminPath = '/admin', isLoggedIn = true) => `
         }
 
         /**
-         * Perform async deletion of all empty pages (content ≤ 10 characters).
+         * Perform async deletion of all truly empty pages (empty content and no passwords).
          * Shows loading state, confirmation dialog, success/error feedback.
          */
         async deleteEmptyPages() {
-            console.log('[Admin] deleteEmptyPages called');
-            if (!confirm('確定要刪除所有空白頁面嗎？此操作無法撤銷！\\n\\n空白頁面定義：內容長度 ≤ 10 個字符')) {
+            if (!confirm('確定要刪除所有空白頁面嗎？此操作無法撤銷！\\n\\n空白頁面定義：內容為空且未設定密碼保護')) {
                 return;
             }
 
@@ -519,7 +495,6 @@ export const getAdminScript = (adminPath = '/admin', isLoggedIn = true) => `
             this.setButtonLoading(btn, true, '⏳ 清理中...', '🧹 刪除所有空白頁面');
 
             try {
-                console.log('[Admin] Sending delete-empty request');
                 const response = await fetch(window.location.pathname, {
                     method: 'POST',
                     credentials: 'same-origin',
@@ -527,9 +502,7 @@ export const getAdminScript = (adminPath = '/admin', isLoggedIn = true) => `
                     body: JSON.stringify({ action: 'delete-empty' })
                 });
 
-                console.log('[Admin] Response status:', response.status);
                 const result = await response.json();
-                console.log('[Admin] Response:', result);
 
                 if (result.success) {
                     if (result.deleted > 0) {
@@ -550,74 +523,6 @@ export const getAdminScript = (adminPath = '/admin', isLoggedIn = true) => `
                 console.error('[Admin] deleteEmptyPages error:', error);
                 this.showError('❌ 刪除過程中發生錯誤: ' + error.message);
                 this.setButtonLoading(btn, false);
-            }
-        }
-
-        /**
-         * Sort the notes table by the specified column index.
-         * Toggles ascending/descending direction and updates visual indicators.
-         * Uses numeric comparison for Views/Password/Date columns, string comparison otherwise.
-         *
-         * @param {number} colIndex - The 1-based column index to sort by (matches data-col attribute)
-         */
-        sortTable(colIndex) {
-            console.log('[Admin] sortTable called, column:', colIndex);
-            try {
-                const table = document.getElementById('notesTable');
-                if (!table) { console.error('[Admin] Table not found'); return; }
-                const tbody = table.querySelector('tbody');
-                if (!tbody) { console.error('[Admin] Tbody not found'); return; }
-
-                const rows = Array.from(tbody.querySelectorAll('tr'));
-                if (rows.length === 0) { console.warn('[Admin] No rows to sort'); return; }
-
-                const ths = table.querySelectorAll('th.sortable');
-                const targetTh = Array.from(ths).find(th => th.getAttribute('data-col') == colIndex);
-                if (!targetTh) { console.error('[Admin] Target th not found for column:', colIndex); return; }
-
-                // Toggle direction: if already ascending, switch to descending
-                const isAsc = this.sortState.column === colIndex ? !this.sortState.ascending : true;
-                this.sortState = { column: colIndex, ascending: isAsc };
-
-                // Update visual indicators on all sortable headers
-                ths.forEach(th => th.classList.remove('asc', 'desc'));
-                targetTh.classList.add(isAsc ? 'asc' : 'desc');
-
-                // Sort rows: cellIndex = colIndex (0=checkbox, 1=title, 2=views, 3=password, 4=date)
-                rows.sort((rowA, rowB) => {
-                    const cellA = rowA.cells[colIndex];
-                    const cellB = rowB.cells[colIndex];
-                    if (!cellA || !cellB) return 0;
-
-                    // Prefer data-val attribute for reliable comparison values
-                    const valA = cellA.getAttribute('data-val') !== null
-                        ? cellA.getAttribute('data-val')
-                        : cellA.innerText.trim().toLowerCase();
-                    const valB = cellB.getAttribute('data-val') !== null
-                        ? cellB.getAttribute('data-val')
-                        : cellB.innerText.trim().toLowerCase();
-
-                    console.log('[Admin] Comparing:', valA, 'vs', valB);
-
-                    // Numeric comparison if both values are numbers
-                    const numA = parseFloat(valA);
-                    const numB = parseFloat(valB);
-                    if (!isNaN(numA) && !isNaN(numB) && valA !== '' && valB !== '') {
-                        return isAsc ? numA - numB : numB - numA;
-                    }
-
-                    // String comparison (locale-aware)
-                    return isAsc
-                        ? String(valA).localeCompare(String(valB))
-                        : String(valB).localeCompare(String(valA));
-                });
-
-                // Re-append rows in sorted order
-                rows.forEach(row => tbody.appendChild(row));
-                console.log('[Admin] Sorting complete, direction:', isAsc ? 'asc' : 'desc');
-            } catch (e) {
-                console.error('[Admin] sortTable error:', e);
-                alert('排序錯誤: ' + e.message);
             }
         }
     }

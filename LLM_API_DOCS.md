@@ -568,15 +568,15 @@ CF-Notepad provides an enterprise-grade cryptographic & temporal access control 
 
 | Preset Key | Mode | Duration / Interval | Scenario & Starter Template |
 | :--- | :--- | :--- | :--- |
-| `otp` | `burn` | 10 min | One-time password or temporary token. |
-| `secret` | `burn` | 1 hour | Confidential env credentials / API keys. |
+| `otp` | `burn` | 1 hour | One-time password or temporary token. |
+| `secret` | `burn` | 1 day | Confidential env credentials / API keys. |
 | `crypto` | `deadman` | 30 days | Crypto wallet seed phrase & inheritance instructions. |
 | `whistleblower`| `deadman` | 7 days | Public interest disclosure sealed behind active check-in. |
 | `backup` | `deadman` | 14 days | Disaster recovery credentials & emergency SSH public keys. |
-| `launch` | `timelock` | 1 day | Embargoed product launch announcement. |
-| `birthday` | `timelock` | 7 days | Sealed birthday greeting or surprise gift coupon. |
-| `scavenger` | `timelock` | 2 hours | Scavenger hunt game clue with timed release. |
-| `course` | `timelock` | 1 day | Homework solutions or curriculum revealed at class start. |
+| `launch` | `timelock` | 7 days | Embargoed product launch announcement. |
+| `birthday` | `timelock` | 1 day | Sealed birthday greeting or surprise gift coupon. |
+| `scavenger` | `timelock` | 1 hour | Scavenger hunt game clue with timed release. |
+| `course` | `timelock` | 7 days | Homework solutions or curriculum revealed at class start. |
 | `legal` | `standard` | 30 days | Legal hold notice preserved for retention period. |
 
 #### 7.3 Publishing Vault Notes via REST API
@@ -626,16 +626,16 @@ curl -X POST "https://wiki.david888.com/api/shares/<shareId>/pulse?token=<pulseT
 curl "https://wiki.david888.com/api/shares/<shareId>/pulse?token=<pulseToken>"
 ```
 
-Returns:
+Returns (or `403` if token/author session is invalid):
 ```json
 {
   "err": 0,
-  "msg": "Heartbeat pulse received successfully. Timer reset.",
+  "msg": "OK",
   "data": {
-    "shareId": "xyz123",
-    "nextPulseDueAt": 1742567890,
-    "nextPulseDueHuman": "2026-09-28 16:00:00 UTC",
-    "intervalSeconds": 604800
+    "success": true,
+    "message": "Pulse check-in successful",
+    "pulseDueAt": 1742567890,
+    "remaining": "6 days 23 hours"
   }
 }
 ```
@@ -662,7 +662,6 @@ curl -X POST "https://wiki.david888.com/<path>/setting" \
     "title": "My Vault Document",
     "width": "1200px",
     "shareFont": "jetbrains",
-    "previewDevice": "desktop",
     "publicIndex": false,
     "shareMode": "burn",
     "shareExpiresIn": "1h"
@@ -670,7 +669,7 @@ curl -X POST "https://wiki.david888.com/<path>/setting" \
 ```
 
 Supported JSON fields:
-- `mode`: Editor mode (`markdown`, `block`, `canvas`, `whiteboard`)
+- `mode`: Legacy note mode metadata (`md`, `plain`). To switch editor format (`markdown`, `block`, `canvas`, `whiteboard`), use `POST /api/<path>` with `editorFormat` or `/new/<format>`
 - `share`: Boolean toggle for public share link
 - `shareMode`: Security vault lifecycle mode (`standard`, `burn`, `timelock`, `deadman`)
 - `shareExpiresIn`: Expiration duration (`10m`, `1h`, `1d`, `7d`, `30d`, `never`)
@@ -680,8 +679,7 @@ Supported JSON fields:
 - `theme`: Custom preview theme name
 - `title`: Document title override
 - `width`: Preview max-width (`100%`, `960px`, `1200px`, `1440px`)
-- `shareFont`: Shared typography font
-- `previewDevice`: Preview device framing (`desktop`, `tablet`, `mobile`)
+- `shareFont`: Shared typography font (`jetbrains` or `maple`)
 - `publicIndex`: Inclusion in sitemap.xml
 - `autosave`: Real-time cloud sync toggle
 

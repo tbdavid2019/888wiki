@@ -68,7 +68,7 @@ function isTierHealthy(tier) {
     if (cb.state === 'CLOSED') return true
 
     const now = Date.now()
-    if (cb.state === 'HALF_OPEN') {
+    if (cb.state === 'HALF_OPEN' && now < cb.cooldownUntil) {
         // Canary probe is already running; avoid stampede by routing other requests to next healthy tier
         return false
     }
@@ -410,7 +410,8 @@ export async function executeLlmWithFallback({
     }
 
     // Single-Flight: In-flight Request Deduplication to prevent Stampede on identical requests
-    const promptFingerprint = `${mode}:${JSON.stringify(messages)}:${maxTokens || 0}`
+    const envFingerprint = `${env?.SCN_AIURL_LLM_MODEL || env?.AIURL_LLM_MODEL || ''}:${env?.SCN_AIURL_LLM_BASE_URL || ''}`
+    const promptFingerprint = `${mode}:${JSON.stringify(messages)}:${maxTokens || 0}:${temperature ?? ''}:${reasoningEffort || ''}:${envFingerprint}`
     if (inFlightRequests.has(promptFingerprint)) {
         return inFlightRequests.get(promptFingerprint)
     }

@@ -125,6 +125,9 @@ export async function verifyTurnstileClearanceCookie(request) {
         const now = Math.floor(Date.now() / 1000)
         if (payload.exp && payload.exp < now) return false
 
+        const currentIp = request.headers.get('cf-connecting-ip') || ''
+        if (payload.ip && currentIp && payload.ip !== currentIp) return false
+
         return true
     } catch (err) {
         return false

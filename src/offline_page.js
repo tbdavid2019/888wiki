@@ -1434,9 +1434,7 @@ export const createOfflinePageResponse = () => {
                 // Conflict check ONLY when syncing pending offline notes or manual sync
                 if (options.checkConflict && !options.isForce) {
                     try {
-                        const checkRes = await fetch('/' + encodeURIComponent(targetPath), {
-                            headers: { 'Accept': 'text/plain' }
-                        })
+                        const checkRes = await fetch('/api/' + encodeURIComponent(targetPath))
                         if (checkRes.ok && checkRes.status === 200) {
                             const serverRaw = await checkRes.text()
                             if (serverRaw && normalizeText(serverRaw) !== normalizeText(finalContent) && currentSyncStatus === 'pending') {

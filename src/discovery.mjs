@@ -73,7 +73,7 @@ export function buildLlmsTxt(origin = 'https://wiki.david888.com') {
 - [Model Context Protocol (MCP)](${siteOrigin}${MCP_PATH}): Native MCP JSON-RPC 2.0 endpoint for WebMCP and AI agent tools.
 - [Canvas MCP Tools](${siteOrigin}${MCP_PATH}): Use \`validate_canvas\`, \`write_canvas\`, and \`read_canvas\` for JSON Canvas validation, publishing, and edge inspection. Canvas notes can be linked as read-only chapters in Book Mode.
 - [Whiteboard MCP Tools](${siteOrigin}${MCP_PATH}): Use \`validate_whiteboard\`, \`write_whiteboard\`, and \`read_whiteboard\` for Excalidraw whiteboard validation, hand-drawn sketch generation, and text inspection.
-- [Vault & Secret MCP Tools](${siteOrigin}${MCP_PATH}): Native MCP tools for configuring vault modes (\`standard\`, \`burn\`, \`timelock\`, \`deadman\`), setting expiration/unlock timers, and sending \`pulse_deadman_switch\` heartbeats.
+- [Vault & Secret MCP Tools](${siteOrigin}${MCP_PATH}): Native MCP tools for configuring vault modes (\`standard\`, \`burn_after_reading\`/\`burn\`, \`timelock\`, \`deadman\`), setting expiration/unlock timers, and obtaining Dead Man's Switch pulse webhook URLs (\`POST ${siteOrigin}/api/shares/<shareId>/pulse?token=<token>\`).
 
 ## Visual Tools for LLMs: How to Call Canvas & Excalidraw Whiteboard
 

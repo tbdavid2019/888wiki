@@ -437,7 +437,7 @@ ${getMarkdownCss()}
                                         : (SUPPORTED_LANG[lang].authorPreviewNotice || 'Author Preview')
                                 )}</span>
                                 ${ext.shareExpiresAt ? `<span class="author-banner-time">⏳ ${formatShareRemainingTime(ext.shareExpiresAt, lang)}</span>` : ''}
-                                ${ext.shareMode === 'deadman' ? `<button type="button" class="opt-button opt-button-accent author-pulse-btn" style="height:26px;font-size:12px;padding:0 8px;margin-left:8px;" onclick="fetch('/api/shares/' + encodeURIComponent('${escapeHtml(shareId)}') + '/pulse', {method:'POST'}).then(function() { window.location.reload(); })">${escapeHtml(SUPPORTED_LANG[lang].pulseNowBtn || 'Pulse Now')}</button>` : ''}
+                                ${ext.shareMode === 'deadman' ? `<button type="button" class="opt-button opt-button-accent author-pulse-btn" data-share-id="${escapeHtml(shareId)}" style="height:26px;font-size:12px;padding:0 8px;margin-left:8px;">${escapeHtml(SUPPORTED_LANG[lang].pulseNowBtn || 'Pulse Now')}</button>` : ''}
                                 ${path ? `<a href="/${escapeHtml(path)}" class="author-banner-edit">✏️ ${lang === 'zh-TW' ? '返回編輯' : 'Back to Editor'}</a>` : ''}
                             </div>
                         ` : ''}
@@ -2020,7 +2020,7 @@ ${getMarkdownCss()}
             execute: async () => ({
                 skillUrl: 'https://wiki.david888.com/.well-known/agent-skills/david888-wiki-publisher/SKILL.md',
                 updateCommand: 'npx --yes 888wiki-skill update --global -y',
-                docsUrl: 'https://wiki.david888.com/api/docs',
+                docsUrl: 'https://wiki.david888.com/docs/api',
                 instructions: 'Always run "npx --yes 888wiki-skill update --global -y" or fetch SKILL.md before use for the newest Markdown, Block, JSON Canvas, Excalidraw Whiteboard, Book Orchestration SOP, and 2D presentation slides (---/--).',
             }),
         })
@@ -2039,6 +2039,15 @@ ${getMarkdownCss()}
                 })
             }
         }
+
+        document.addEventListener('click', (event) => {
+            const pulseBtn = event.target?.closest?.('.author-pulse-btn[data-share-id]');
+            if (!pulseBtn) return;
+            const sid = pulseBtn.getAttribute('data-share-id');
+            if (!sid) return;
+            fetch('/api/shares/' + encodeURIComponent(sid) + '/pulse', { method: 'POST' })
+                .then(() => { window.location.reload(); });
+        });
 
         // Expose debug inspection helper
         window.__checkWebMcp = async () => {
@@ -9022,6 +9031,27 @@ themeCss + '\\n' +
             var backToNormalText = isZh ? '退出書本' : 'Exit Book';
             var exitUrl = APP_STATE.sharePath || (APP_STATE.path ? '/' + APP_STATE.path : '/');
 
+            var escBookHtml = function(val) {
+                return String(val == null ? '' : val)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            };
+            var safeBookUrl = function(raw) {
+                var s = String(raw == null ? '' : raw).trim();
+                if (!s) return '#';
+                if (/^(?:\/(?!\/)|\.\/|\.\.\/|#)/.test(s)) return s;
+                try {
+                    var u = new URL(s, window.location.origin);
+                    if (u.protocol === 'http:' || u.protocol === 'https:') return s;
+                } catch (e) {}
+                return '#';
+            };
+            var safeExitUrl = safeBookUrl(exitUrl);
+            var safeBookTitle = escBookHtml(bookData.title);
+
             var sectionMap = {};
             bookData.chapters.forEach(function(ch) {
                 var sec = ch.section || (isZh ? '章節清單' : 'Chapters');
@@ -9033,23 +9063,24 @@ themeCss + '\\n' +
                 '<div class="book-sidebar" id="book-sidebar">' +
                     '<div class="book-sidebar-header">' +
                         '<div class="book-top-actions">' +
-                            '<a href="' + exitUrl + '" id="book-exit-btn" class="book-exit-link" title="' + (isZh ? '返回一般閱讀模式' : 'Back to Note') + '">' +
-                                '<span>←</span> ' + backToNormalText +
+                            '<a href="' + escBookHtml(safeExitUrl) + '" id="book-exit-btn" class="book-exit-link" title="' + (isZh ? '返回一般閱讀模式' : 'Back to Note') + '">' +
+                                '<span>←</span> ' + escBookHtml(backToNormalText) +
                             '</a>' +
                         '</div>' +
-                        '<a href="#" id="book-toc-home-link" class="book-brand-title" title="' + bookData.title + '">📖 ' + bookData.title + '</a>' +
-                        '<input type="search" id="book-search-input" class="book-search-input" placeholder="' + searchPlaceholder + '" aria-label="' + searchPlaceholder + '">' +
+                        '<a href="#" id="book-toc-home-link" class="book-brand-title" title="' + safeBookTitle + '">📖 ' + safeBookTitle + '</a>' +
+                        '<input type="search" id="book-search-input" class="book-search-input" placeholder="' + escBookHtml(searchPlaceholder) + '" aria-label="' + escBookHtml(searchPlaceholder) + '">' +
                     '</div>' +
                     '<div class="book-toc-scroll" id="book-toc-scroll">';
 
             Object.keys(sectionMap).forEach(function(secTitle) {
                 sidebarHtml += '<div class="book-section-group">' +
-                    '<div class="book-section-title">' + secTitle + '</div>' +
+                    '<div class="book-section-title">' + escBookHtml(secTitle) + '</div>' +
                     '<ul class="book-toc-list">';
                 sectionMap[secTitle].forEach(function(ch) {
-                    sidebarHtml += '<li class="book-toc-item" data-chapter-index="' + ch.index + '">' +
-                        '<a href="' + ch.url + '" class="book-toc-link" data-url="' + ch.url + '" data-chapter-index="' + ch.index + '" style="padding-left:' + (12 + ch.level * 14) + 'px;">' +
-                            ch.title +
+                    var safeChUrl = safeBookUrl(ch.url);
+                    sidebarHtml += '<li class="book-toc-item" data-chapter-index="' + Number(ch.index) + '">' +
+                        '<a href="' + escBookHtml(safeChUrl) + '" class="book-toc-link" data-url="' + escBookHtml(safeChUrl) + '" data-chapter-index="' + Number(ch.index) + '" style="padding-left:' + (12 + (Number(ch.level) || 0) * 14) + 'px;">' +
+                            escBookHtml(ch.title) +
                         '</a>' +
                     '</li>';
                 });
@@ -9070,7 +9101,7 @@ themeCss + '\\n' +
                         '<div style="display:flex;align-items:center;gap:10px;min-width:0;">' +
                             '<button type="button" id="book-sidebar-toggle" class="toolbar-icon-button" aria-label="Toggle Sidebar" style="display:inline-flex;">☰</button>' +
                             '<div class="book-breadcrumbs" id="book-breadcrumbs">' +
-                                '<span id="book-crumb-parent" style="cursor:pointer;">' + bookData.title + '</span>' +
+                                '<span id="book-crumb-parent" style="cursor:pointer;">' + safeBookTitle + '</span>' +
                                 '<span class="crumb-sep">/</span>' +
                                 '<span class="crumb-current" id="book-crumb-current">載入中...</span>' +
                             '</div>' +
@@ -9249,7 +9280,7 @@ themeCss + '\\n' +
                 var total = bookData.chapters.length;
                 if (btnTxt) btnTxt.textContent = (isZh ? '快取中 ' : 'Caching ') + '0/' + total;
                 try {
-                    var cache = ('caches' in window) ? await caches.open('david888-wiki-shell-v5') : null;
+                    var cache = ('caches' in window) ? await caches.open('david888-wiki-shell-v7') : null;
                     var imgCache = ('caches' in window) ? await caches.open('david888-wiki-images-v1') : null;
                     
                     if (cache) {
@@ -9367,7 +9398,7 @@ themeCss + '\\n' +
                             chHtml = bodyEl ? bodyEl.innerHTML : htmlText;
                         }
                     } catch(e) {}
-                    if (!chHtml) chHtml = '<h1>' + ch.title + '</h1><p><em>(載入中 / Loading)</em></p>';
+                    if (!chHtml) chHtml = '<h1>' + escBookHtml(ch.title) + '</h1><p><em>(載入中 / Loading)</em></p>';
                     chapterData.push({
                         index: ch.index,
                         title: ch.title,
@@ -9377,7 +9408,7 @@ themeCss + '\\n' +
                     });
                 }
 
-                var singleHtml = '<!DOCTYPE html>\\n<html lang="' + (isZh ? 'zh-TW' : 'en') + '">\\n<head>\\n<meta charset="utf-8">\\n<meta name="viewport" content="width=device-width, initial-scale=1">\\n<title>' + bookData.title + '</title>\\n<style>' +
+                var singleHtml = '<!DOCTYPE html>\\n<html lang="' + (isZh ? 'zh-TW' : 'en') + '">\\n<head>\\n<meta charset="utf-8">\\n<meta name="viewport" content="width=device-width, initial-scale=1">\\n<title>' + safeBookTitle + '</title>\\n<style>' +
                     'body { margin:0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display:flex; height:100vh; overflow:hidden; background:#fff; color:#1f2328; }' +
                     '.book-sidebar { width:290px; border-right:1px solid #e1e4e8; background:#f6f8fa; display:flex; flex-direction:column; height:100%; flex-shrink:0; }' +
                     '.book-sidebar-header { padding:14px 16px; border-bottom:1px solid #e1e4e8; font-weight:700; font-size:15px; }' +
@@ -9392,10 +9423,10 @@ themeCss + '\\n' +
                     '.btn:hover { background:#f3f4f6; }' +
                     '@media (max-width: 768px) { .book-sidebar { display:none; } }' +
                     '</style>\\n</head>\\n<body>\\n' +
-                    '<div class="book-sidebar"><div class="book-sidebar-header">📖 ' + bookData.title + '</div><div class="book-toc-scroll" id="toc-list"></div></div>' +
+                    '<div class="book-sidebar"><div class="book-sidebar-header">📖 ' + safeBookTitle + '</div><div class="book-toc-scroll" id="toc-list"></div></div>' +
                     '<div class="book-main"><div class="book-topbar"><strong id="crumb"></strong><div><button class="btn" id="prev-btn">← ' + (isZh ? '上一章' : 'Prev') + '</button> <button class="btn" id="next-btn">' + (isZh ? '下一章' : 'Next') + ' →</button></div></div><div class="book-content" id="content-body"></div></div>' +
                     '<script>' +
-                    'var chapters = ' + JSON.stringify(chapterData) + ';' +
+                    'var chapters = ' + JSON.stringify(chapterData).replace(/</g, '\\\\u003c') + ';' +
                     'var cur = 0;' +
                     'var toc = document.getElementById("toc-list");' +
                     'var crumb = document.getElementById("crumb");' +
@@ -9403,7 +9434,7 @@ themeCss + '\\n' +
                     'chapters.forEach(function(ch, idx) {' +
                     '  var el = document.createElement("div");' +
                     '  el.className = "book-toc-item" + (idx === 0 ? " active" : "");' +
-                    '  el.style.paddingLeft = (12 + ch.level * 14) + "px";' +
+                    '  el.style.paddingLeft = (12 + (Number(ch.level) || 0) * 14) + "px";' +
                     '  el.textContent = ch.title;' +
                     '  el.onclick = function() { render(idx); };' +
                     '  toc.appendChild(el);' +
@@ -9413,7 +9444,13 @@ themeCss + '\\n' +
                     '  cur = idx;' +
                     '  Array.from(toc.children).forEach(function(c, i) { c.className = "book-toc-item" + (i === idx ? " active" : ""); });' +
                     '  crumb.textContent = chapters[idx].title;' +
-                    '  body.innerHTML = "<h1>" + chapters[idx].title + "</h1>" + chapters[idx].html;' +
+                    '  body.innerHTML = "";' +
+                    '  var h1 = document.createElement("h1");' +
+                    '  h1.textContent = chapters[idx].title;' +
+                    '  var contentWrap = document.createElement("div");' +
+                    '  contentWrap.innerHTML = chapters[idx].html;' +
+                    '  body.appendChild(h1);' +
+                    '  body.appendChild(contentWrap);' +
                     '  body.scrollTop = 0;' +
                     '}' +
                     'document.getElementById("prev-btn").onclick = function() { render(cur - 1); };' +

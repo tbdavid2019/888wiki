@@ -437,10 +437,11 @@ function findFootnoteContent(anchor, rootNode) {
     }
 
     if (citationKey) {
+        const escapedCitationKey = String(citationKey).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
         const codeBlocks = doc.querySelectorAll('pre code, .diagram-source')
         for (const block of codeBlocks) {
             const text = block.textContent || ''
-            const bibRegex = new RegExp(`@([a-zA-Z]+)\\s*\\{\\s*${citationKey}\\s*,([\\s\\S]*?)\\n\\}`, 'i')
+            const bibRegex = new RegExp(`@([a-zA-Z]+)\\s*\\{\\s*${escapedCitationKey}\\s*,([\\s\\S]*?)\\n\\}`, 'i')
             const bibMatch = text.match(bibRegex)
             if (bibMatch) {
                 const fieldsRaw = bibMatch[2]
@@ -586,7 +587,10 @@ function findFootnoteTargetElement(linkEl, rootNode) {
         if (!el && id.startsWith('user-content-')) el = doc.getElementById(id.replace('user-content-', ''))
         if (!el && rootNode.querySelector) {
             try {
-                el = rootNode.querySelector(`[id="${id}"]`) || rootNode.querySelector(`[id="user-content-${id}"]`)
+                const esc = typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+                    ? CSS.escape
+                    : v => String(v).replace(/[^a-zA-Z0-9_-]/g, '\\$&')
+                el = rootNode.querySelector(`#${esc(id)}`) || rootNode.querySelector(`#${esc(`user-content-${id}`)}`)
             } catch (e) {}
         }
         if (!el && (id === 'footnotes' || id === 'footnote-label')) {
@@ -812,4 +816,72 @@ export function parseBookToc(source) {
         sections
     }
 }
+
+export function slugifyHeading(value) {
+    return String(value || '')
+        .trim()
+        .toLowerCase()
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/['"“”‘’]/g, '')
+        .replace(/[()[\]{}<>《》「」『』【】（）]/g, ' ')
+        .replace(/[!#$%&*+,./:;=?@\\^|~，。！？、：；]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+}
+
+export function slugifyCompactHeading(value) {
+    return String(value || '')
+        .trim()
+        .toLowerCase()
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/['"“”‘’]/g, '')
+        .replace(/[【】「」『』《》]/g, '')
+        .replace(/[()[\]{}<>（）]/g, ' ')
+        .replace(/[!#$%&*+,./:;=?@\\^|~，。！？、：；]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+}
+
+export function getHeadingSlugAliases(text) {
+    const aliases = [slugifyCompactHeading(text), slugifyHeading(text)]
+    return aliases.filter((alias, index) => alias && aliases.indexOf(alias) === index)
+}
+
+export function decorateHeadingAnchors(rootNode) {
+    if (!rootNode?.querySelectorAll) return 0
+    const doc = rootNode.ownerDocument || (typeof document !== 'undefined' ? document : null)
+    const seen = new Map()
+    let countAnchored = 0
+
+    rootNode.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(heading => {
+        if (heading.classList.contains('sr-only') || heading.classList.contains('visually-hidden') || heading.getAttribute('aria-hidden') === 'true') return
+        if (heading.closest?.('.footnotes, [data-footnotes]')) return
+        const aliases = getHeadingSlugAliases(heading.textContent)
+        const baseId = aliases[0]
+        if (!baseId) return
+        const count = seen.get(baseId) || 0
+        seen.set(baseId, count + 1)
+        const headingId = count ? `${baseId}-${count}` : baseId
+        heading.id = headingId
+        heading.style.scrollMarginTop = '18px'
+        countAnchored++
+
+        aliases.slice(1).forEach(alias => {
+            const aliasId = count ? `${alias}-${count}` : alias
+            if (!aliasId || aliasId === headingId || (doc && doc.getElementById(aliasId))) return
+            if (!doc || !heading.parentNode) return
+            const anchor = doc.createElement('span')
+            anchor.id = aliasId
+            anchor.className = 'heading-anchor-alias'
+            anchor.setAttribute('aria-hidden', 'true')
+            heading.parentNode.insertBefore(anchor, heading)
+        })
+    })
+    return countAnchored
+}
+
 

@@ -406,6 +406,12 @@ export async function listAnnotationThreads(db, path, { cursor = null, limit } =
             updated_at
         FROM annotation_threads
         WHERE path = ?
+          AND EXISTS (
+              SELECT 1
+              FROM annotation_messages m
+              WHERE m.thread_id = annotation_threads.id
+                AND m.deleted_at IS NULL
+          )
         ${cursorClause}
         ORDER BY updated_at DESC, id DESC
         LIMIT ?

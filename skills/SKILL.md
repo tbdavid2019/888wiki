@@ -316,7 +316,6 @@ curl -X POST "https://wiki.david888.com/<path>/setting" \
     "theme": "retro",
     "width": "1200px",
     "shareFont": "jetbrains",
-    "previewDevice": "desktop",
     "publicIndex": false
   }'
 ```
@@ -324,15 +323,14 @@ curl -X POST "https://wiki.david888.com/<path>/setting" \
 Important:
 - This route uses the normal edit-session cookie flow, not the note API password flow.
 - Use it when an agent is operating inside the authenticated editor/browser context.
-- For headless publishing, prefer `POST /api/<path>` first. It can persist `width` directly; use `/:path/setting` only when you need browser/editor settings such as share font.
+- For headless publishing, prefer `POST /api/<path>` first. It can persist `width` and `editorFormat` directly; use `/:path/setting` only when you need browser/editor settings such as `shareFont`.
 
 Supported JSON fields on `POST /:path/setting`:
-- `mode`: note mode metadata
+- `mode`: note mode metadata (`md` or `plain`; use `POST /api/<path>` `editorFormat` for `markdown|block|canvas|whiteboard`)
 - `share`: whether the note has a public share link
 - `theme`: persisted theme name
 - `width`: preview/share width metadata
 - `shareFont`: `jetbrains` or `maple`
-- `previewDevice`: `desktop` or `mobile`
 - `publicIndex`: whether the shared note should be included in `/sitemap.xml`
 
 If `share` is set to `false`, `publicIndex` is automatically forced to `false`.
@@ -408,10 +406,12 @@ curl -X POST "https://wiki.david888.com/api/shares/<shareId>/annotations" \
   -H "Content-Type: application/json" \
   -d '{
     "anchor": {
-      "selectedText": "Target passage text",
+      "exact": "Target passage text",
       "prefix": "Text before target...",
       "suffix": "...text after target",
-      "sourceRevision": "<currentRevision>"
+      "startOffset": 120,
+      "endOffset": 139,
+      "sourceRevision": "<64-hex-sha256-revision>"
     },
     "authorName": "David",
     "body": "Annotation comment body"

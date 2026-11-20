@@ -1,5 +1,5 @@
 import dayjs from 'dayjs'
-import { driverQueryNote, driverPutNote, driverQueryShare, driverPutShare } from './storage_driver.mjs'
+import { driverQueryNote, driverPutNote, driverQueryShare, driverPutShare, driverDeleteShare, driverSetShareStatus } from './storage_driver.mjs'
 import { renderMarkdownToHtml, extractMarkdownData, lintMarkdownText } from './markdown-processor.mjs'
 import { renderMarkdownToPdf } from './pdf_service.mjs'
 import { getNoteStatsDb, getNoteViewCount } from './note_stats.mjs'
@@ -348,11 +348,20 @@ const CORS_HEADERS = {
 
 export const genRandomStr = (n = 4) => {
     const charset = '2345679abcdefghjkmnpqrstwxyz'
-    return Array(n)
-        .join()
-        .split(',')
-        .map(() => charset.charAt(Math.floor(Math.random() * charset.length)))
-        .join('')
+    const len = charset.length
+    let out = ''
+    if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+        const bytes = new Uint8Array(n)
+        crypto.getRandomValues(bytes)
+        for (let i = 0; i < n; i++) {
+            out += charset.charAt(bytes[i] % len)
+        }
+        return out
+    }
+    for (let i = 0; i < n; i++) {
+        out += charset.charAt(Math.floor(Math.random() * len))
+    }
+    return out
 }
 
 async function md5Hex(str) {
@@ -435,9 +444,10 @@ async function ensureMcpShareMetadata(path, metadata = {}) {
 
 function applyVaultMetadata(nextMetadata, args, nowUnix = dayjs().unix()) {
     if (args.share_mode || args.burn_after_reading || args.expires_in || args.unlock_in || args.pulse_interval) {
-        let mode = args.share_mode || (args.burn_after_reading ? 'burn_after_reading' : 'standard')
+        const mode = args.share_mode || (args.burn_after_reading ? 'burn_after_reading' : 'standard')
+        const isBurnMode = mode === 'burn_after_reading' || mode === 'burn' || args.burn_after_reading === true
         nextMetadata.shareMode = mode
-        if (mode === 'burn_after_reading' || args.burn_after_reading) {
+        if (isBurnMode) {
             nextMetadata.shareBurnAfterReading = true
             nextMetadata.shareMaxViews = 1
         }
@@ -472,17 +482,22 @@ function applyVaultMetadata(nextMetadata, args, nowUnix = dayjs().unix()) {
 async function persistMcpNote({ path, content, metadata, previousContent }) {
     await driverPutNote(path, content, metadata)
 
+    const legacyShareId = await md5Hex(path)
+    const shareKeys = [...new Set([legacyShareId, metadata.shareSlug, metadata.shareId].filter(Boolean))]
     if (metadata.share === true) {
         const shareOpts = metadata.shareExpiresAt ? { expiration: metadata.shareExpiresAt } : undefined
-        const legacyShareId = await md5Hex(path)
-        if (legacyShareId) {
-            await driverPutShare(legacyShareId, path, shareOpts)
+        for (const key of shareKeys) {
+            await driverPutShare(key, path, shareOpts)
+            if (!metadata.shareBurnedAt && !metadata.shareExpiredAt) {
+                await driverSetShareStatus(key, null)
+            }
         }
-        if (metadata.shareSlug) {
-            await driverPutShare(metadata.shareSlug, path, shareOpts)
-        }
-        if (metadata.shareId && metadata.shareId !== metadata.shareSlug) {
-            await driverPutShare(metadata.shareId, path, shareOpts)
+    } else if (metadata.share === false) {
+        for (const key of shareKeys) {
+            await driverDeleteShare(key)
+            if (!metadata.shareBurnedAt && !metadata.shareExpiredAt) {
+                await driverSetShareStatus(key, null)
+            }
         }
     }
 
@@ -522,7 +537,7 @@ async function executeMcpTool(name, args = {}, requestUrl) {
                 return { isError: true, text: 'Error: "path" parameter is required.' }
             }
             const { value, metadata } = await driverQueryNote(path)
-            if (value === null && (!metadata || Object.keys(metadata).length === 0)) {
+            if (!value && (!metadata || Object.keys(metadata).length === 0)) {
                 return { isError: true, text: `Error: Note "${path}" not found.` }
             }
 
@@ -572,7 +587,7 @@ async function executeMcpTool(name, args = {}, requestUrl) {
             const sourcePath = String(args.source_path || '').trim()
             if (!sourcePath) return { isError: true, text: 'Error: "source_path" parameter is required.' }
             const { value: markdown, metadata } = await driverQueryNote(sourcePath)
-            if (markdown === null && (!metadata || Object.keys(metadata).length === 0)) {
+            if (!markdown && (!metadata || Object.keys(metadata).length === 0)) {
                 return { isError: true, text: 'Error: Markdown note "' + sourcePath + '" not found.' }
             }
             if (metadata.pw || metadata.vpw) {
@@ -768,7 +783,7 @@ async function executeMcpTool(name, args = {}, requestUrl) {
             const path = String(args.path || '').trim()
             if (!path) return { isError: true, text: 'Error: "path" parameter is required.' }
             const { value, metadata } = await driverQueryNote(path)
-            if (value === null && (!metadata || Object.keys(metadata).length === 0)) {
+            if (!value && (!metadata || Object.keys(metadata).length === 0)) {
                 return { isError: true, text: `Error: Whiteboard "${path}" not found.` }
             }
             if (metadata.pw || metadata.vpw) {
@@ -822,7 +837,7 @@ async function executeMcpTool(name, args = {}, requestUrl) {
                 updateAt: dayjs().unix(),
                 share: args.make_private !== true,
                 theme: args.theme || metadata.theme || 'claude-canvas',
-                width: normalizePreviewWidth(args.width, metadata.width || DEFAULT_PREVIEW_WIDTH),
+                width: normalizePreviewWidth(args.width, metadata.width || DEFAULT_PREVIEW_WIDTH) || DEFAULT_PREVIEW_WIDTH,
             }
 
             if (args.password) {
@@ -915,9 +930,13 @@ async function executeMcpTool(name, args = {}, requestUrl) {
             let nextMetadata = {
                 ...metadata,
                 updateAt: dayjs().unix(),
-                share: metadata.share !== false,
+                share: metadata.share === undefined ? true : Boolean(metadata.share),
             }
             nextMetadata = await ensureMcpShareMetadata(path, nextMetadata)
+
+            if (!canPersistNoteContent(nextMetadata)) {
+                return { isError: true, text: 'Error: Note saving is currently blocked by server policy.' }
+            }
 
             await persistMcpNote({
                 path,
@@ -987,7 +1006,7 @@ async function executeMcpTool(name, args = {}, requestUrl) {
                 siteUrl: origin,
             })
 
-            const downloadUrl = `${origin}/api/pdf/export?title=${encodeURIComponent(title)}&size=${encodeURIComponent(size)}`
+            const renderEndpoint = `${origin}/api/pdf/export`
             return {
                 isError: false,
                 text: JSON.stringify({
@@ -996,8 +1015,9 @@ async function executeMcpTool(name, args = {}, requestUrl) {
                     size,
                     landscape,
                     byteLength: pdfBytes.length,
-                    downloadEndpoint: downloadUrl,
-                    message: 'Vector PDF rendered successfully with Takumi-PDF engine.',
+                    renderEndpoint,
+                    renderMethod: 'POST',
+                    message: 'Vector PDF rendered successfully with Takumi-PDF engine. POST markdown/html JSON to renderEndpoint to stream PDF bytes.',
                 }, null, 2),
             }
         }
@@ -1074,7 +1094,7 @@ export async function handleMcpRequest(request) {
 
     const isBatch = Array.isArray(rpc)
     if (isBatch && rpc.length > 20) {
-        return jsonResponse({
+        return createJsonResponse({
             jsonrpc: '2.0',
             id: null,
             error: {

@@ -4,7 +4,7 @@ import * as TEMPL from './template.js'
 import { SUPPORTED_LANG, getGaMeasurementId, getSalt, getSecret, getTurnstileSiteKey, isTurnstileEnabled } from './constant.js'
 import { resolvePasswordRole } from './password_policy.mjs'
 import { getNoteHistoryConfig, deleteNoteHistoryVersions } from './note_history.mjs'
-import { driverQueryNote, driverDeleteNote } from './storage_driver.mjs'
+import { driverQueryNote, driverDeleteNote, getStorageDb, getStorageDriverName } from './storage_driver.mjs'
 
 const getNotesNamespace = () => globalThis.NOTES
 const getShareNamespace = () => globalThis.SHARE
@@ -124,7 +124,7 @@ async function legacySaltPw(password) {
     return await MD5(`${hashPw}+undefined`)
 }
 
-function constantTimeStringCompare(a, b) {
+export function constantTimeStringCompare(a, b) {
     if (typeof a !== 'string' || typeof b !== 'string') return false
     if (a.length !== b.length) return false
     let diff = 0
@@ -144,8 +144,7 @@ export async function passwordMatches(password, storedHash) {
 }
 
 // Keep password policy identical for direct notes and share links.
-// An edit password always grants edit access. If there is no separate edit
-// password, the view password is the sole owner credential and grants edit.
+// An edit password always grants edit access; view password grants read-only ('view') access.
 export async function getPasswordRole(password, metadata = {}) {
     return resolvePasswordRole(password, metadata, passwordMatches)
 }
@@ -212,44 +211,86 @@ export function getI18n(request) {
  */
 export async function deleteEmptyPages() {
     const deleted = []
+    const deletedSet = new Set()
     const errors = []
     const kv = getNotesNamespace()
-    if (!kv) return { deleted: 0, errors: ['Notes KV namespace is not configured'] }
+    const db = getStorageDb()
+    const driver = getStorageDriverName()
+    if (!kv && !db) return { deleted: 0, errors: ['Notes storage is not configured'] }
 
-    try {
-        let cursor = undefined
-        let listComplete = false
+    const processPath = async (notePath) => {
+        if (!notePath || deletedSet.has(notePath)) return
+        try {
+            const { value, metadata } = await driverQueryNote(notePath)
 
-        while (!listComplete) {
-            const list = await kv.list({ cursor, limit: 1000 })
-            cursor = list.cursor
-            listComplete = list.list_complete
+            // Only delete truly empty pages (length 0) with no passwords attached
+            const isContentEmpty = !value || String(value).trim().length === 0
+            const hasPassword = Boolean(metadata?.pw || metadata?.vpw)
 
-            for (const note of list.keys) {
-                try {
-                    const { value, metadata } = await driverQueryNote(note.name)
-
-                    // Only delete truly empty pages (length 0) with no passwords attached
-                    const isContentEmpty = !value || String(value).trim().length === 0
-                    const hasPassword = Boolean(metadata?.pw || metadata?.vpw)
-
-                    if (isContentEmpty && !hasPassword) {
-                        await driverDeleteNote(note.name)
-                        const md5 = await MD5(note.name)
-                        const shareKv = getShareNamespace()
-                        if (shareKv) await shareKv.delete(md5)
-                        await deleteNoteHistoryForPath(note.name)
-                        deleted.push(note.name)
-                    }
-                } catch (e) {
-                    errors.push(`Failed to process ${note.name}: ${e.message}`)
-                }
+            if (isContentEmpty && !hasPassword) {
+                await driverDeleteNote(notePath)
+                const md5 = await MD5(notePath)
+                const shareKv = getShareNamespace()
+                if (shareKv) await shareKv.delete(md5)
+                await deleteNoteHistoryForPath(notePath)
+                deletedSet.add(notePath)
+                deleted.push(notePath)
             }
-
-            if (!cursor) break
+        } catch (e) {
+            errors.push(`Failed to process ${notePath}: ${e.message}`)
         }
-    } catch (e) {
-        errors.push(`Failed to list notes: ${e.message}`)
+    }
+
+    if ((driver === 'd1' || driver === 'auto') && db) {
+        try {
+            const rows = await db.prepare("SELECT path FROM notes WHERE length(trim(content)) = 0").all()
+            for (const row of (rows?.results || [])) {
+                if (row?.path) await processPath(row.path)
+            }
+        } catch (e) {
+            if (driver === 'd1') errors.push(`Failed to list D1 notes: ${e.message}`)
+        }
+    }
+
+    if (kv) {
+        try {
+            let cursor = undefined
+            let listComplete = false
+
+            while (!listComplete) {
+                const list = await kv.list({ cursor, limit: 1000 })
+                cursor = list.cursor
+                listComplete = list.list_complete
+
+                for (const note of list.keys) {
+                    const notePath = note.name
+                    if (!notePath || deletedSet.has(notePath)) continue
+                    try {
+                        const { value, metadata } = await driverQueryNote(notePath)
+
+                        // Only delete truly empty pages (length 0) with no passwords attached
+                        const isContentEmpty = !value || String(value).trim().length === 0
+                        const hasPassword = Boolean(metadata?.pw || metadata?.vpw)
+
+                        if (isContentEmpty && !hasPassword) {
+                            await driverDeleteNote(note.name)
+                            const md5 = await MD5(notePath)
+                            const shareKv = getShareNamespace()
+                            if (shareKv) await shareKv.delete(md5)
+                            await deleteNoteHistoryForPath(notePath)
+                            deletedSet.add(notePath)
+                            deleted.push(notePath)
+                        }
+                    } catch (e) {
+                        errors.push(`Failed to process ${notePath}: ${e.message}`)
+                    }
+                }
+
+                if (!cursor) break
+            }
+        } catch (e) {
+            errors.push(`Failed to list notes: ${e.message}`)
+        }
     }
 
     return { deleted: deleted.length, errors }

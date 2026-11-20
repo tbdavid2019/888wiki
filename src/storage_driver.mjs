@@ -138,6 +138,57 @@ export async function driverDeleteNote(path) {
 }
 
 /**
+ * List notes across active storage backends (D1 and/or KV).
+ * Returns [{ name, metadata, content? }] deduplicated by path.
+ */
+export async function driverListNotes({ includeContent = false } = {}) {
+    const driver = getStorageDriverName()
+    const db = getStorageDb()
+    const kv = getNotesKv()
+    const byPath = new Map()
+
+    if ((driver === 'd1' || driver === 'auto') && db) {
+        try {
+            const cols = includeContent ? 'path, content, metadata' : 'path, metadata'
+            const res = await db.prepare(`SELECT ${cols} FROM notes`).all()
+            for (const row of (res?.results || [])) {
+                if (!row?.path) continue
+                let parsedMeta = {}
+                try {
+                    parsedMeta = typeof row.metadata === 'string' ? JSON.parse(row.metadata) : (row.metadata || {})
+                } catch {
+                    parsedMeta = {}
+                }
+                byPath.set(row.path, {
+                    name: row.path,
+                    metadata: parsedMeta,
+                    ...(includeContent ? { content: row.content || '', hasContent: true } : {}),
+                })
+            }
+        } catch (err) {
+            if (driver === 'd1') {
+                console.error('D1 List Notes Error:', err)
+            }
+        }
+    }
+
+    if ((driver === 'kv' || driver === 'auto') && kv && typeof kv.list === 'function') {
+        let cursor
+        do {
+            const page = await kv.list(cursor ? { cursor } : undefined)
+            for (const item of (page?.keys || [])) {
+                if (item?.name && !byPath.has(item.name)) {
+                    byPath.set(item.name, item)
+                }
+            }
+            cursor = page?.list_complete ? undefined : page?.cursor
+        } while (cursor)
+    }
+
+    return Array.from(byPath.values())
+}
+
+/**
  * Query a share mapping (shareId -> path)
  * @param {string} shareId - Share ID or slug
  * @returns {Promise<string|null>} Target note path
@@ -358,6 +409,16 @@ export async function driverFindNoteByShareId(shareId) {
 
 const IN_FLIGHT_CLAIMS = new Map()
 
+function generateClaimNonce(now) {
+    if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+        const bytes = new Uint8Array(12)
+        crypto.getRandomValues(bytes)
+        const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('')
+        return `${now}-${hex}`
+    }
+    return `${now}-${Date.now().toString(36)}`
+}
+
 /**
  * Atomically claim a burn-after-reading note to prevent concurrent double-read
  * @param {string} shareId
@@ -366,74 +427,129 @@ const IN_FLIGHT_CLAIMS = new Map()
  * @returns {Promise<boolean>} true if successfully claimed, false if already burned
  */
 export async function driverClaimBurnShare(shareId, path, now = Math.floor(Date.now() / 1000)) {
-    if (!shareId || !path) return false
+    const result = await driverRecordBurnView(shareId, path, 1, now)
+    return result.claimed
+}
+
+/**
+ * Atomically records a view against a burn-after-reading / max-views share.
+ * Burns the share when viewCount reaches maxViews (default 1).
+ * @returns {Promise<{ claimed: boolean, burned: boolean, viewCount: number }>}
+ */
+export async function driverRecordBurnView(shareId, path, maxViews = 1, now = Math.floor(Date.now() / 1000)) {
+    if (!shareId || !path) return { claimed: false, burned: false, viewCount: 0 }
+    const targetMaxViews = Math.max(1, Number(maxViews) || 1)
     const db = getStorageDb()
     const kv = getShareKv()
     const notesKv = getNotesKv()
+    const driver = getStorageDriverName()
 
     // Fast-path in-memory lock on current isolate to block concurrent promises
     if (IN_FLIGHT_CLAIMS.has(shareId)) {
-        return false
+        return { claimed: false, burned: false, viewCount: 0 }
     }
     IN_FLIGHT_CLAIMS.set(shareId, now)
-    // Clean up memory lock after 10 seconds
-    setTimeout(() => IN_FLIGHT_CLAIMS.delete(shareId), 10000)
 
-    // 1. Check KV tombstone first
-    const tombstone = await driverGetShareStatus(shareId)
-    if (tombstone?.status === 'burned') {
-        return false
-    }
-
-    // 2. If D1 is available, atomic check-and-set via UPDATE
-    if (db) {
-        try {
-            const res = await db.prepare(`
-                UPDATE notes
-                SET metadata = json_set(metadata, '$.share', 0, '$.shareBurnedAt', ?)
-                WHERE path = ?
-                  AND (
-                      json_extract(metadata, '$.share') = 1
-                      OR json_extract(metadata, '$.share') = true
-                  )
-                  AND json_extract(metadata, '$.shareBurnedAt') IS NULL
-            `).bind(now, path).run()
-            if (res && typeof res.meta?.changes === 'number' && res.meta.changes === 0) {
-                return false
-            }
-        } catch (err) {
-            console.warn('D1 Claim Burn Share Error:', err)
+    try {
+        // 1. Check KV tombstone first
+        const tombstone = await driverGetShareStatus(shareId)
+        if (tombstone?.status === 'burned') {
+            return { claimed: false, burned: true, viewCount: targetMaxViews }
         }
-    }
 
-    // 3. In KV-only mode (or parallel KV storage), perform two-phase claim check with unique nonce
-    if (kv) {
-        try {
-            const claimKey = `SHARE_CLAIM:${shareId}`
-            const claimNonce = `${now}-${Math.random().toString(36).slice(2)}`
-            await kv.put(claimKey, claimNonce, { expirationTtl: 300 })
-            const registeredNonce = await kv.get(claimKey)
-            if (registeredNonce && registeredNonce !== claimNonce) {
-                return false
+        let burnedNow = targetMaxViews <= 1
+        let nextViewCount = 1
+
+        // 2. If D1 is available, atomic check-and-set via UPDATE
+        if (db && (driver === 'd1' || driver === 'auto')) {
+            try {
+                if (targetMaxViews <= 1) {
+                    const res = await db.prepare(`
+                        UPDATE notes
+                        SET metadata = json_set(metadata, '$.share', json('false'), '$.shareBurnedAt', ?, '$.shareViewCount', COALESCE(CAST(json_extract(metadata, '$.shareViewCount') AS INTEGER), 0) + 1)
+                        WHERE path = ?
+                          AND (
+                              json_extract(metadata, '$.share') = 1
+                              OR json_extract(metadata, '$.share') = true
+                          )
+                          AND json_extract(metadata, '$.shareBurnedAt') IS NULL
+                    `).bind(now, path).run()
+                    if (res && typeof res.meta?.changes === 'number' && res.meta.changes === 0) {
+                        return { claimed: false, burned: true, viewCount: targetMaxViews }
+                    }
+                    burnedNow = true
+                } else {
+                    const res = await db.prepare(`
+                        UPDATE notes
+                        SET metadata = CASE
+                            WHEN COALESCE(CAST(json_extract(metadata, '$.shareViewCount') AS INTEGER), 0) + 1 >= ?
+                            THEN json_set(metadata, '$.share', json('false'), '$.shareBurnedAt', ?, '$.shareViewCount', COALESCE(CAST(json_extract(metadata, '$.shareViewCount') AS INTEGER), 0) + 1)
+                            ELSE json_set(metadata, '$.shareViewCount', COALESCE(CAST(json_extract(metadata, '$.shareViewCount') AS INTEGER), 0) + 1)
+                        END
+                        WHERE path = ?
+                          AND (
+                              json_extract(metadata, '$.share') = 1
+                              OR json_extract(metadata, '$.share') = true
+                          )
+                          AND json_extract(metadata, '$.shareBurnedAt') IS NULL
+                          AND COALESCE(CAST(json_extract(metadata, '$.shareViewCount') AS INTEGER), 0) < ?
+                    `).bind(targetMaxViews, now, path, targetMaxViews).run()
+                    if (res && typeof res.meta?.changes === 'number' && res.meta.changes === 0) {
+                        return { claimed: false, burned: true, viewCount: targetMaxViews }
+                    }
+                    const updatedRow = await db.prepare("SELECT json_extract(metadata, '$.shareViewCount') AS vc, json_extract(metadata, '$.shareBurnedAt') AS burnedAt FROM notes WHERE path = ?").bind(path).first()
+                    nextViewCount = Number(updatedRow?.vc || 1)
+                    burnedNow = Boolean(updatedRow?.burnedAt) || nextViewCount >= targetMaxViews
+                }
+            } catch (err) {
+                console.warn('D1 Claim Burn Share Error:', err)
+                if (driver === 'd1') {
+                    return { claimed: false, burned: false, viewCount: 0 }
+                }
             }
-        } catch (err) {
-            console.warn('KV Claim Nonce Error:', err)
         }
-    }
 
-    // 4. Mark tombstone in SHARE kv immediately
-    await driverSetShareStatus(shareId, 'burned', { burnedAt: now, path })
-
-    // 5. Update KV note metadata as well
-    if (notesKv) {
-        try {
-            const current = await notesKv.getWithMetadata(path)
-            if (current?.metadata) {
-                const nextMeta = { ...current.metadata, share: false, shareBurnedAt: now }
-                await notesKv.put(path, current.value || '', { metadata: nextMeta })
+        // 3. In KV-only mode (or parallel KV storage), perform two-phase claim check for single-view burn
+        if (kv && targetMaxViews <= 1) {
+            try {
+                const claimKey = `SHARE_CLAIM:${shareId}`
+                const claimNonce = generateClaimNonce(now)
+                await kv.put(claimKey, claimNonce, { expirationTtl: 300 })
+                const registeredNonce = await kv.get(claimKey)
+                if (registeredNonce && registeredNonce !== claimNonce) {
+                    return { claimed: false, burned: true, viewCount: targetMaxViews }
+                }
+            } catch (err) {
+                console.warn('KV Claim Nonce Error:', err)
             }
-        } catch {}
-    }
+        }
 
-    return true
+        // 4. Update KV note metadata as well
+        if (notesKv) {
+            try {
+                const current = await notesKv.getWithMetadata(path)
+                if (current?.metadata) {
+                    const currentViews = Number(current.metadata.shareViewCount || 0)
+                    if (current.metadata.shareBurnedAt || currentViews >= targetMaxViews) {
+                        return { claimed: false, burned: true, viewCount: currentViews }
+                    }
+                    nextViewCount = Math.max(nextViewCount, currentViews + 1)
+                    burnedNow = burnedNow || nextViewCount >= targetMaxViews
+                    const nextMeta = burnedNow
+                        ? { ...current.metadata, share: false, shareBurnedAt: now, shareViewCount: nextViewCount }
+                        : { ...current.metadata, shareViewCount: nextViewCount }
+                    await notesKv.put(path, current.value || '', { metadata: nextMeta })
+                }
+            } catch {}
+        }
+
+        // 5. Mark tombstone in SHARE kv once burned
+        if (burnedNow) {
+            await driverSetShareStatus(shareId, 'burned', { burnedAt: now, path })
+        }
+
+        return { claimed: true, burned: burnedNow, viewCount: nextViewCount }
+    } finally {
+        IN_FLIGHT_CLAIMS.delete(shareId)
+    }
 }
