@@ -3,7 +3,10 @@ const path = require('path');
 
 const themeDir = path.join(__dirname, '../theme');
 const output = path.join(__dirname, '../src/theme_data.js');
-const files = fs.readdirSync(themeDir).filter(f => f.endsWith('.css') && f !== 'reset.css' && f !== 'index.ts');
+const files = fs
+    .readdirSync(themeDir)
+    .filter(f => f.endsWith('.css') && !f.includes('.sync-conflict-') && f !== 'reset.css' && f !== 'index.ts')
+    .sort();
 
 let content = 'export const THEMES = {\n';
 files.forEach(f => {

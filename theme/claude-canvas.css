@@ -6,7 +6,7 @@
 #bm-md {
   color: #3d3d3a;
   background: #faf9f5;
-  font-family: StyreneB, Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: StyreneB, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "GenJyuu Gothic CJK", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", Roboto, "Helvetica Neue", Arial, sans-serif;
   font-size: 16px;
   line-height: 1.65;
   padding: 1.6em 1.25em 2.2em;
@@ -133,7 +133,7 @@
   border-collapse: collapse;
   border: 1px solid #e6dfd8;
   border-radius: 8px;
-  overflow: hidden;
+  overflow-x: auto;
   background: #faf9f5;
 }
 
@@ -172,26 +172,47 @@
   border-radius: 12px;
   border: 1px solid #e6dfd8;
   background: #f5f0e8;
+  color: #3d3d3a;
 }
 
 #bm-md .markdown-alert-note {
   border-left: 4px solid #6c6a64;
 }
 
+#bm-md .markdown-alert-note::before {
+  color: #4f4d48;
+}
+
 #bm-md .markdown-alert-tip {
-  border-left: 4px solid #5db8a6;
+  border-left: 4px solid #267867;
+}
+
+#bm-md .markdown-alert-tip::before {
+  color: #1e6657;
 }
 
 #bm-md .markdown-alert-important {
   border-left: 4px solid #9e472a;
 }
 
+#bm-md .markdown-alert-important::before {
+  color: #8a3a20;
+}
+
 #bm-md .markdown-alert-warning {
-  border-left: 4px solid #e8a55a;
+  border-left: 4px solid #c97a2b;
+}
+
+#bm-md .markdown-alert-warning::before {
+  color: #7d4a00;
 }
 
 #bm-md .markdown-alert-caution {
   border-left: 4px solid #c64545;
+}
+
+#bm-md .markdown-alert-caution::before {
+  color: #a12929;
 }
 
 #bm-md .footnotes {
@@ -202,7 +223,7 @@
 @media (max-width: 720px) {
   #bm-md {
     padding: 22px 18px 36px;
-    font-size: 15px;
+    font-size: 16px;
   }
   #bm-md h1 {
     font-size: 1.8em;

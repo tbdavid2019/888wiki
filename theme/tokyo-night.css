@@ -103,7 +103,7 @@
 #bm-md del,
 #bm-md s,
 #bm-md strike {
-  color: #565f89;
+  color: #8b95bf;
   text-decoration-color: #f7768e;
 }
 
@@ -201,7 +201,7 @@
   border-spacing: 0;
   border: 1px solid #292e42;
   border-radius: 10px;
-  overflow: hidden;
+  overflow-x: auto;
   background: rgba(31, 35, 53, 0.85);
 }
 
@@ -259,26 +259,47 @@
   border-radius: 12px;
   border: 1px solid #292e42;
   background: rgba(31, 35, 53, 0.92);
+  color: #c0caf5;
 }
 
 #bm-md .markdown-alert-note {
   border-left: 4px solid #7aa2f7;
 }
 
+#bm-md .markdown-alert-note::before {
+  color: #8eb3ff;
+}
+
 #bm-md .markdown-alert-tip {
   border-left: 4px solid #9ece6a;
+}
+
+#bm-md .markdown-alert-tip::before {
+  color: #9ece6a;
 }
 
 #bm-md .markdown-alert-important {
   border-left: 4px solid #bb9af7;
 }
 
+#bm-md .markdown-alert-important::before {
+  color: #c4a7fa;
+}
+
 #bm-md .markdown-alert-warning {
   border-left: 4px solid #e0af68;
 }
 
+#bm-md .markdown-alert-warning::before {
+  color: #e0af68;
+}
+
 #bm-md .markdown-alert-caution {
   border-left: 4px solid #f7768e;
+}
+
+#bm-md .markdown-alert-caution::before {
+  color: #ff8ea2;
 }
 
 #bm-md .footnotes {
@@ -325,7 +346,7 @@
 @media (max-width: 720px) {
   #bm-md {
     padding: 22px 18px 36px;
-    font-size: 15px;
+    font-size: 16px;
   }
 
   #bm-md h1 {

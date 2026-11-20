@@ -12,7 +12,7 @@
     radial-gradient(circle at bottom left, rgba(203, 166, 247, 0.1), transparent 24%),
     linear-gradient(180deg, #1e1e2e 0%, #181825 100%);
   font-family:
-    "SF Mono", "Monaco", "Cascadia Code", "Fira Code", "JetBrains Mono", "Roboto Mono", "Consolas", "Menlo", monospace;
+    'GenJyuu Gothic CJK', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
   font-size: 16px;
   line-height: 1.8;
   padding: 1.6em 1.15em 2.2em;
@@ -123,7 +123,7 @@
 #bm-md del,
 #bm-md s,
 #bm-md strike {
-  color: #7f849c;
+  color: #9399b2;
   text-decoration-color: #f38ba8;
 }
 
@@ -206,7 +206,7 @@
 #bm-md samp,
 #bm-md tt {
   font-family:
-    "SF Mono", "Monaco", "Cascadia Code", "Fira Code", "JetBrains Mono", "Roboto Mono", "Consolas", "Menlo", monospace;
+    'GenJyuu Gothic CJK', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
 }
 
 #bm-md code {
@@ -248,7 +248,7 @@
   border-spacing: 0;
   border: 1px solid #45475a;
   border-radius: 10px;
-  overflow: hidden;
+  overflow-x: auto;
   background: rgba(24, 24, 37, 0.92);
 }
 
@@ -333,27 +333,48 @@
   padding: 14px 16px;
   border-radius: 12px;
   border: 1px solid #45475a;
-  background: rgba(49, 50, 68, 0.8);
+  background: rgba(30, 30, 46, 0.94);
+  color: #cdd6f4;
 }
 
 #bm-md .markdown-alert-note {
   border-left: 4px solid #89dceb;
 }
 
+#bm-md .markdown-alert-note::before {
+  color: #89dceb;
+}
+
 #bm-md .markdown-alert-tip {
   border-left: 4px solid #a6e3a1;
+}
+
+#bm-md .markdown-alert-tip::before {
+  color: #a6e3a1;
 }
 
 #bm-md .markdown-alert-important {
   border-left: 4px solid #cba6f7;
 }
 
+#bm-md .markdown-alert-important::before {
+  color: #dac0fa;
+}
+
 #bm-md .markdown-alert-warning {
   border-left: 4px solid #f9e2af;
 }
 
+#bm-md .markdown-alert-warning::before {
+  color: #f9e2af;
+}
+
 #bm-md .markdown-alert-caution {
   border-left: 4px solid #f38ba8;
+}
+
+#bm-md .markdown-alert-caution::before {
+  color: #f8a9bf;
 }
 
 #bm-md .footnotes {
@@ -400,7 +421,7 @@
 @media (max-width: 720px) {
   #bm-md {
     padding: 22px 18px 36px;
-    font-size: 15px;
+    font-size: 16px;
   }
 
   #bm-md h1 {

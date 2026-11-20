@@ -22,7 +22,7 @@
 #bm-md {
   color: #333333;
   background-color: #f9f9f7;
-  font-family: Georgia, 'Times New Roman', 'Songti SC', 'SimSun', serif;
+  font-family: Georgia, 'Noto Serif TC', 'PMingLiU', 'Times New Roman', 'Songti SC', 'SimSun', serif;
   font-size: 16px;
   line-height: 1.7;
   padding: 1.25em 1em;
@@ -40,7 +40,7 @@
 #bm-md h4,
 #bm-md h5,
 #bm-md h6 {
-  font-family: Georgia, 'Times New Roman', 'Songti SC', 'SimSun', serif;
+  font-family: Georgia, 'Noto Serif TC', 'PMingLiU', 'Times New Roman', 'Songti SC', 'SimSun', serif;
   font-weight: 700;
   line-height: 1.2;
   margin-top: 1.25em;
@@ -144,7 +144,7 @@
 #bm-md del,
 #bm-md s,
 #bm-md strike {
-  color: #888888;
+  color: #595959;
   text-decoration: line-through;
   text-decoration-thickness: 1px;
 }
@@ -594,6 +594,7 @@
   border: 1px solid #111111;
   border-left: 4px solid #111111;
   background-color: #f5f5f3;
+  color: #1a1a1a;
 }
 
 #bm-md .markdown-alert-title {
@@ -614,8 +615,9 @@
   border-left-color: #444444;
 }
 
-#bm-md .markdown-alert-note .markdown-alert-title {
-  color: #444444;
+#bm-md .markdown-alert-note .markdown-alert-title,
+#bm-md .markdown-alert-note::before {
+  color: #333333;
 }
 
 /* Tip - 浅灰 */
@@ -625,8 +627,9 @@
   border-left-color: #555555;
 }
 
-#bm-md .markdown-alert-tip .markdown-alert-title {
-  color: #555555;
+#bm-md .markdown-alert-tip .markdown-alert-title,
+#bm-md .markdown-alert-tip::before {
+  color: #444444;
 }
 
 /* Important - 深黑 */
@@ -636,7 +639,8 @@
   border-left-color: #111111;
 }
 
-#bm-md .markdown-alert-important .markdown-alert-title {
+#bm-md .markdown-alert-important .markdown-alert-title,
+#bm-md .markdown-alert-important::before {
   color: #111111;
 }
 
@@ -647,8 +651,9 @@
   border-left-color: #333333;
 }
 
-#bm-md .markdown-alert-warning .markdown-alert-title {
-  color: #333333;
+#bm-md .markdown-alert-warning .markdown-alert-title,
+#bm-md .markdown-alert-warning::before {
+  color: #2b2b2b;
 }
 
 /* Caution - 编辑红 */
@@ -658,7 +663,8 @@
   border-left-color: #8b1a1a;
 }
 
-#bm-md .markdown-alert-caution .markdown-alert-title {
+#bm-md .markdown-alert-caution .markdown-alert-title,
+#bm-md .markdown-alert-caution::before {
   color: #8b1a1a;
 }
 

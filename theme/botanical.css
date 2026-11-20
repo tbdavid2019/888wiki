@@ -33,7 +33,7 @@
 #bm-md {
   color: #2a2520;
   background-color: #f7f5f0;
-  font-family: Georgia, 'Songti SC', 'Noto Serif SC', 'Times New Roman', serif;
+  font-family: Georgia, 'Noto Serif TC', 'PMingLiU', 'Songti SC', 'Noto Serif SC', 'Times New Roman', serif;
   font-size: 16px;
   line-height: 1.75;
   padding: 1.5em 1.25em;
@@ -51,7 +51,7 @@
 #bm-md h4,
 #bm-md h5,
 #bm-md h6 {
-  font-family: Georgia, 'Songti SC', 'Noto Serif SC', 'Times New Roman', serif;
+  font-family: Georgia, 'Noto Serif TC', 'PMingLiU', 'Songti SC', 'Noto Serif SC', 'Times New Roman', serif;
   font-weight: 600;
   line-height: 1.35;
   margin-top: 1.35em;
@@ -94,7 +94,7 @@
 #bm-md h4,
 #bm-md h5,
 #bm-md h6 {
-  color: #4a7c6f;
+  color: #356355;
 }
 
 #bm-md h4 {
@@ -123,7 +123,7 @@
 
 #bm-md p {
   margin-bottom: 1em;
-  text-align: justify;
+  text-align: left;
 }
 
 #bm-md p:last-child {
@@ -152,9 +152,9 @@
 #bm-md del,
 #bm-md s,
 #bm-md strike {
-  color: #9a9590;
+  color: #635e59;
   text-decoration: line-through;
-  text-decoration-color: #7a7570;
+  text-decoration-color: #635e59;
 }
 
 /* 高亮 - 标本标签感 */
@@ -422,7 +422,7 @@
 #bm-md th,
 #bm-md td {
   padding: 0.6em 0.85em;
-  border: 1px solid #d4cfc6;
+  border: 1px solid #969084;
   text-align: left;
 }
 
@@ -596,6 +596,7 @@
   border: 1px solid;
   border-left: 3px solid;
   background-color: #f5f3ed;
+  color: #2a2520;
 }
 
 #bm-md .markdown-alert-title {
@@ -610,11 +611,12 @@
 #bm-md .markdown-alert-note {
   background-color: #f3f5f8;
   border-color: #8b9cad;
-  border-left-color: #5c7a95;
+  border-left-color: #3d5975;
 }
 
-#bm-md .markdown-alert-note .markdown-alert-title {
-  color: #5c7a95;
+#bm-md .markdown-alert-note .markdown-alert-title,
+#bm-md .markdown-alert-note::before {
+  color: #3d5975;
 }
 
 /* Tip - 铜版绿（有益建议） */
@@ -624,7 +626,8 @@
   border-left-color: #2e5d4e;
 }
 
-#bm-md .markdown-alert-tip .markdown-alert-title {
+#bm-md .markdown-alert-tip .markdown-alert-title,
+#bm-md .markdown-alert-tip::before {
   color: #2e5d4e;
 }
 
@@ -635,7 +638,8 @@
   border-left-color: #3d5a80;
 }
 
-#bm-md .markdown-alert-important .markdown-alert-title {
+#bm-md .markdown-alert-important .markdown-alert-title,
+#bm-md .markdown-alert-important::before {
   color: #3d5a80;
 }
 
@@ -646,8 +650,9 @@
   border-left-color: #a08550;
 }
 
-#bm-md .markdown-alert-warning .markdown-alert-title {
-  color: #8a7040;
+#bm-md .markdown-alert-warning .markdown-alert-title,
+#bm-md .markdown-alert-warning::before {
+  color: #755c2e;
 }
 
 /* Caution - 勃艮第红（危险警告） */
@@ -657,7 +662,8 @@
   border-left-color: #8b4a4a;
 }
 
-#bm-md .markdown-alert-caution .markdown-alert-title {
+#bm-md .markdown-alert-caution .markdown-alert-title,
+#bm-md .markdown-alert-caution::before {
   color: #8b4a4a;
 }
 

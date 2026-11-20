@@ -10,7 +10,7 @@
     radial-gradient(circle at bottom left, rgba(136, 57, 239, 0.08), transparent 22%),
     linear-gradient(180deg, #eff1f5 0%, #e6e9ef 100%);
   font-family:
-    "SF Mono", "Monaco", "Cascadia Code", "Fira Code", "JetBrains Mono", "Roboto Mono", "Consolas", "Menlo", monospace;
+    'GenJyuu Gothic CJK', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
   font-size: 16px;
   line-height: 1.8;
   padding: 1.6em 1.15em 2.2em;
@@ -34,25 +34,25 @@
 #bm-md h1 {
   margin-top: 0;
   font-size: 2em;
-  color: #1e66f5;
-  border-bottom: 1px solid #bcc0cc;
+  color: #1450c8;
+  border-bottom: 1px solid #9aa0b0;
   padding-bottom: 0.35em;
 }
 
 #bm-md h2 {
   font-size: 1.55em;
-  color: #8839ef;
+  color: #6d24cc;
 }
 
 #bm-md h3 {
   font-size: 1.28em;
-  color: #179299;
+  color: #0f6c72;
 }
 
 #bm-md h4,
 #bm-md h5,
 #bm-md h6 {
-  color: #40a02b;
+  color: #286e18;
 }
 
 #bm-md h4,
@@ -91,32 +91,32 @@
 
 #bm-md strong,
 #bm-md b {
-  color: #fe640b;
+  color: #b33e00;
   font-weight: 700;
 }
 
 #bm-md em,
 #bm-md i {
-  color: #209fb5;
+  color: #0d6d7e;
 }
 
 #bm-md del,
 #bm-md s,
 #bm-md strike {
-  color: #8c8fa1;
-  text-decoration-color: #d20f39;
+  color: #595d73;
+  text-decoration-color: #b01032;
 }
 
 #bm-md mark {
-  color: #4c4f69;
-  background: #df8e1d;
+  color: #232533;
+  background: #f5d061;
   padding: 0.1em 0.3em;
   border-radius: 4px;
 }
 
 #bm-md small {
   font-size: 0.875em;
-  color: #6c6f85;
+  color: #55586e;
 }
 
 #bm-md sup,
@@ -141,14 +141,14 @@
 }
 
 #bm-md a {
-  color: #1e66f5;
+  color: #1450c8;
   text-decoration: none;
-  border-bottom: 1px solid rgba(30, 102, 245, 0.35);
+  border-bottom: 1px solid rgba(20, 80, 200, 0.4);
 }
 
 #bm-md a:hover {
-  color: #7287fd;
-  border-bottom-color: #7287fd;
+  color: #0e3b96;
+  border-bottom-color: #0e3b96;
 }
 
 #bm-md ul,
@@ -186,13 +186,13 @@
 #bm-md samp,
 #bm-md tt {
   font-family:
-    "SF Mono", "Monaco", "Cascadia Code", "Fira Code", "JetBrains Mono", "Roboto Mono", "Consolas", "Menlo", monospace;
+    'GenJyuu Gothic CJK', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
 }
 
 #bm-md code {
-  color: #df8e1d;
+  color: #8a3b00;
   background: rgba(204, 208, 218, 0.7);
-  border: 1px solid #bcc0cc;
+  border: 1px solid #9aa0b0;
   border-radius: 6px;
   padding: 0.16em 0.42em;
   font-size: 0.92em;
@@ -226,25 +226,25 @@
   width: 100%;
   border-collapse: collapse;
   border-spacing: 0;
-  border: 1px solid #bcc0cc;
+  border: 1px solid #8c92a4;
   border-radius: 10px;
-  overflow: hidden;
+  overflow-x: auto;
   background: rgba(230, 233, 239, 0.9);
 }
 
 #bm-md thead {
-  background: linear-gradient(180deg, #ccd0da 0%, #bcc0cc 100%);
+  background: linear-gradient(180deg, #dce0e8 0%, #ccd0da 100%);
 }
 
 #bm-md thead th {
-  background: linear-gradient(180deg, #ccd0da 0%, #bcc0cc 100%);
-  color: #4c4f69;
+  background: linear-gradient(180deg, #dce0e8 0%, #ccd0da 100%);
+  color: #292c3c;
 }
 
 #bm-md th,
 #bm-md td {
   padding: 12px 14px;
-  border-bottom: 1px solid #bcc0cc;
+  border-bottom: 1px solid #9aa0b0;
   text-align: left;
 }
 
@@ -311,15 +311,21 @@
 #bm-md .markdown-alert {
   padding: 14px 16px;
   border-radius: 12px;
-  border: 1px solid #bcc0cc;
-  background: rgba(204, 208, 218, 0.48);
+  border: 1px solid #9aa0b0;
+  background: rgba(230, 233, 239, 0.85);
+  color: #36394d;
 }
 
-#bm-md .markdown-alert-note { border-left: 4px solid #209fb5; }
-#bm-md .markdown-alert-tip { border-left: 4px solid #40a02b; }
-#bm-md .markdown-alert-important { border-left: 4px solid #8839ef; }
-#bm-md .markdown-alert-warning { border-left: 4px solid #df8e1d; }
-#bm-md .markdown-alert-caution { border-left: 4px solid #d20f39; }
+#bm-md .markdown-alert-note { border-left: 4px solid #1450c8; }
+#bm-md .markdown-alert-note::before { color: #1450c8; }
+#bm-md .markdown-alert-tip { border-left: 4px solid #286e18; }
+#bm-md .markdown-alert-tip::before { color: #286e18; }
+#bm-md .markdown-alert-important { border-left: 4px solid #6d24cc; }
+#bm-md .markdown-alert-important::before { color: #6d24cc; }
+#bm-md .markdown-alert-warning { border-left: 4px solid #8a5000; }
+#bm-md .markdown-alert-warning::before { color: #8a5000; }
+#bm-md .markdown-alert-caution { border-left: 4px solid #b01032; }
+#bm-md .markdown-alert-caution::before { color: #b01032; }
 
 #bm-md .footnotes {
   border-top: 1px solid #bcc0cc;
@@ -365,14 +371,14 @@
 @media (max-width: 720px) {
   #bm-md {
     padding: 22px 18px 36px;
-    font-size: 15px;
+    font-size: 16px;
   }
 
   #bm-md h1 {
-    font-size: 1.72em;
+    font-size: 1.75em;
   }
 
   #bm-md h2 {
-    font-size: 1.38em;
+    font-size: 1.4em;
   }
 }

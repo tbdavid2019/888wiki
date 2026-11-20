@@ -34,7 +34,7 @@
 #bm-md {
   color: #3d3835;
   background-color: #f5f3ef;
-  font-family: Georgia, 'Songti SC', 'Noto Serif SC', 'Times New Roman', serif;
+  font-family: Georgia, 'Noto Serif TC', 'PMingLiU', 'Songti SC', 'Noto Serif SC', 'Times New Roman', serif;
   font-size: 16px;
   line-height: 1.75;
   padding: 1.5em 1.125em;
@@ -52,7 +52,7 @@
 #bm-md h4,
 #bm-md h5,
 #bm-md h6 {
-  font-family: Georgia, 'Songti SC', 'Noto Serif SC', 'Times New Roman', serif;
+  font-family: Georgia, 'Noto Serif TC', 'PMingLiU', 'Songti SC', 'Noto Serif SC', 'Times New Roman', serif;
   font-weight: 600;
   line-height: 1.35;
   margin-top: 1.35em;
@@ -96,7 +96,7 @@
 #bm-md h4,
 #bm-md h5,
 #bm-md h6 {
-  color: #9a7568;
+  color: #735044;
 }
 
 #bm-md h4 {
@@ -372,7 +372,7 @@
   font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
   font-size: 0.875em;
   background-color: #eae6e0;
-  color: #b8612f;
+  color: #8c4119;
   padding: 0.2em 0.45em;
   border-radius: 6px;
   border: 1px solid #d8d3cb;
@@ -410,17 +410,17 @@
   border-collapse: collapse;
   font-size: 0.9375em;
   border-radius: 12px;
-  overflow: hidden;
+  overflow-x: auto;
   box-shadow: 0 2px 10px rgba(166, 93, 76, 0.06);
 }
 
 #bm-md thead {
-  background-color: #a65d4c;
+  background-color: #8f4939;
 }
 
 #bm-md thead th {
-  background-color: #a65d4c;
-  color: #f5f3ef;
+  background-color: #8f4939;
+  color: #ffffff;
 }
 
 #bm-md tfoot {
@@ -610,6 +610,7 @@
   padding: 0.85em 1.1em;
   border-radius: 12px;
   border-left: 4px solid;
+  color: #3d3835;
 }
 
 #bm-md .markdown-alert-title {
@@ -626,8 +627,9 @@
   border-left-color: #6b8a9e;
 }
 
-#bm-md .markdown-alert-note .markdown-alert-title {
-  color: #5a7a8e;
+#bm-md .markdown-alert-note .markdown-alert-title,
+#bm-md .markdown-alert-note::before {
+  color: #3f5f73;
 }
 
 /* Tip - 陶土棕（陶器的智慧） */
@@ -636,8 +638,9 @@
   border-left-color: #8b6f5c;
 }
 
-#bm-md .markdown-alert-tip .markdown-alert-title {
-  color: #7a5f4e;
+#bm-md .markdown-alert-tip .markdown-alert-title,
+#bm-md .markdown-alert-tip::before {
+  color: #614839;
 }
 
 /* Important - 紫砂色（珍贵的器物） */
@@ -646,8 +649,9 @@
   border-left-color: #8b6773;
 }
 
-#bm-md .markdown-alert-important .markdown-alert-title {
-  color: #7a5865;
+#bm-md .markdown-alert-important .markdown-alert-title,
+#bm-md .markdown-alert-important::before {
+  color: #644551;
 }
 
 /* Warning - 金秋黄（落叶的警示） */
@@ -656,8 +660,9 @@
   border-left-color: #c7a361;
 }
 
-#bm-md .markdown-alert-warning .markdown-alert-title {
-  color: #a88d4a;
+#bm-md .markdown-alert-warning .markdown-alert-title,
+#bm-md .markdown-alert-warning::before {
+  color: #6e561e;
 }
 
 /* Caution - 锈铁红（危险的锋利） */
@@ -666,8 +671,9 @@
   border-left-color: #a65d4c;
 }
 
-#bm-md .markdown-alert-caution .markdown-alert-title {
-  color: #8b4d3e;
+#bm-md .markdown-alert-caution .markdown-alert-title,
+#bm-md .markdown-alert-caution::before {
+  color: #7a3f30;
 }
 
 /* ============================================

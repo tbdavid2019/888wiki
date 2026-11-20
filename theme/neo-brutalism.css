@@ -20,7 +20,7 @@
 #bm-md {
   color: #000000;
   background-color: #fffdf5;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'GenJyuu Gothic CJK', 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', 'Helvetica Neue', Arial, sans-serif;
   font-size: 16px;
   line-height: 1.7;
   padding: 1.5em 1em;
@@ -672,27 +672,33 @@
 /* Note - 青绿 */
 #bm-md .markdown-alert-note {
   background-color: #00d2d3;
+  color: #000000;
 }
 
-#bm-md .markdown-alert-note .markdown-alert-title {
+#bm-md .markdown-alert-note .markdown-alert-title,
+#bm-md .markdown-alert-note::before {
   color: #000000;
 }
 
 /* Tip - 黄色 */
 #bm-md .markdown-alert-tip {
   background-color: #feca57;
+  color: #000000;
 }
 
-#bm-md .markdown-alert-tip .markdown-alert-title {
+#bm-md .markdown-alert-tip .markdown-alert-title,
+#bm-md .markdown-alert-tip::before {
   color: #000000;
 }
 
 /* Important - 紫色 */
 #bm-md .markdown-alert-important {
   background-color: #a29bfe;
+  color: #000000;
 }
 
-#bm-md .markdown-alert-important .markdown-alert-title {
+#bm-md .markdown-alert-important .markdown-alert-title,
+#bm-md .markdown-alert-important::before {
   color: #000000;
 }
 
@@ -700,19 +706,22 @@
 #bm-md .markdown-alert-warning {
   background-color: #fdcb6e;
   border-left: 12px solid #e17055;
+  color: #000000;
 }
 
-#bm-md .markdown-alert-warning .markdown-alert-title {
+#bm-md .markdown-alert-warning .markdown-alert-title,
+#bm-md .markdown-alert-warning::before {
   color: #000000;
 }
 
 /* Caution - 红色 */
 #bm-md .markdown-alert-caution {
-  background-color: #ff4757;
+  background-color: #c81e2e;
   color: #ffffff;
 }
 
-#bm-md .markdown-alert-caution .markdown-alert-title {
+#bm-md .markdown-alert-caution .markdown-alert-title,
+#bm-md .markdown-alert-caution::before {
   color: #ffffff;
 }
 

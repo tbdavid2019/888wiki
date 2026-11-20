@@ -2766,7 +2766,7 @@ html[data-ui-theme="dark"] .share-menu-trigger.is-published {
     font-weight: 600;
     color: var(--toolbar-active-text, #0969da);
     background: var(--toolbar-active-bg);
-    border-color: color-mix(in srgb, var(--toolbar-active-border, #a9471d) 40%, transparent);
+    border-color: color-mix(in srgb, var(--toolbar-active-border, #a9471d) 65%, transparent);
 }
 .theme-item-name {
     text-align: left;
@@ -2785,7 +2785,9 @@ html[data-ui-theme="dark"] .share-menu-trigger.is-published {
 .theme-item-check {
     font-weight: bold;
     color: var(--accent-color, #0969da);
-    margin-left: 8px;
+    margin-left: auto;
+    padding-left: 8px;
+    flex-shrink: 0;
 }
 
 .width-dropdown .dropdown-menu {
@@ -5583,7 +5585,7 @@ body.preview-device-mobile:not(.share-view) #preview-plain.markdown-body table {
     margin-left: 0 !important;
     margin-right: 0 !important;
     box-sizing: border-box !important;
-    font-size: 12px !important;
+    font-size: 13px !important;
 }
 
 body.preview-device-mobile:not(.share-view) #preview-md.markdown-body th,
@@ -6616,7 +6618,7 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
         margin-left: 0 !important;
         margin-right: 0 !important;
         box-sizing: border-box !important;
-        font-size: 12px !important;
+        font-size: 13px !important;
     }
 
     body.share-view .markdown-body th,

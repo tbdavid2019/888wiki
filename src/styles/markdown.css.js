@@ -21,10 +21,10 @@ export const getMarkdownCss = () => `
 .markdown-body .markdown-toc-list .markdown-toc-list { margin: 4px 0; }
 .markdown-body .markdown-toc-link { color: inherit; }
 .markdown-body ul, .markdown-body ol { padding-left: 2em; margin-top: 0; margin-bottom: 16px; }
-.markdown-body table { display: block; width: 100%; overflow: auto; margin-top: 0; margin-bottom: 16px; border-spacing: 0; border-collapse: collapse; }
-.markdown-body table tr { border-top: 1px solid #c6cbd1; }
-.markdown-body table th, .markdown-body table td { padding: 6px 13px; border: 1px solid #dfe2e5; }
-.markdown-body table th { font-weight: 600; }
+:where(.markdown-body) table { display: block; width: 100%; overflow-x: auto; margin-top: 0; margin-bottom: 16px; border-spacing: 0; border-collapse: collapse; }
+:where(.markdown-body table) tr { border-top: 1px solid #c6cbd1; }
+:where(.markdown-body table) th, :where(.markdown-body table) td { padding: 6px 13px; border: 1px solid #dfe2e5; }
+:where(.markdown-body table) th { font-weight: 600; }
 .markdown-body code { padding: 0.2em 0.4em; margin: 0; font-size: 85%; border-radius: 3px; font-family: var(--editor-font-family); }
 .markdown-body pre { padding: 16px; overflow: auto; font-size: 85%; line-height: 1.45; border-radius: 3px; }
 .markdown-body pre code { display: inline; padding: 0; margin: 0; overflow: visible; line-height: inherit; word-wrap: normal; background-color: transparent; border: 0; }
@@ -94,20 +94,20 @@ export const getMarkdownCss = () => `
     white-space: pre-wrap;
 }
 
-/* GitHub Alerts */
-.markdown-alert { padding: 8px 16px; margin-bottom: 16px; border-left: 0.25em solid; border-radius: 6px; }
-.markdown-alert > :first-child { margin-top: 0; }
-.markdown-alert > :last-child { margin-bottom: 0; }
-.markdown-alert-note { border-color: #0969da; background-color: #f1f8ff; color: #0d1117; }
-.markdown-alert-note::before { content: "ℹ️ Note"; font-weight: 600; display: block; margin-bottom: 4px; color: #0969da; }
-.markdown-alert-tip { border-color: #1a7f37; background-color: #f0fdf4; color: #0d1117; }
-.markdown-alert-tip::before { content: "💡 Tip"; font-weight: 600; display: block; margin-bottom: 4px; color: #1a7f37; }
-.markdown-alert-important { border-color: #8250df; background-color: #f6f0ff; color: #0d1117; }
-.markdown-alert-important::before { content: "💬 Important"; font-weight: 600; display: block; margin-bottom: 4px; color: #8250df; }
-.markdown-alert-warning { border-color: #9a6700; background-color: #fff8c5; color: #0d1117; }
-.markdown-alert-warning::before { content: "⚠️ Warning"; font-weight: 600; display: block; margin-bottom: 4px; color: #9a6700; }
-.markdown-alert-caution { border-color: #cf222e; background-color: #ffebe9; color: #0d1117; }
-.markdown-alert-caution::before { content: "🛑 Caution"; font-weight: 600; display: block; margin-bottom: 4px; color: #cf222e; }
+/* GitHub Alerts (low-specificity fallbacks so themes override cleanly) */
+:where(.markdown-alert) { padding: 8px 16px; margin-bottom: 16px; border-left: 0.25em solid; border-radius: 6px; }
+:where(.markdown-alert) > :first-child { margin-top: 0; }
+:where(.markdown-alert) > :last-child { margin-bottom: 0; }
+:where(.markdown-alert-note) { border-color: #0969da; background-color: #f1f8ff; color: #0d1117; }
+:where(.markdown-alert-note)::before { content: "ℹ️ Note"; font-weight: 600; display: block; margin-bottom: 4px; color: #0550ae; }
+:where(.markdown-alert-tip) { border-color: #1a7f37; background-color: #f0fdf4; color: #0d1117; }
+:where(.markdown-alert-tip)::before { content: "💡 Tip"; font-weight: 600; display: block; margin-bottom: 4px; color: #116329; }
+:where(.markdown-alert-important) { border-color: #8250df; background-color: #f6f0ff; color: #0d1117; }
+:where(.markdown-alert-important)::before { content: "💬 Important"; font-weight: 600; display: block; margin-bottom: 4px; color: #6639ba; }
+:where(.markdown-alert-warning) { border-color: #9a6700; background-color: #fff8c5; color: #0d1117; }
+:where(.markdown-alert-warning)::before { content: "⚠️ Warning"; font-weight: 600; display: block; margin-bottom: 4px; color: #744d00; }
+:where(.markdown-alert-caution) { border-color: #cf222e; background-color: #ffebe9; color: #0d1117; }
+:where(.markdown-alert-caution)::before { content: "🛑 Caution"; font-weight: 600; display: block; margin-bottom: 4px; color: #a40e26; }
 
 /* Pandoc Academic Citations & Footnotes */
 .markdown-body .pandoc-citation,
@@ -291,16 +291,16 @@ export const getMarkdownCss = () => `
 }
 
 /* Markdown Text Highlight */
-.markdown-body mark,
+:where(.markdown-body) mark,
 .markdown-highlight {
     background-color: rgba(254, 240, 138, 0.75);
-    color: inherit;
+    color: #1a1a1a;
     padding: 1px 5px;
     border-radius: 4px;
     box-decoration-break: clone;
     -webkit-box-decoration-break: clone;
 }
-[data-ui-theme="dark"] .markdown-body mark,
+:where([data-ui-theme="dark"] .markdown-body) mark,
 [data-ui-theme="dark"] .markdown-highlight {
     background-color: rgba(234, 179, 8, 0.32);
     color: #fef08a;

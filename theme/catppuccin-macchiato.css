@@ -10,7 +10,7 @@
     radial-gradient(circle at bottom left, rgba(198, 160, 246, 0.12), transparent 24%),
     linear-gradient(180deg, #24273a 0%, #1e2030 100%);
   font-family:
-    "SF Mono", "Monaco", "Cascadia Code", "Fira Code", "JetBrains Mono", "Roboto Mono", "Consolas", "Menlo", monospace;
+    'GenJyuu Gothic CJK', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
   font-size: 16px;
   line-height: 1.8;
   padding: 1.6em 1.15em 2.2em;
@@ -103,7 +103,7 @@
 #bm-md del,
 #bm-md s,
 #bm-md strike {
-  color: #8087a2;
+  color: #9ca4c0;
   text-decoration-color: #ed8796;
 }
 
@@ -186,7 +186,7 @@
 #bm-md samp,
 #bm-md tt {
   font-family:
-    "SF Mono", "Monaco", "Cascadia Code", "Fira Code", "JetBrains Mono", "Roboto Mono", "Consolas", "Menlo", monospace;
+    'GenJyuu Gothic CJK', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
 }
 
 #bm-md code {
@@ -228,7 +228,7 @@
   border-spacing: 0;
   border: 1px solid #494d64;
   border-radius: 10px;
-  overflow: hidden;
+  overflow-x: auto;
   background: rgba(30, 32, 48, 0.92);
 }
 
@@ -313,14 +313,20 @@
   padding: 14px 16px;
   border-radius: 12px;
   border: 1px solid #494d64;
-  background: rgba(54, 58, 79, 0.8);
+  background: rgba(36, 39, 58, 0.94);
+  color: #cad3f5;
 }
 
 #bm-md .markdown-alert-note { border-left: 4px solid #91d7e3; }
+#bm-md .markdown-alert-note::before { color: #9ee0eb; }
 #bm-md .markdown-alert-tip { border-left: 4px solid #a6da95; }
+#bm-md .markdown-alert-tip::before { color: #b5e6a5; }
 #bm-md .markdown-alert-important { border-left: 4px solid #c6a0f6; }
+#bm-md .markdown-alert-important::before { color: #d8bffa; }
 #bm-md .markdown-alert-warning { border-left: 4px solid #eed49f; }
+#bm-md .markdown-alert-warning::before { color: #f3dcac; }
 #bm-md .markdown-alert-caution { border-left: 4px solid #ed8796; }
+#bm-md .markdown-alert-caution::before { color: #f6aab5; }
 
 #bm-md .footnotes {
   border-top: 1px solid #494d64;
@@ -366,7 +372,7 @@
 @media (max-width: 720px) {
   #bm-md {
     padding: 22px 18px 36px;
-    font-size: 15px;
+    font-size: 16px;
   }
 
   #bm-md h1 {

@@ -20,7 +20,7 @@
 #bm-md {
   color: #1e293b;
   background-color: #fffdf5;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'GenJyuu Gothic CJK', 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', 'Helvetica Neue', Arial, sans-serif;
   font-size: 16px;
   line-height: 1.7;
   padding: 1.5em 1em;
@@ -86,13 +86,13 @@
 #bm-md h4,
 #bm-md h5,
 #bm-md h6 {
-  color: #a78bfa;
+  color: #6d28d9;
 }
 
 #bm-md h4 {
   font-size: 1.125em;
   padding-left: 0.65em;
-  border-left: 6px solid #a78bfa;
+  border-left: 6px solid #6d28d9;
 }
 
 #bm-md h5,
@@ -362,11 +362,17 @@
   margin: 1em 0;
   padding: 0.8em 1.1em 0.8em 1.6em;
   background-color: #be185d;
-  color: #1e293b;
+  color: #ffffff;
   border: 3px solid #1e293b;
   border-left: 10px solid #fbbf24;
   border-radius: 0 28px 28px 0;
   box-shadow: 6px 6px 0 #1e293b;
+}
+
+#bm-md blockquote a {
+  color: #fef08a;
+  background-color: rgba(30, 41, 59, 0.35);
+  border-bottom-color: #fbbf24;
 }
 
 #bm-md blockquote p {
@@ -382,6 +388,7 @@
   margin-top: 0.8em;
   margin-bottom: 0;
   background-color: #fbbf24;
+  color: #1e293b;
   border-left-color: #6d28d9;
   border-radius: 0 20px 20px 0;
   box-shadow: 4px 4px 0 #1e293b;
@@ -435,7 +442,7 @@
   font-size: 0.9375em;
   border: 3px solid #1e293b;
   border-radius: 16px;
-  overflow: hidden;
+  overflow-x: auto;
   box-shadow: 6px 6px 0 #1e293b;
 }
 
@@ -676,6 +683,7 @@
   border: 3px solid #1e293b;
   border-radius: 0 20px 20px 20px;
   box-shadow: 5px 5px 0 #1e293b;
+  color: #1e293b;
 }
 
 #bm-md .markdown-alert-title {
@@ -692,8 +700,9 @@
   border-left: 8px solid #6d28d9;
 }
 
-#bm-md .markdown-alert-note .markdown-alert-title {
-  color: #7c3aed;
+#bm-md .markdown-alert-note .markdown-alert-title,
+#bm-md .markdown-alert-note::before {
+  color: #5b21b6;
 }
 
 /* Tip - 薄荷绿 */
@@ -702,8 +711,9 @@
   border-left: 8px solid #34d399;
 }
 
-#bm-md .markdown-alert-tip .markdown-alert-title {
-  color: #059669;
+#bm-md .markdown-alert-tip .markdown-alert-title,
+#bm-md .markdown-alert-tip::before {
+  color: #046b4b;
 }
 
 /* Important - 粉色 */
@@ -712,8 +722,9 @@
   border-left: 8px solid #be185d;
 }
 
-#bm-md .markdown-alert-important .markdown-alert-title {
-  color: #db2777;
+#bm-md .markdown-alert-important .markdown-alert-title,
+#bm-md .markdown-alert-important::before {
+  color: #9d174d;
 }
 
 /* Warning - 黄色 */
@@ -722,8 +733,9 @@
   border-left: 8px solid #fbbf24;
 }
 
-#bm-md .markdown-alert-warning .markdown-alert-title {
-  color: #d97706;
+#bm-md .markdown-alert-warning .markdown-alert-title,
+#bm-md .markdown-alert-warning::before {
+  color: #854d0e;
 }
 
 /* Caution - 红色 */
@@ -732,8 +744,9 @@
   border-left: 8px solid #ef4444;
 }
 
-#bm-md .markdown-alert-caution .markdown-alert-title {
-  color: #dc2626;
+#bm-md .markdown-alert-caution .markdown-alert-title,
+#bm-md .markdown-alert-caution::before {
+  color: #b91c1c;
 }
 
 /* ============================================

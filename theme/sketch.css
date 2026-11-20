@@ -31,7 +31,7 @@
   /* 点阵纹理模拟笔记本方格纸 */
   background-image: radial-gradient(#e5e0d8 1px, transparent 1px);
   background-size: 20px 20px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'GenJyuu Gothic CJK', 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', 'Helvetica Neue', Arial, sans-serif;
   font-size: 16px;
   line-height: 1.7;
   padding: 1.5em 1em;
@@ -67,9 +67,9 @@
 /* H2 - 左侧马克笔边条 + 浅背景 */
 #bm-md h2 {
   font-size: 1.5em;
-  color: #d94545;
+  color: #b91c1c;
   padding: 0.3em 0.6em;
-  border-left: 5px solid #d94545;
+  border-left: 5px solid #b91c1c;
   background-color: rgba(185, 28, 28, 0.06);
   /* 不规则圆角：右侧看起来像手绘 */
   border-radius: 0 12px 8px 0;
@@ -91,13 +91,13 @@
 #bm-md h4,
 #bm-md h5,
 #bm-md h6 {
-  color: #ff6b6b;
+  color: #b91c1c;
 }
 
 #bm-md h4 {
   font-size: 1.125em;
   padding-left: 0.5em;
-  border-left: 3px dashed #ff6b6b;
+  border-left: 3px dashed #b91c1c;
 }
 
 #bm-md h5,
@@ -136,7 +136,7 @@
 #bm-md strong,
 #bm-md b {
   font-weight: 700;
-  color: #c93030;
+  color: #991b1b;
   /* 底部高亮效果，像用荧光笔划过 */
   background: linear-gradient(180deg, transparent 55%, rgba(185, 28, 28, 0.18) 55%);
 }
@@ -152,7 +152,7 @@
 #bm-md del,
 #bm-md s,
 #bm-md strike {
-  color: #888888;
+  color: #595959;
   text-decoration: line-through;
   text-decoration-style: wavy;
   text-decoration-color: #b91c1c;
@@ -444,7 +444,7 @@
   /* 不规则圆角 */
   border-radius: 6px 14px 10px 8px;
   box-shadow: 4px 4px 0 rgba(45, 45, 45, 0.1);
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 #bm-md thead {
@@ -668,29 +668,35 @@
 #bm-md .markdown-alert-note {
   background-color: rgba(45, 93, 161, 0.06);
   border-color: #2d5da1;
+  color: #2d2d2d;
 }
 
-#bm-md .markdown-alert-note .markdown-alert-title {
-  color: #2d5da1;
+#bm-md .markdown-alert-note .markdown-alert-title,
+#bm-md .markdown-alert-note::before {
+  color: #244d8a;
 }
 
 /* Tip - 绿色马克笔 */
 #bm-md .markdown-alert-tip {
   background-color: rgba(76, 175, 80, 0.06);
   border-color: #4caf50;
+  color: #2d2d2d;
 }
 
-#bm-md .markdown-alert-tip .markdown-alert-title {
-  color: #3d8b40;
+#bm-md .markdown-alert-tip .markdown-alert-title,
+#bm-md .markdown-alert-tip::before {
+  color: #266b29;
 }
 
 /* Important - 紫色荧光笔 */
 #bm-md .markdown-alert-important {
   background-color: rgba(156, 39, 176, 0.06);
   border-color: #9c27b0;
+  color: #2d2d2d;
 }
 
-#bm-md .markdown-alert-important .markdown-alert-title {
+#bm-md .markdown-alert-important .markdown-alert-title,
+#bm-md .markdown-alert-important::before {
   color: #7b1fa2;
 }
 
@@ -698,20 +704,24 @@
 #bm-md .markdown-alert-warning {
   background-color: rgba(255, 152, 0, 0.08);
   border-color: #ff9800;
+  color: #2d2d2d;
 }
 
-#bm-md .markdown-alert-warning .markdown-alert-title {
-  color: #e68900;
+#bm-md .markdown-alert-warning .markdown-alert-title,
+#bm-md .markdown-alert-warning::before {
+  color: #8a5000;
 }
 
 /* Caution - 红色马克笔 */
 #bm-md .markdown-alert-caution {
   background-color: rgba(185, 28, 28, 0.06);
   border-color: #b91c1c;
+  color: #2d2d2d;
 }
 
-#bm-md .markdown-alert-caution .markdown-alert-title {
-  color: #c93030;
+#bm-md .markdown-alert-caution .markdown-alert-title,
+#bm-md .markdown-alert-caution::before {
+  color: #a61b1b;
 }
 
 /* ============================================

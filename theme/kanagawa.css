@@ -99,7 +99,7 @@
 #bm-md del,
 #bm-md s,
 #bm-md strike {
-  color: #727169;
+  color: #a2a094;
   text-decoration-color: #e46876;
 }
 
@@ -195,7 +195,7 @@
   border-collapse: collapse;
   border: 1px solid #2a2a37;
   border-radius: 10px;
-  overflow: hidden;
+  overflow-x: auto;
   background: rgba(24, 24, 32, 0.9);
 }
 
@@ -253,27 +253,48 @@
   padding: 14px 16px;
   border-radius: 12px;
   border: 1px solid #2a2a37;
-  background: rgba(42, 42, 55, 0.88);
+  background: rgba(42, 42, 55, 0.92);
+  color: #dcd7ba;
 }
 
 #bm-md .markdown-alert-note {
   border-left: 4px solid #7e9cd8;
 }
 
+#bm-md .markdown-alert-note::before {
+  color: #8eb0e6;
+}
+
 #bm-md .markdown-alert-tip {
   border-left: 4px solid #98bb6c;
+}
+
+#bm-md .markdown-alert-tip::before {
+  color: #a7ca7b;
 }
 
 #bm-md .markdown-alert-important {
   border-left: 4px solid #d27e99;
 }
 
+#bm-md .markdown-alert-important::before {
+  color: #e396af;
+}
+
 #bm-md .markdown-alert-warning {
   border-left: 4px solid #e6c384;
 }
 
+#bm-md .markdown-alert-warning::before {
+  color: #e6c384;
+}
+
 #bm-md .markdown-alert-caution {
   border-left: 4px solid #e46876;
+}
+
+#bm-md .markdown-alert-caution::before {
+  color: #f08490;
 }
 
 #bm-md .footnotes {
@@ -320,7 +341,7 @@
 @media (max-width: 720px) {
   #bm-md {
     padding: 22px 18px 34px;
-    font-size: 15px;
+    font-size: 16px;
   }
 
   #bm-md h1 {
