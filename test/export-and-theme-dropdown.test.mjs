@@ -169,6 +169,12 @@ test('Option A footer keeps unified appearance/theme, export & copy on IDE bar w
     assert.ok(editDom.window.document.querySelector('#theme-dropdown'))
     assert.equal(editDom.window.document.querySelectorAll('#theme-dropdown .width-item').length, 4)
     assert.equal(editDom.window.document.querySelectorAll('#theme-dropdown .theme-item').length, Object.keys(THEMES).length)
+    for (const darkTheme of ['tokyo-night', 'x-ai', 'terminal', 'kanagawa', 'catppuccin-macchiato']) {
+        const el = editDom.window.document.querySelector(`#theme-dropdown .theme-item[data-theme-name="${darkTheme}"] .theme-item-name`)
+        assert.ok(el && el.textContent.includes('🌙'), `${darkTheme} should show 🌙 indicator in UI`)
+    }
+    const lightEl = editDom.window.document.querySelector('#theme-dropdown .theme-item[data-theme-name="ayu-light"] .theme-item-name')
+    assert.ok(lightEl && !lightEl.textContent.includes('🌙'), 'light theme should not show 🌙 indicator')
     assert.ok(editDom.window.document.querySelector('#theme-dropdown [data-cp-font="jetbrains"]'))
     assert.ok(editDom.window.document.querySelector('#theme-dropdown [data-cp-ui-theme="dark"]'))
     assert.ok(editDom.window.document.querySelector('#export-dropdown'))

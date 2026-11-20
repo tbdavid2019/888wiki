@@ -3,7 +3,7 @@
  * Shared template components: SWITCHER, FOOTER, MODAL
  */
 import dayjs from 'dayjs'
-import { DEFAULT_PREVIEW_WIDTH, SUPPORTED_LANG, VAULT_QUICK_PRESETS } from '../constant.js'
+import { DARK_PREVIEW_THEMES, DEFAULT_PREVIEW_WIDTH, SUPPORTED_LANG, VAULT_QUICK_PRESETS } from '../constant.js'
 import { THEMES } from '../theme_data.js'
 
 const getLangText = lang => SUPPORTED_LANG[lang] || SUPPORTED_LANG['en-US']
@@ -718,7 +718,8 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
         : (lang === 'zh-TW' ? `${formattedViewCount} 次瀏覽` : `${formattedViewCount} views`)
     const getThemeLabel = themeName => {
         const description = THEME_OPTION_LABELS[themeName]?.[lang] || ''
-        return description ? `${themeName} · ${description}` : themeName
+        const baseLabel = description ? `${themeName} · ${description}` : themeName
+        return DARK_PREVIEW_THEMES.includes(themeName) ? `${baseLabel} 🌙` : baseLabel
     }
     return `
     <div class="footer ${isEdit ? 'footer-ide-edit' : 'footer-share-view'}">
