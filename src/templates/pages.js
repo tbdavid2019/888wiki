@@ -350,12 +350,19 @@ export const Home = ({ lang = 'zh-TW', canonicalUrl, ogImageUrl }) => `
     ${getFlowTrackerScript()}
     <style>
         :root { color-scheme: light; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-        body { min-height: 100vh; margin: 0; background: #f8f7f3; color: #2c2a29; }
-        .home-shell { display: grid; min-height: 100vh; place-items: center; padding: 24px; box-sizing: border-box; }
-        .home-brand { text-align: center; color: #716c65; font-size: 14px; letter-spacing: .04em; }
+        body { min-height: 100vh; margin: 0; background: #f8f7f3; color: #2c2a29; overflow-x: hidden; }
+        .home-motion-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; opacity: 1; }
+        .home-shell { position: relative; z-index: 1; display: grid; min-height: 100vh; place-items: center; padding: 24px; box-sizing: border-box; }
+        .home-brand-card { display: inline-flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px 30px; border-radius: 18px; border: 1px solid rgba(200, 101, 75, 0.18); background: rgba(255, 255, 255, 0.68); box-shadow: 0 18px 48px rgba(37, 35, 32, 0.10); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        .home-brand-spinner { width: 28px; height: 28px; border-radius: 999px; border: 2.5px solid rgba(200, 101, 75, 0.22); border-top-color: #c8654b; animation: homeSpin 1.1s linear infinite; }
+        @keyframes homeSpin { to { transform: rotate(360deg); } }
+        .home-brand { margin: 0; text-align: center; color: #3c3733; font-size: 15px; font-weight: 700; letter-spacing: .12em; }
+        .home-brand-sub { margin: 0; text-align: center; color: #716c65; font-size: 12px; letter-spacing: .02em; }
+        .home-motion-switcher { position: fixed; right: 16px; bottom: 16px; z-index: 1002; display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border: 1px solid rgba(200, 101, 75, 0.28); border-radius: 999px; background: rgba(255, 255, 255, 0.82); color: #3c3733; font-size: 12px; font-weight: 600; cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 6px 20px rgba(37, 35, 32, 0.12); transition: transform 0.15s ease, border-color 0.15s ease; }
+        .home-motion-switcher:hover { transform: translateY(-1px); border-color: #c8654b; }
         .modal { display: none; }
-        .modal-mask { position: fixed; inset: 0; z-index: 1000; background: rgba(37, 35, 32, .48); }
-        .editor-preference-content { position: fixed; top: 50%; left: 50%; z-index: 1001; width: min(560px, calc(100vw - 32px)); box-sizing: border-box; padding: 26px; transform: translate(-50%, -50%); border: 1px solid #e2dacd; border-radius: 14px; background: #fff; box-shadow: 0 18px 48px rgba(37,35,32,.24); }
+        .modal-mask { position: fixed; inset: 0; z-index: 1000; background: rgba(248, 247, 243, 0.24); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+        .editor-preference-content { position: fixed; top: 50%; left: 50%; z-index: 1001; width: min(560px, calc(100vw - 32px)); box-sizing: border-box; padding: 26px; transform: translate(-50%, -50%); border: 1px solid #e2dacd; border-radius: 14px; background: rgba(255, 255, 255, 0.90); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 18px 48px rgba(37,35,32,.20); }
         .editor-preference-header-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
         .editor-preference-lang-group { display: inline-flex; align-items: center; background: #f5f0e8; border: 1px solid #e2dacd; border-radius: 999px; padding: 2px; gap: 2px; }
         .editor-pref-lang-btn { border: 0; background: transparent; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #6b6965; cursor: pointer; transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease; line-height: 1.2; }
@@ -400,9 +407,40 @@ export const Home = ({ lang = 'zh-TW', canonicalUrl, ogImageUrl }) => `
     </style>
 </head>
 <body>
-    <main class="home-shell"><p class="home-brand">DAVID888 WIKI</p></main>
+    <canvas id="home-motion-canvas" class="home-motion-canvas" aria-hidden="true"></canvas>
+    <main class="home-shell">
+        <div class="home-brand-card">
+            <div class="home-brand-spinner" aria-hidden="true"></div>
+            <p class="home-brand">DAVID888 WIKI</p>
+            <p class="home-brand-sub">${lang === 'zh-TW' ? '正在開啟雲端協作筆記工作區...' : 'Preparing your workspace...'}</p>
+        </div>
+    </main>
+    <button type="button" id="home-motion-switcher" class="home-motion-switcher" title="${lang === 'zh-TW' ? '切換首頁動態背景' : 'Switch ambient motion'}">🌊 Aurora</button>
     ${EDITOR_PREFERENCE_MODAL(lang, { autoOpen: true })}
     <script type="module" src="/js/editor-preference.mjs"></script>
+    <script type="module">
+        import { createPresentationMotionController } from '/js/presentation-motion.mjs';
+        const canvas = document.getElementById('home-motion-canvas');
+        const switcher = document.getElementById('home-motion-switcher');
+        const presets = ['aurora', 'orbits', 'mesh'];
+        const labels = { aurora: '🌊 Aurora', orbits: '🪐 Orbits', mesh: '🕸️ Mesh' };
+        let presetIdx = 0;
+        if (canvas) {
+            const controller = createPresentationMotionController(canvas, {
+                preset: presets[presetIdx],
+                isLight: true,
+                variant: 'warm',
+            });
+            if (switcher) {
+                switcher.addEventListener('click', () => {
+                    presetIdx = (presetIdx + 1) % presets.length;
+                    const next = presets[presetIdx];
+                    controller.setPreset(next);
+                    switcher.textContent = labels[next] || next;
+                });
+            }
+        }
+    </script>
     <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {})</script>
 </body>
 </html>

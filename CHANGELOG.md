@@ -2,6 +2,10 @@
 
 ## [2026-11-22]
 
+- **✨ 升級簡報 Motion Loops 視覺可見度與 `wiki.david888.com` 首頁 Loading／Landing 動態舞台**：
+  - 於 [static/js/presentation-motion.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/js/presentation-motion.mjs) 全面強化 `aurora`（雙層極光帶＋柔和多諧波雲光）、`mesh`（3D 動態波動連線網格＋脈動節點）、`orbits`（星盤同心軌道＋掃掠弧光＋尾焰衛星）在亮／暗色主題與 `warm` 暖白背景下的視覺對比與即時首幀渲染，解決透明簡報底層特效過淡不明顯的問題。
+  - 於 [src/styles/base.css.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/styles/base.css.js) 為淺色簡報主題（`notion-clean`、`ayu-light`、`newsprint`、`retro`、`green-simple`）啟用 `.has-motion-loop` 時配置亮面舞台底色與低遮蔽毛玻璃 `.reveal .slides`，讓動態效果能同時自投影片四周與後方玻璃透出。
+  - 於 [src/templates/pages.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/pages.js) `Home` 著陸／載入頁整合全螢幕 `#home-motion-canvas` 暖色調 `aurora` 動態背景（附右下角 `Aurora / Orbits / Mesh` 快速切換鈕與半透明毛玻璃品牌載入卡），讓造訪 `https://wiki.david888.com/` 時即享流暢動態體驗。
 - **🌊 修復簡報背景動態手動切換、Toast 堆疊、導出圖示缺字與簡報 Mermaid 競態（Presentation Motion Manual Opt-in & UI Fixes）**：
   - 於 [src/templates/base.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/base.js) 與 [src/styles/base.css.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/styles/base.css.js) 將 `prefers-reduced-motion: reduce` 限制收斂為「預設不自動播放 YAML 背景動畫」；當使用者**明確手動點擊**簡報工具列 `🌊 背景關`（`#ptb-motion`）時，改為設定 `.motion-user-override` 允許正常循環切換 `極光循環` / `網格波紋` / `軌道幾何` / `關閉`，不再回絕點擊並彈出系統阻擋通知。
   - 升級 `window.showToast(message, durationMs)` 支援自訂顯示毫秒數與相同訊息去重／上限替換，避免連點按鈕產生多條重複浮動通知；將簡報工具列缺字字元 `⭳ 導出 ▾` 替換為跨平台相容的 `📤 導出 ▾`。

@@ -6132,24 +6132,39 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
 }
 
 /* Motion Loop Backdrop Glassmorphism (placed after theme overrides so theme rules don't obscure canvas) */
+#presentation-container.has-motion-loop .reveal,
+#presentation-container.has-motion-loop .reveal .slides section {
+    background: transparent !important;
+}
+#presentation-container.has-motion-loop[data-presentation-theme="notion-clean"],
+#presentation-container.has-motion-loop[data-presentation-theme="ayu-light"],
+#presentation-container.has-motion-loop[data-presentation-theme="newsprint"] {
+    background: linear-gradient(145deg, #f3f7fc 0%, #e7eff8 100%);
+}
+#presentation-container.has-motion-loop[data-presentation-theme="retro"] {
+    background: linear-gradient(145deg, #f6f0e4 0%, #ebe1ce 100%);
+}
+#presentation-container.has-motion-loop[data-presentation-theme="green-simple"] {
+    background: linear-gradient(145deg, #ebf7f0 0%, #ddf1e6 100%);
+}
 #presentation-container.has-motion-loop .reveal .slides {
-    background: linear-gradient(145deg, rgba(23, 34, 54, 0.72) 0%, rgba(17, 26, 44, 0.78) 100%);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background: linear-gradient(145deg, rgba(23, 34, 54, 0.56) 0%, rgba(17, 26, 44, 0.62) 100%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 }
 #presentation-container.has-motion-loop[data-presentation-theme="tokyo-night"] .reveal .slides {
-    background: rgba(26, 27, 38, 0.74);
+    background: rgba(26, 27, 38, 0.58);
 }
 #presentation-container.has-motion-loop[data-presentation-theme="retro"] .reveal .slides {
-    background: rgba(251, 247, 238, 0.78);
+    background: rgba(251, 247, 238, 0.58);
 }
 #presentation-container.has-motion-loop[data-presentation-theme="notion-clean"] .reveal .slides,
 #presentation-container.has-motion-loop[data-presentation-theme="ayu-light"] .reveal .slides,
 #presentation-container.has-motion-loop[data-presentation-theme="newsprint"] .reveal .slides {
-    background: rgba(255, 255, 255, 0.78);
+    background: rgba(255, 255, 255, 0.56);
 }
 #presentation-container.has-motion-loop[data-presentation-theme="green-simple"] .reveal .slides {
-    background: rgba(244, 251, 247, 0.78);
+    background: rgba(244, 251, 247, 0.58);
 }
 
 /* Layouts: Two Columns, Three Columns, and Cover */
