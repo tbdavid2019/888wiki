@@ -2,6 +2,8 @@
 
 ## [2026-11-22]
 
+- **🩹 修復首頁 Spinner 在 `prefers-reduced-motion` 下以 `0.01ms` 瘋狂狂轉的 Bug**：
+  - 於 [src/templates/pages.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/pages.js#L410-L420) 修復 `@media (prefers-reduced-motion: reduce)` 未搭配 `animation-iteration-count: 1 !important` 卻強制 `animation-duration: .01ms !important`，導致 `.home-brand-spinner`（`infinite`）變成每毫秒轉上百圈的超高速閃爍問題；現已補齊 `animation-iteration-count: 1 !important` 防護，並為 `.home-brand-spinner`（平順 `4.2s linear infinite`）與 `.home-progress-fill`（`1.45s`）獨立保留優雅穩定的視覺節奏。
 - **⏳ 首頁 `wiki.david888.com` Landing 歡迎動畫展示窗口（1.5 秒緩衝＋一鍵略過＋增強暖色 Aurora）**：
   - 於 [static/js/editor-preference.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/js/editor-preference.mjs) 與 [src/templates/pages.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/pages.js) 針對真實首頁著陸環境（`#home-motion-canvas` 存在時）將已記住偏好的自動導向調整為 **`1500ms` 柔和過渡窗口**，先立即渲染 `#home-motion-canvas` 強化暖色 Aurora 極光動畫與 1.45 秒漸進進度條（並附「立即進入工作區 →」按鈕可直接點擊略過），避免一打開 `wiki.david888.com` 就在數毫秒內瞬跳看不到任何動畫；同時保持測試環境呼叫 `initializeEditorPreference(..., { navigate })` 的同步導向契約。
   - 於 [static/js/presentation-motion.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/js/presentation-motion.mjs) 適度提高 `variant: 'warm'` 極光與波紋對比（`0.46 / 0.40 / 0.36`）並統一版號至 `?v=20261122f`。

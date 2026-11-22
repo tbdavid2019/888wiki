@@ -354,7 +354,7 @@ export const Home = ({ lang = 'zh-TW', canonicalUrl, ogImageUrl }) => `
         .home-motion-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; opacity: 1; }
         .home-shell { position: relative; z-index: 1; display: grid; min-height: 100vh; place-items: center; padding: 24px; box-sizing: border-box; }
         .home-brand-card { display: inline-flex; flex-direction: column; align-items: center; gap: 10px; padding: 24px 34px; border-radius: 20px; border: 1px solid rgba(200, 101, 75, 0.22); background: rgba(255, 255, 255, 0.72); box-shadow: 0 22px 56px rgba(37, 35, 32, 0.12); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); min-width: min(280px, calc(100vw - 48px)); }
-        .home-brand-spinner { width: 26px; height: 26px; border-radius: 999px; border: 2px solid rgba(200, 101, 75, 0.18); border-top-color: #c8654b; animation: homeSpin 3.6s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; opacity: 0.78; }
+        .home-brand-spinner { width: 26px; height: 26px; border-radius: 999px; border: 2px solid rgba(200, 101, 75, 0.18); border-top-color: #c8654b; animation: homeSpin 4.2s linear infinite; opacity: 0.85; }
         @keyframes homeSpin { to { transform: rotate(360deg); } }
         .home-brand { margin: 0; text-align: center; color: #3c3733; font-size: 15px; font-weight: 700; letter-spacing: .12em; }
         .home-brand-sub { margin: 0; text-align: center; color: #716c65; font-size: 12px; letter-spacing: .02em; }
@@ -407,7 +407,20 @@ export const Home = ({ lang = 'zh-TW', canonicalUrl, ogImageUrl }) => `
             .editor-preference-option small { font-size: 12px; }
             .editor-preference-actions { position: sticky; bottom: -18px; padding: 12px 0 0; background: #fff; }
         }
-        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+        @media (prefers-reduced-motion: reduce) {
+            *:not(.home-brand-spinner):not(.home-progress-fill), *::before, *::after {
+                scroll-behavior: auto !important;
+                transition-duration: .01ms !important;
+                animation-duration: .01ms !important;
+                animation-iteration-count: 1 !important;
+            }
+            .home-brand-spinner {
+                animation: homeSpin 4.2s linear infinite !important;
+            }
+            .home-progress-fill {
+                transition: width 1.45s cubic-bezier(0.22, 1, 0.36, 1) !important;
+            }
+        }
     </style>
 </head>
 <body>
