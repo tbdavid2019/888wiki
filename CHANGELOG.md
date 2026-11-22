@@ -2,6 +2,9 @@
 
 ## [2026-11-22]
 
+- **🛠️ 修復 Worker 路由掛起 (Error 1101) 與 JWT 相容層（`itty-router` v2/v5 & `cloudflare-worker-jwt` v1/v3 Dual-Version Compat）**：
+  - 於 [src/index.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/index.js) 支援自動偵測 `router.handle` / `router.fetch`，避免 `itty-router@2.x` 將 `.fetch` 與 `await` 的 `.then` 誤判為路由註冊而造成請求無限掛起（1101）。
+  - 於 [src/helper.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/helper.js) 抽出共用 `verifyJwtPayload()`（並同步套用於 [src/index.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/index.js) 與 [src/turnstile.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/turnstile.mjs)），同時相容 `@tsndr/cloudflare-worker-jwt` v1/v2（布林回傳）與 v3+（`{ payload }` 物件回傳）。
 - **🔍 端側 OCR 增強升級與 Dual Code Review 修復（Auto-OCR Toggle, PP-OCRv6 Small Model Switch, Mutex Queue & Review Fixes）**：
   - **端側 OCR 自動化、模型切換與互斥鎖並發保護**：於 [static/js/ocr-client.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/js/ocr-client.mjs) 新增內部串行互斥鎖 `runWithOcrMutex()`（保護多圖同時辨識排隊執行）、支援 `PP-OCRv6 tiny`（預設輕量）與 `PP-OCRv6 small`（高精度增強模型，約 30 MB）動態切換並自動釋放舊 Worker；於 [src/templates/common.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/common.js)、[src/templates/base.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/base.js) 與 [static/js/markdown-toolbar.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/js/markdown-toolbar.mjs) 新增 `Cmd/Ctrl + Shift + P` 工具面板「匯入圖片時自動啟用端側 OCR」與「使用增強 OCR 模型（約 30 MB）」開關，支援貼上／多圖拖曳／工具列選圖不上傳遠端直接辨識插入。
   - **Dual Code Review（Codex + OpenCode）問題修復**：

@@ -149,17 +149,24 @@ export async function getPasswordRole(password, metadata = {}) {
     return resolvePasswordRole(password, metadata, passwordMatches)
 }
 
+/**
+ * Verifies a JWT token and extracts its payload across both
+ * @tsndr/cloudflare-worker-jwt v1/v2 (returns boolean) and v3+ (returns { payload }).
+ */
+export async function verifyJwtPayload(token, secret) {
+    if (!token || typeof secret !== 'string' || !secret) return null
+    const verified = await jwt.verify(token, secret)
+    if (!verified) return null
+    if (typeof verified === 'object' && verified.payload) return verified.payload
+    const decoded = jwt.decode(token)
+    return decoded?.payload || decoded || null
+}
+
 export async function checkAuth(cookie, path) {
     if (cookie.auth) {
         try {
-            const secret = getSecret()
-            if (typeof secret !== 'string' || !secret) {
-                return { valid: false, role: null }
-            }
-
-            const valid = await jwt.verify(cookie.auth, secret)
-            if (valid) {
-                const payload = valid.payload || {}
+            const payload = await verifyJwtPayload(cookie.auth, getSecret())
+            if (payload) {
                 // Backward compatibility: if no role, assume 'edit' (old tokens)
                 const role = payload.role || 'edit'
                 if (payload.path === path) {

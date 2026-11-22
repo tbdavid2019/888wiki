@@ -2,7 +2,7 @@ import dayjs from 'dayjs'
 import { Router } from 'itty-router'
 import { Cookies } from './cookie_compat.mjs'
 import jwt from '@tsndr/cloudflare-worker-jwt'
-import { queryNote, MD5, checkAuth, genRandomStr, returnPage, returnJSON, saltPw, passwordMatches, constantTimeStringCompare, getPasswordRole, getI18n, deleteEmptyPages, deleteNoteHistoryForPath } from './helper.js'
+import { queryNote, MD5, checkAuth, verifyJwtPayload, genRandomStr, returnPage, returnJSON, saltPw, passwordMatches, constantTimeStringCompare, getPasswordRole, getI18n, deleteEmptyPages, deleteNoteHistoryForPath } from './helper.js'
 import { APP_NAME, getSlugLength, getAdminPath, getAdminPassword, getEnableR2, getR2Domain, getGaMeasurementId, getWebtalkConfig, getSecret, DEFAULT_PREVIEW_WIDTH, normalizePreviewWidth, isTurnstileEnabled } from './constant.js'
 import { verifyTurnstileAccess } from './turnstile.mjs'
 import { NOTEPAD_ICON_SVG } from './icon.js'
@@ -343,8 +343,8 @@ async function isNoteAuthor(request, path, cookie = {}) {
     const authorCookieKey = 'cn_author_' + (await MD5(path)).substring(0, 16)
     if (cookie && cookie[authorCookieKey]) {
         try {
-            const validAuthor = await jwt.verify(cookie[authorCookieKey], secret)
-            if (validAuthor?.payload?.path === path) return true
+            const payload = await verifyJwtPayload(cookie[authorCookieKey], secret)
+            if (payload?.path === path) return true
         } catch {}
     }
     return false
@@ -712,10 +712,8 @@ async function verifyAdminSession(cookie, adminPassword) {
     if (!cookie || !cookie.admin_session || !adminPassword) return false
     try {
         const secret = getSecret() || adminPassword
-        const valid = await jwt.verify(cookie.admin_session, secret)
-        if (valid) {
-            return valid.payload?.role === 'admin'
-        }
+        const payload = await verifyJwtPayload(cookie.admin_session, secret)
+        return payload?.role === 'admin'
     } catch (_) {}
     return false
 }
@@ -1160,8 +1158,8 @@ async function handleR2ImageUpload(request, { requireTurnstile = false } = {}) {
         const { valid, role } = await checkAuth(cookie, '')
         let hasValidNoteAuth = Boolean(valid && role === 'edit')
         if (!hasValidNoteAuth && cookie?.auth && getSecret()) {
-            const verifiedAuth = await jwt.verify(cookie.auth, getSecret()).catch(() => null)
-            hasValidNoteAuth = Boolean(verifiedAuth && verifiedAuth.payload?.path && verifiedAuth.payload?.role === 'edit')
+            const payload = await verifyJwtPayload(cookie.auth, getSecret()).catch(() => null)
+            hasValidNoteAuth = Boolean(payload?.path && payload?.role === 'edit')
         }
         const isAdminAuthed = await verifyAdminSession(cookie, getAdminPassword())
         const isAuthedUser = Boolean(hasValidNoteAuth || isAdminAuthed)
@@ -4434,7 +4432,10 @@ export default {
         bindRuntimeEnv(env)
 
         try {
-            const response = await router.fetch(request, {
+            const dispatchRoute = Object.prototype.hasOwnProperty.call(router, 'handle')
+                ? (req, ...args) => router.handle(req, ...args)
+                : (req, ...args) => router.fetch(req, ...args)
+            const response = await dispatchRoute(request, {
                 request,
                 env,
                 waitUntil: promise => ctx.waitUntil(promise),

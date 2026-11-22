@@ -1,6 +1,7 @@
 import jwt from '@tsndr/cloudflare-worker-jwt'
 import { Cookies } from './cookie_compat.mjs'
 import { getTurnstileSecret, isTurnstileEnabled, isTurnstileFailOpen, getSecret } from './constant.js'
+import { verifyJwtPayload } from './helper.js'
 
 export const TURNSTILE_CLEARANCE_COOKIE_NAME = 'cf_turnstile_cleared'
 export const TURNSTILE_CLEARANCE_MAX_AGE_SECONDS = 7200 // 2 hours
@@ -116,11 +117,8 @@ export async function verifyTurnstileClearanceCookie(request) {
     if (!clearanceToken) return false
 
     try {
-        const verified = await jwt.verify(clearanceToken, secret)
-        if (!verified) return false
-
-        const payload = verified.payload
-        if (payload?.type !== 'turnstile_clearance') return false
+        const payload = await verifyJwtPayload(clearanceToken, secret)
+        if (!payload || payload.type !== 'turnstile_clearance') return false
 
         const now = Math.floor(Date.now() / 1000)
         if (payload.exp && payload.exp < now) return false
