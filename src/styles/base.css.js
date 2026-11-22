@@ -5795,6 +5795,24 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
 #presentation-container.active {
     display: block;
 }
+#presentation-motion-canvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0;
+    transition: opacity 0.45s ease;
+}
+#presentation-motion-canvas.active {
+    opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+    #presentation-motion-canvas {
+        display: none !important;
+    }
+}
 #presentation-close-btn {
     position: fixed;
     top: max(14px, env(safe-area-inset-top));
@@ -5819,6 +5837,8 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
     transform: scale(1.05);
 }
 #presentation-container .reveal {
+    position: relative;
+    z-index: 1;
     width: 100%;
     height: 100%;
     font-size: 30px;
@@ -6937,6 +6957,21 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
     pre, blockquote, tr, img, figure {
         page-break-inside: avoid !important;
         break-inside: avoid !important;
+    }
+
+    p, li {
+        orphans: 3 !important;
+        widows: 3 !important;
+    }
+
+    .page-break {
+        display: block !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+        page-break-before: always !important;
+        break-before: page !important;
     }
     
     a {

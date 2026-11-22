@@ -6979,7 +6979,35 @@ ${getMarkdownCss()}
             window.setTimeout(syncCommandPaletteQuickStates, 0);
         });
         if ($cpModal) {
-            $cpModal.addEventListener('click', (e) => {
+            $cpModal.addEventListener('click', async (e) => {
+                const tplItem = e.target.closest('[data-cp-template]');
+                if (tplItem) {
+                    const tplId = tplItem.getAttribute('data-cp-template');
+                    closeCommandPalette();
+                    const editorEl = document.getElementById('contents');
+                    if (!editorEl) return;
+                    try {
+                        const mod = await import('/js/paper-templates.mjs');
+                        const nextText = mod.getPaperTemplate(tplId, APP_STATE.lang || 'zh-TW');
+                        if (!nextText) return;
+                        if (editorEl.value && editorEl.value.trim().length > 0 && typeof window.showAppConfirm === 'function') {
+                            const ok = await window.showAppConfirm({
+                                title: APP_STATE.lang === 'zh-TW' ? '套用排版範本' : 'Apply Document Template',
+                                message: APP_STATE.lang === 'zh-TW' ? '目前編輯區已有內容，是否以範本內容覆蓋？' : 'The editor already has content. Replace it with this template?',
+                                confirmText: APP_STATE.lang === 'zh-TW' ? '套用覆蓋' : 'Replace',
+                                cancelText: APP_STATE.lang === 'zh-TW' ? '取消' : 'Cancel'
+                            });
+                            if (!ok) return;
+                        }
+                        editorEl.value = nextText;
+                        editorEl.dispatchEvent(new Event('input', { bubbles: true }));
+                        editorEl.focus();
+                        window.showToast?.(APP_STATE.lang === 'zh-TW' ? '✅ 已套用文件排版範本' : '✅ Template applied');
+                    } catch (err) {
+                        window.showToast?.((APP_STATE.lang === 'zh-TW' ? '載入範本失敗：' : 'Failed to load template: ') + (err?.message || err));
+                    }
+                    return;
+                }
                 const actionItem = e.target.closest('[data-cp-action]');
                 if (!actionItem) return;
                 const action = actionItem.getAttribute('data-cp-action');
@@ -7474,6 +7502,28 @@ themeCss + '\\n' +
             };
 
             if (exportPdfBtn) exportPdfBtn.addEventListener('click', handleDirectPdfDownload);
+            const exportPptxBtn = document.getElementById('export-pptx-btn');
+            if (exportPptxBtn) {
+                exportPptxBtn.addEventListener('click', async () => {
+                    try {
+                        const mdContent = getExportMarkdown();
+                        if (!mdContent || !mdContent.trim()) {
+                            window.showToast?.(isZh ? '目前沒有可匯出的內容' : 'Nothing to export');
+                            return;
+                        }
+                        const mod = await import('/js/pptx-export.mjs');
+                        const filename = getExportFilename('pptx');
+                        const title = filename.replace(/\\.pptx$/, '');
+                        const themeName = (window.APP_STATE && window.APP_STATE.theme) || 'claude-canvas';
+                        const isDark = document.documentElement.getAttribute('data-ui-theme') === 'dark';
+                        const blob = mod.buildPptxBlob(mdContent, { title, theme: themeName, dark: isDark });
+                        triggerDownload(blob, filename);
+                        window.showToast?.(isZh ? '✅ 已下載可編輯簡報 (.pptx)' : '✅ PowerPoint (.pptx) downloaded');
+                    } catch (err) {
+                        window.showToast?.((isZh ? '匯出 PPTX 失敗：' : 'PPTX export failed: ') + (err?.message || err));
+                    }
+                });
+            }
             if (printPreviewBtn) printPreviewBtn.addEventListener('click', handlePrint);
             window.__openPrintDialog = handlePrint;
 
@@ -8236,6 +8286,9 @@ themeCss + '\\n' +
         var _autoStarted = false;
         var _tableResizeHandler = null;
         var _echartsInstances = [];
+        var _motionController = null;
+        var _presentationSourceMarkdown = '';
+        var _presentationThemeName = 'tokyo-night';
 
         function loadAssets() {
             return new Promise(function(resolve, reject) {
@@ -8492,8 +8545,26 @@ themeCss + '\\n' +
             });
         }
 
-        function setupPresentationToolbar(container, reveal) {
+        function setupPresentationToolbar(container, reveal, initialTransition, initialMotion) {
             var isZh = APP_STATE.lang === 'zh-TW';
+            var transitions = ['fade', 'slide', 'convex', 'zoom', 'none'];
+            var motionPresets = ['off', 'aurora', 'mesh', 'orbits'];
+            var activeTransition = transitions.indexOf(initialTransition) !== -1 ? initialTransition : 'fade';
+            var activeMotion = motionPresets.indexOf(initialMotion) !== -1 ? initialMotion : 'off';
+
+            function formatTransitionBadge(tr) {
+                var labels = isZh
+                    ? { fade: '淡入', slide: '滑動', convex: '立體', zoom: '縮放', none: '無' }
+                    : { fade: 'Fade', slide: 'Slide', convex: 'Convex', zoom: 'Zoom', none: 'None' };
+                return '✨ ' + (labels[tr] || tr);
+            }
+            function formatMotionBadge(preset) {
+                var labels = isZh
+                    ? { off: '背景關', aurora: '極光', mesh: '網格', orbits: '軌道' }
+                    : { off: 'Loop Off', aurora: 'Aurora', mesh: 'Mesh', orbits: 'Orbits' };
+                return '🌊 ' + (labels[preset] || preset);
+            }
+
             var toolbar = document.createElement('div');
             toolbar.id = 'presentation-toolbar';
             toolbar.className = 'presentation-toolbar';
@@ -8510,6 +8581,8 @@ themeCss + '\\n' +
                 '<div class="presentation-toolbar-divider"></div>' +
                 '<div class="presentation-toolbar-group">' +
                     '<button type="button" class="presentation-tb-btn" id="ptb-overview" title="' + (isZh ? '投影片總覽 (O / ESC)' : 'Slide Overview (O / ESC)') + '">🔲 ' + (isZh ? '大綱' : 'Overview') + '</button>' +
+                    '<button type="button" class="presentation-tb-btn" id="ptb-transition" title="' + (isZh ? '切換投影片過場動畫' : 'Cycle slide transition') + '">' + formatTransitionBadge(activeTransition) + '</button>' +
+                    '<button type="button" class="presentation-tb-btn' + (activeMotion !== 'off' ? ' active' : '') + '" id="ptb-motion" title="' + (isZh ? '切換 12 秒無縫動態背景 (Motion Loop)' : 'Cycle 12s seamless motion backdrop') + '">' + formatMotionBadge(activeMotion) + '</button>' +
                     '<button type="button" class="presentation-tb-btn" id="ptb-laser" title="' + (isZh ? '雷射筆模式 (L)' : 'Laser Pointer (L)') + '">🔴 ' + (isZh ? '雷射筆' : 'Laser') + '</button>' +
                     '<button type="button" class="presentation-tb-btn" id="ptb-pause" title="' + (isZh ? '黑屏暫停 (B / .)' : 'Pause Blackout (B / .)') + '">⚫ ' + (isZh ? '暫停' : 'Pause') + '</button>' +
                     '<button type="button" class="presentation-tb-btn" id="ptb-fullscreen" title="' + (isZh ? '全螢幕 (F)' : 'Fullscreen (F)') + '">⛶ ' + (isZh ? '全螢幕' : 'Fullscreen') + '</button>' +
@@ -8518,6 +8591,7 @@ themeCss + '\\n' +
                 '<div class="presentation-toolbar-group">' +
                     '<button type="button" class="presentation-tb-btn" id="ptb-export-btn" title="' + (isZh ? '導出簡報' : 'Export Slides') + '">⭳ ' + (isZh ? '導出' : 'Export') + ' ▾</button>' +
                     '<div id="ptb-export-menu" class="presentation-export-menu" hidden>' +
+                        '<button type="button" class="presentation-export-item" id="ptb-export-pptx">📊 ' + (isZh ? '導出可編輯簡報 (.pptx)' : 'Export PowerPoint (.pptx)') + '</button>' +
                         '<button type="button" class="presentation-export-item" id="ptb-export-pdf">📄 ' + (isZh ? '另存 PDF 簡報' : 'Print / Save as PDF') + '</button>' +
                         '<button type="button" class="presentation-export-item" id="ptb-export-slide-png">🖼️ ' + (isZh ? '導出當前頁圖片 (PNG)' : 'Export Current Slide (PNG)') + '</button>' +
                         '<button type="button" class="presentation-export-item" id="ptb-copy-present-link">🔗 ' + (isZh ? '複製目前投影片連結' : 'Copy Slide Link') + '</button>' +
@@ -8535,11 +8609,14 @@ themeCss + '\\n' +
             var prevBtn = toolbar.querySelector('#ptb-prev');
             var nextBtn = toolbar.querySelector('#ptb-next');
             var overviewBtn = toolbar.querySelector('#ptb-overview');
+            var transitionBtn = toolbar.querySelector('#ptb-transition');
+            var motionBtn = toolbar.querySelector('#ptb-motion');
             var laserBtn = toolbar.querySelector('#ptb-laser');
             var pauseBtn = toolbar.querySelector('#ptb-pause');
             var fsBtn = toolbar.querySelector('#ptb-fullscreen');
             var exportBtn = toolbar.querySelector('#ptb-export-btn');
             var exportMenu = toolbar.querySelector('#ptb-export-menu');
+            var exportPptxBtn = toolbar.querySelector('#ptb-export-pptx');
             var exportPdfBtn = toolbar.querySelector('#ptb-export-pdf');
             var exportPngBtn = toolbar.querySelector('#ptb-export-slide-png');
             var copyLinkBtn = toolbar.querySelector('#ptb-copy-present-link');
@@ -8562,6 +8639,74 @@ themeCss + '\\n' +
             overviewBtn.onclick = function() { reveal.toggleOverview(); };
             pauseBtn.onclick = function() { reveal.togglePause(); };
             exitBtn.onclick = window.exitPresentation;
+
+            if (transitionBtn) {
+                transitionBtn.onclick = function() {
+                    var idx = (transitions.indexOf(activeTransition) + 1) % transitions.length;
+                    activeTransition = transitions[idx];
+                    if (typeof reveal.configure === 'function') {
+                        reveal.configure({ transition: activeTransition });
+                    }
+                    transitionBtn.textContent = formatTransitionBadge(activeTransition);
+                    if (typeof window.showToast === 'function') {
+                        window.showToast((isZh ? '過場動畫：' : 'Transition: ') + activeTransition, 1800);
+                    }
+                };
+            }
+
+            if (motionBtn) {
+                motionBtn.onclick = async function() {
+                    var idx = (motionPresets.indexOf(activeMotion) + 1) % motionPresets.length;
+                    activeMotion = motionPresets[idx];
+                    motionBtn.textContent = formatMotionBadge(activeMotion);
+                    motionBtn.classList.toggle('active', activeMotion !== 'off');
+                    try {
+                        if (!_motionController) {
+                            var canvas = container.querySelector('#presentation-motion-canvas');
+                            var motionMod = await import('/js/presentation-motion.mjs');
+                            _motionController = motionMod.createPresentationMotionController(canvas, {
+                                preset: activeMotion,
+                                theme: _presentationThemeName,
+                                isLight: false
+                            });
+                        } else {
+                            _motionController.setPreset(activeMotion);
+                        }
+                    } catch (err) {
+                        console.warn('Motion loop failed:', err);
+                    }
+                };
+            }
+
+            if (exportPptxBtn) {
+                exportPptxBtn.onclick = async function() {
+                    exportMenu.hidden = true;
+                    try {
+                        var pptxMod = await import('/js/pptx-export.mjs');
+                        var docTitle = (document.title || 'presentation').replace(/\\s*-\\s*.*$/, '').trim() || 'presentation';
+                        var blob = pptxMod.buildPptxBlob(_presentationSourceMarkdown || '', {
+                            title: docTitle,
+                            theme: _presentationThemeName,
+                            dark: true
+                        });
+                        var url = URL.createObjectURL(blob);
+                        var a = document.createElement('a');
+                        a.href = url;
+                        a.download = docTitle + '.pptx';
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+                        if (typeof window.showToast === 'function') {
+                            window.showToast(isZh ? '✅ 已導出可編輯簡報 (.pptx)' : '✅ Exported PowerPoint (.pptx)');
+                        }
+                    } catch (err) {
+                        if (typeof window.showToast === 'function') {
+                            window.showToast('PPTX export failed: ' + (err && err.message ? err.message : err));
+                        }
+                    }
+                };
+            }
 
             fsBtn.onclick = function() {
                 if (!document.fullscreenElement) {
@@ -8732,8 +8877,11 @@ themeCss + '\\n' +
                 : 'Rotate your device to landscape to view the 16:9 slides';
             container.classList.toggle('presentation-authoring', !!(edit && !edit.classList.contains('hide')));
             
+            _presentationSourceMarkdown = content;
             var currentTheme = (typeof APP_STATE !== 'undefined' && APP_STATE.theme) ? APP_STATE.theme : 'tokyo-night';
             var customTransition = 'fade';
+            var prefersReducedMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            var customMotion = 'off';
 
             // YAML Frontmatter detection (disambiguated from slide separators)
             var yamlMatch = content.match(new RegExp('^---\\\\r?\\\\n([\\\\s\\\\S]*?)\\\\r?\\\\n---\\\\r?\\\\n'));
@@ -8746,13 +8894,17 @@ themeCss + '\\n' +
                     if (transMatch) customTransition = transMatch[1].toLowerCase();
                     var themeMatch = yamlBlock.match(/theme:\s*([a-zA-Z0-9_-]+)/i);
                     if (themeMatch) currentTheme = themeMatch[1].toLowerCase();
+                    var motionMatch = yamlBlock.match(/(?:motionLoop|motion-loop):\s*([a-zA-Z0-9_-]+)/i);
+                    if (motionMatch && !prefersReducedMotion) customMotion = motionMatch[1].toLowerCase();
                 }
             }
             content = content.replace(new RegExp('^\\\\s*---\\\\s*\\\\r?\\\\n'), '');
+            _presentationThemeName = currentTheme;
 
             container.setAttribute('data-presentation-theme', currentTheme);
 
-            container.innerHTML = '<button type="button" id="presentation-close-btn">✕ ' + getI18n('presentationClose') + '</button>' +
+            container.innerHTML = '<canvas id="presentation-motion-canvas" aria-hidden="true"></canvas>' +
+                                 '<button type="button" id="presentation-close-btn">✕ ' + getI18n('presentationClose') + '</button>' +
                                  '<div class="presentation-orientation-hint" role="status">' + orientationHint + '</div>' +
                                  '<div class="reveal"><div class="slides"></div></div>';
             
@@ -8875,7 +9027,20 @@ themeCss + '\\n' +
                     });
                 }
                 await _reveal.initialize();
-                setupPresentationToolbar(container, _reveal);
+                setupPresentationToolbar(container, _reveal, customTransition, customMotion);
+                if (customMotion !== 'off') {
+                    import('/js/presentation-motion.mjs').then(function(motionMod) {
+                        var canvas = container.querySelector('#presentation-motion-canvas');
+                        if (canvas && container.classList.contains('active')) {
+                            if (_motionController) _motionController.destroy();
+                            _motionController = motionMod.createPresentationMotionController(canvas, {
+                                preset: customMotion,
+                                theme: currentTheme,
+                                isLight: false
+                            });
+                        }
+                    }).catch(function() {});
+                }
                 await renderPresentationComponents(container);
 
                 container.querySelectorAll('.slides img, .slides video, .slides iframe').forEach(function(media) {
@@ -8903,6 +9068,10 @@ themeCss + '\\n' +
                     if (document.exitFullscreen) document.exitFullscreen().catch(function() {});
                     else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
                 } catch(e) {}
+            }
+            if (_motionController) {
+                try { _motionController.destroy(); } catch(e) {}
+                _motionController = null;
             }
             var c = document.getElementById('presentation-container');
             if (c) {

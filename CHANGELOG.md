@@ -1,5 +1,18 @@
 # Changelog
 
+## [2026-11-22]
+
+- **🩹 編輯器頂部空白過多修正（Tighten Editor Top Padding）**：
+  - 於 [src/styles/editor.css.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/styles/editor.css.js) 將 `.editor-code-shell > textarea.contents` 與 `.editor-line-numbers`（含 `@media (max-width: 640px)` 行動版）的 `padding-top` 由 `20px` 收斂為 `8px`，消除工具列底線與第 1 行文字之間過大的空白帶，並維持行號槽與編輯區 1:1 垂直對齊。
+- **🌊 簡報模式無縫動態背景與過場動畫控制（Presentation Motion Loops & Transitions）**：
+  - 新增 [static/js/presentation-motion.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/js/presentation-motion.mjs)，以純 HTML5 Canvas 實作 12 秒無縫循環背景（`off` / `aurora` 極光循環 / `mesh` 網格波紋 / `orbits` 軌道幾何），並整合 `@media (prefers-reduced-motion: reduce)` 自動尊重系統減少動態偏好。
+  - 於 [src/templates/base.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/base.js) 簡報控制列新增「✨ 過場動畫切換（`fade` / `slide` / `convex` / `zoom` / `none`）」與「🌊 12 秒動態背景切換」按鈕，並支援 YAML Frontmatter `motionLoop:` / `motion-loop:` 預設指定與退出自動釋放 `requestAnimationFrame`。
+- **📊 紙本排版範本、印刷分頁控制與可編輯 `.pptx` 匯出（Kami-Style Print Templates & Editable PowerPoint Export）**：
+  - 新增純 ES 模組 OpenXML 生成器 [static/js/pptx-export.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/js/pptx-export.mjs)（內建 CRC-32 + PKZIP 封裝與 16:9 PresentationML 投影片建置），於底欄「匯出」選單（`#export-pptx-btn`）及簡報工具列（`#ptb-export-pptx`）支援一鍵下載可編輯 `.pptx` 簡報檔。
+  - 新增雙語文件排版範本模組 [static/js/paper-templates.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/js/paper-templates.mjs)，整合至 `Cmd/Ctrl + Shift + P` 工具面板（提供 **One-Pager 單頁簡報**、**技術架構白皮書**、**極簡專業履歷** 與 **2D 簡報與動態背景** 四種範本）。
+  - 於 [src/styles/base.css.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/styles/base.css.js) `@media print` 與 [src/pdf_service.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/pdf_service.mjs) 補齊 `orphans: 3; widows: 3;` 孤行防護與 `.page-break` 強制分頁規則。
+  - 新增自動化單元測試 [test/motion-pptx-kami.test.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/motion-pptx-kami.test.mjs)。
+
 ## [2026-11-20]
 
 - **🎨 全站 20 套排版主題 Impeccable + WCAG 2.1 AA 全面校準（Typography, Table Specificity, Alerts Cascade & Contrast Audit Remediation）**：

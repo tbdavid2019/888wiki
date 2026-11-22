@@ -395,6 +395,13 @@ export const EXPORT_DROPDOWN_MENU = (lang, { includeMarkdown = true } = {}) => {
                             <small>${isZh ? '含排版與公式的單一離線網頁' : 'Standalone offline webpage with styles'}</small>
                         </span>
                     </button>
+                    <button type="button" class="dropdown-item dropdown-item-rich" id="export-pptx-btn" role="menuitem">
+                        ${SVG_ICONS.columns}
+                        <span class="dropdown-item-copy">
+                            <strong>${isZh ? '匯出簡報 (.pptx)' : 'Export PowerPoint (.pptx)'}</strong>
+                            <small>${isZh ? '轉換為可編輯 16:9 簡報檔' : 'Generate editable 16:9 PowerPoint deck'}</small>
+                        </span>
+                    </button>
                     <div class="dropdown-divider"></div>
                     <div class="dropdown-menu-label">${isZh ? '列印與 PDF' : 'Print & PDF'}</div>
                     <button type="button" class="dropdown-item dropdown-item-rich" id="export-pdf-btn" role="menuitem">
@@ -1839,6 +1846,40 @@ export const COMMAND_PALETTE_MODAL = (lang, { editorFormat = 'markdown' } = {}) 
                 </button>
                 ` : ''}
             </div>
+
+            ${editorFormat === 'markdown' ? `
+            <div class="cp-group" data-cp-group="paper-templates">
+                <div class="cp-group-label">${zh ? '紙本與簡報排版範本 (Kami Print)' : 'Print & Slide Templates (Kami)'}</div>
+                <button type="button" class="cp-item" data-cp-template="one-pager" data-cp-keywords="template one pager 單頁簡報 範本 print">
+                    ${SVG_ICONS.fileText}
+                    <span class="cp-item-copy">
+                        <strong>${zh ? '套用範本：專案單頁簡報 (One-Pager)' : 'Template: Project One-Pager'}</strong>
+                        <small>${zh ? '雙欄摘要、關鍵指標與分頁列印結構' : 'Two-column executive summary with page-break rules'}</small>
+                    </span>
+                </button>
+                <button type="button" class="cp-item" data-cp-template="whitepaper" data-cp-keywords="template whitepaper report 白皮書 技術報告 範本">
+                    ${SVG_ICONS.book}
+                    <span class="cp-item-copy">
+                        <strong>${zh ? '套用範本：技術架構白皮書 (Whitepaper)' : 'Template: Technical Whitepaper'}</strong>
+                        <small>${zh ? '含目錄結構、Mermaid 圖表與印刷分頁' : 'Structured report with Mermaid diagram & print breaks'}</small>
+                    </span>
+                </button>
+                <button type="button" class="cp-item" data-cp-template="resume" data-cp-keywords="template resume cv 履歷 簡歷 範本">
+                    ${SVG_ICONS.edit}
+                    <span class="cp-item-copy">
+                        <strong>${zh ? '套用範本：極簡專業履歷 (Resume / CV)' : 'Template: Minimal Resume / CV'}</strong>
+                        <small>${zh ? '乾淨雙欄技能與經歷排版，適合匯出 PDF' : 'Clean print-ready CV layout for PDF export'}</small>
+                    </span>
+                </button>
+                <button type="button" class="cp-item" data-cp-template="slides" data-cp-keywords="template slides presentation pptx 簡報 投影片 範本 motion">
+                    ${SVG_ICONS.columns}
+                    <span class="cp-item-copy">
+                        <strong>${zh ? '套用範本：2D 簡報與動態背景 (Slides)' : 'Template: Slides Deck with Motion Loop'}</strong>
+                        <small>${zh ? '含轉場設定、Motion Loop 背景與可匯出 .pptx 結構' : 'Preconfigured transition, motionLoop backdrop, and .pptx layout'}</small>
+                    </span>
+                </button>
+            </div>
+            ` : ''}
 
             <div class="cp-group" data-cp-group="docs">
                 <div class="cp-group-label">${zh ? '使用指南、開發與離線應用' : 'Docs, Developer & App'}</div>

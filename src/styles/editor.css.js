@@ -32,7 +32,7 @@ export const getEditorCss = () => `
 .editor-code-shell > textarea.contents {
     width: 100%;
     min-height: 0;
-    padding: 20px 24px 20px 14px;
+    padding: 8px 24px 20px 14px;
 }
 
 .editor-welcome {
@@ -506,7 +506,7 @@ html[data-ui-theme="dark"][data-preview-theme="x-ai"] { --block-theme-bg: #0a0b0
     min-width: var(--editor-gutter-width, 28px);
     width: var(--editor-gutter-width, 28px);
     box-sizing: border-box;
-    padding: 20px 6px 20px 4px;
+    padding: 8px 6px 20px 4px;
     overflow: hidden;
     border-right: 1px solid color-mix(in srgb, var(--editor-text, #24211b) 10%, transparent);
     background: var(--editor-gutter-bg, #f7f2e7);
@@ -1105,7 +1105,7 @@ textarea#contents::placeholder {
         flex-basis: var(--editor-gutter-width, 22px);
         min-width: var(--editor-gutter-width, 22px);
         width: var(--editor-gutter-width, 22px);
-        padding: 20px 4px 20px 2px;
+        padding: 8px 4px 20px 2px;
         font-size: 12px;
         line-height: var(--editor-row-height, 25.6px);
     }

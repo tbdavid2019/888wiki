@@ -116,7 +116,9 @@ export function buildPdfDocumentHtml(rawHtml, meta = {}) {
                 h2 { font-size: 17px; border-bottom: 1px solid #f3f4f6; padding-bottom: 6px; }
                 h3 { font-size: 15px; }
                 h4 { font-size: 13px; }
-                p { margin-top: 0; margin-bottom: 12px; }
+                p { margin-top: 0; margin-bottom: 12px; orphans: 3; widows: 3; }
+                li { orphans: 3; widows: 3; }
+                .page-break { display: block; height: 0; margin: 0; padding: 0; border: 0; page-break-before: always; break-before: page; }
                 strong { font-weight: 700; color: #111827; }
                 em { font-style: italic; }
                 a { color: #2563eb; text-decoration: none; }
