@@ -884,4 +884,101 @@ export function decorateHeadingAnchors(rootNode) {
     return countAnchored
 }
 
+/**
+ * Extracts line indices of [toc] markers and ATX headings from Markdown source
+ * (skipping YAML frontmatter and fenced code blocks) for anchor-mapped scroll sync.
+ * @param {string} source
+ * @returns {Array<{ kind: 'toc' | 'heading', line: number }>}
+ */
+export function extractEditorScrollTokens(source = '') {
+    if (!source || typeof source !== 'string') return []
+    const lines = source.split(/\r?\n/)
+    const tokens = []
+    let startLine = 0
+
+    // Skip optional YAML frontmatter at top of document
+    if (lines[0] && lines[0].trim() === '---') {
+        for (let i = 1; i < lines.length; i++) {
+            if (lines[i].trim() === '---') {
+                const yamlBody = lines.slice(1, i).join('\n')
+                if (/^[a-zA-Z0-9_-]+\s*:\s*.+/m.test(yamlBody) && !yamlBody.trim().startsWith('#')) {
+                    startLine = i + 1
+                }
+                break
+            }
+        }
+    }
+
+    let fence = ''
+    for (let i = startLine; i < lines.length; i++) {
+        const trimmed = lines[i].trim()
+        const fenceMatch = trimmed.match(/^(`{3,}|~{3,})/)
+        if (fenceMatch) {
+            const marker = fenceMatch[1][0]
+            if (!fence) fence = marker
+            else if (fence === marker) fence = ''
+            continue
+        }
+        if (fence) continue
+
+        if (/^\[toc\]$/i.test(trimmed) || /^\{:toc\}$/i.test(trimmed)) {
+            tokens.push({ kind: 'toc', line: i })
+            continue
+        }
+        if (/^#{1,6}\s+.+/.test(trimmed)) {
+            tokens.push({ kind: 'heading', line: i })
+        }
+    }
+    return tokens
+}
+
+/**
+ * Piecewise linear scroll position interpolation across monotonic { src, dst } anchor pairs.
+ * Prevents large preview blocks like [toc] from desynchronizing editor and preview scroll positions.
+ * @param {number} scrollTop
+ * @param {Array<{ src: number, dst: number }>} anchors
+ * @param {'forward' | 'reverse'} [direction]
+ * @returns {number}
+ */
+export function computeAnchorMappedScrollTop(scrollTop, anchors = [], direction = 'forward') {
+    if (!Array.isArray(anchors) || anchors.length < 2) return 0
+    const isReverse = direction === 'reverse'
+    const getFrom = a => (isReverse ? a.dst : a.src)
+    const getTo = a => (isReverse ? a.src : a.dst)
+
+    const clean = []
+    let lastFrom = -1
+    let lastTo = -1
+    for (const item of anchors) {
+        const from = Math.max(0, Number(getFrom(item)) || 0)
+        const to = Math.max(0, Number(getTo(item)) || 0)
+        if (from >= lastFrom && to >= lastTo) {
+            if (clean.length > 0 && from === lastFrom && to === lastTo) continue
+            clean.push({ from, to })
+            lastFrom = from
+            lastTo = to
+        }
+    }
+    if (clean.length === 0) return 0
+    if (clean.length === 1) return clean[0].to
+
+    const pos = Math.max(0, Number(scrollTop) || 0)
+    if (pos <= clean[0].from) return clean[0].to
+    const last = clean[clean.length - 1]
+    if (pos >= last.from) return last.to
+
+    for (let i = 0; i < clean.length - 1; i++) {
+        const a = clean[i]
+        const b = clean[i + 1]
+        if (pos >= a.from && pos <= b.from) {
+            const span = b.from - a.from
+            if (span <= 0) return b.to
+            const ratio = (pos - a.from) / span
+            return a.to + ratio * (b.to - a.to)
+        }
+    }
+    return last.to
+}
+
+
 

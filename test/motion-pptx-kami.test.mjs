@@ -24,6 +24,11 @@ import {
     getPaperTemplate,
 } from '../static/js/paper-templates.mjs'
 
+import {
+    extractEditorScrollTokens,
+    computeAnchorMappedScrollTop,
+} from '../static/js/markdown-extensions.mjs'
+
 test('presentation-motion normalizes presets and transitions with bilingual labels', () => {
     assert.equal(MOTION_LOOP_PERIOD_MS, 12000)
     assert.deepEqual(MOTION_LOOP_PRESETS, ['off', 'aurora', 'mesh', 'orbits'])
@@ -196,14 +201,70 @@ test('templates and CSS expose motion loops, pptx export, and Kami print rules',
     assert.match(common, /data-cp-template="one-pager"/)
     assert.match(common, /data-cp-template="whitepaper"/)
     assert.match(common, /data-cp-template="resume"/)
+    assert.match(common, /data-cp-template="meeting"/)
     assert.match(common, /data-cp-template="slides"/)
 
     assert.match(base, /id="ptb-transition"/)
     assert.match(base, /id="ptb-motion"/)
     assert.match(base, /id="ptb-export-pptx"/)
     assert.match(base, /presentation-motion-canvas/)
+    assert.match(base, /extractEditorScrollTokens/)
+    assert.match(base, /computeAnchorMappedScrollTop/)
 
     assert.match(baseCss, /#presentation-motion-canvas/)
     assert.match(baseCss, /prefers-reduced-motion: reduce/)
     assert.match(baseCss, /\.page-break\s*\{[\s\S]*break-before:\s*page/)
+    assert.match(baseCss, /@bottom-right\s*\{[\s\S]*counter\(page\)/)
+
+    const pdfSvc = readFileSync(new URL('../src/pdf_service.mjs', import.meta.url), 'utf8')
+    assert.match(pdfSvc, /break-after:\s*avoid/)
+    assert.match(pdfSvc, /\.github-alert,\s*\.markdown-alert,\s*\.column-layout/)
+
+    const skillDoc = readFileSync(new URL('../skills/SKILL.md', import.meta.url), 'utf8')
+    assert.match(skillDoc, /### H\.4 Print-Ready Layouts/)
+    assert.match(skillDoc, /page-break/)
+})
+
+test('extractEditorScrollTokens and computeAnchorMappedScrollTop keep [toc] and headings aligned', () => {
+    const md = `---
+title: Test
+---
+
+# Title
+
+[toc]
+
+\`\`\`md
+# Not a real heading
+[toc]
+\`\`\`
+
+## Section One
+
+Paragraph
+
+## Section Two`
+
+    const tokens = extractEditorScrollTokens(md)
+    assert.deepEqual(tokens, [
+        { kind: 'heading', line: 4 },
+        { kind: 'toc', line: 6 },
+        { kind: 'heading', line: 13 },
+        { kind: 'heading', line: 17 },
+    ])
+
+    // Simulate a 1-line [toc] (y=120..145) expanding to 500px (y=100..600) in preview
+    const anchors = [
+        { src: 0, dst: 0 },
+        { src: 120, dst: 100 },
+        { src: 145, dst: 600 },
+        { src: 300, dst: 800 },
+        { src: 1000, dst: 2000 },
+    ]
+    assert.equal(computeAnchorMappedScrollTop(120, anchors, 'forward'), 100)
+    assert.equal(computeAnchorMappedScrollTop(145, anchors, 'forward'), 600)
+    assert.equal(computeAnchorMappedScrollTop(300, anchors, 'forward'), 800)
+    assert.equal(computeAnchorMappedScrollTop(800, anchors, 'reverse'), 300)
+    assert.equal(computeAnchorMappedScrollTop(600, anchors, 'reverse'), 145)
+    assert.equal(computeAnchorMappedScrollTop(-10, anchors, 'forward'), 0)
 })

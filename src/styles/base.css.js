@@ -6770,6 +6770,17 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
 @media print {
     @page {
         margin: 12mm 15mm;
+        size: A4;
+        @top-left {
+            content: "David888 Wiki";
+            font-size: 8.5pt;
+            color: #6b7280;
+        }
+        @bottom-right {
+            content: counter(page) " / " counter(pages);
+            font-size: 8.5pt;
+            color: #6b7280;
+        }
     }
 
     body.print-export-active #preview-md,
@@ -6954,7 +6965,7 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
         break-inside: avoid !important;
     }
     
-    pre, blockquote, tr, img, figure {
+    pre, blockquote, tr, img, figure, .markdown-alert, .github-alert, .column-layout, .diagram-block-wrapper {
         page-break-inside: avoid !important;
         break-inside: avoid !important;
     }

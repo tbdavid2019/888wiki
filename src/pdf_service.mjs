@@ -111,7 +111,7 @@ export function buildPdfDocumentHtml(rawHtml, meta = {}) {
     return `
         <div style="${getPdfBaseStyles()}">
             <style>
-                h1, h2, h3, h4, h5, h6 { color: #111827; font-weight: 700; line-height: 1.3; margin-top: 20px; margin-bottom: 10px; }
+                h1, h2, h3, h4, h5, h6 { color: #111827; font-weight: 700; line-height: 1.3; margin-top: 20px; margin-bottom: 10px; break-after: avoid; page-break-after: avoid; break-inside: avoid; page-break-inside: avoid; }
                 h1 { font-size: 22px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
                 h2 { font-size: 17px; border-bottom: 1px solid #f3f4f6; padding-bottom: 6px; }
                 h3 { font-size: 15px; }
@@ -129,6 +129,8 @@ export function buildPdfDocumentHtml(rawHtml, meta = {}) {
                     background-color: #f8fafc;
                     color: #4b5563;
                     border-radius: 0 6px 6px 0;
+                    break-inside: avoid;
+                    page-break-inside: avoid;
                 }
                 pre {
                     background-color: #f8fafc;
@@ -194,12 +196,18 @@ export function buildPdfDocumentHtml(rawHtml, meta = {}) {
                     height: auto;
                     border-radius: 6px;
                     margin: 12px 0;
+                    break-inside: avoid;
+                    page-break-inside: avoid;
                 }
                 mark, .markdown-highlight {
                     background-color: #fef08a;
                     color: #854d0e;
                     padding: 1px 3px;
                     border-radius: 3px;
+                }
+                .github-alert, .markdown-alert, .column-layout {
+                    break-inside: avoid;
+                    page-break-inside: avoid;
                 }
                 .github-alert {
                     margin: 14px 0;

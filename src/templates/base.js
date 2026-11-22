@@ -586,9 +586,11 @@ ${getMarkdownCss()}
         import rehypeKatex from 'https://esm.sh/rehype-katex@7.0.1?bundle';
         import rehypeStringify from 'https://esm.sh/rehype-stringify@10.0.1?bundle';
         import remarkBreaks from 'https://esm.sh/remark-breaks@4.0.0?bundle';
-        import { decorateColumnLayouts, expandHackmdImageSizes, expandPandocCitations, expandTextHighlights, expandCustomColors, expandMarkdownExtensions, decorateFootnoteAndCitationPopovers, decorateCodeBlocks, parseBookToc, htmlOrTsvToMarkdownTable, expandInlineFootnotes, protectCurrencyDollarSigns } from '/js/markdown-extensions.mjs';
+        import { decorateColumnLayouts, expandHackmdImageSizes, expandPandocCitations, expandTextHighlights, expandCustomColors, expandMarkdownExtensions, decorateFootnoteAndCitationPopovers, decorateCodeBlocks, parseBookToc, htmlOrTsvToMarkdownTable, expandInlineFootnotes, protectCurrencyDollarSigns, extractEditorScrollTokens, computeAnchorMappedScrollTop } from '/js/markdown-extensions.mjs';
         import { visit } from 'https://esm.sh/unist-util-visit@5.2.0?bundle';
         import { decorateMediaPreviews } from '/js/media-preview.mjs';
+        window.extractEditorScrollTokens = extractEditorScrollTokens;
+        window.computeAnchorMappedScrollTop = computeAnchorMappedScrollTop;
 
         // GitHub Alerts Plugin
         function remarkGithubAlerts() {
@@ -4634,11 +4636,93 @@ ${getMarkdownCss()}
             });
         }
 
-        // Scroll Sync
+        // Scroll Sync (Anchor-mapped for [toc], headings & variable-height blocks)
         let isSyncingLeft = false, isSyncingRight = false, syncTimeout = null;
+        const buildScrollAnchors = ($left, $right) => {
+            const maxLeft = Math.max(0, $left.scrollHeight - $left.clientHeight);
+            const maxRight = Math.max(0, $right.scrollHeight - $right.clientHeight);
+            const anchors = [{ src: 0, dst: 0 }];
+
+            if ($right === $previewMd && typeof window.extractEditorScrollTokens === 'function') {
+                const tokens = window.extractEditorScrollTokens($left.value || '');
+                if (tokens.length > 0) {
+                    const gutter = document.getElementById('editor-line-numbers');
+                    const gutterChildren = gutter ? gutter.children : null;
+                    const gutterRect = gutter ? gutter.getBoundingClientRect() : null;
+                    const leftComputed = window.getComputedStyle ? window.getComputedStyle($left) : null;
+                    const leftPadTop = leftComputed ? (parseFloat(leftComputed.paddingTop) || 0) : 8;
+                    const gutterPadTop = (gutter && window.getComputedStyle) ? (parseFloat(window.getComputedStyle(gutter).paddingTop) || 0) : 8;
+                    const rowHeight = leftComputed ? (parseFloat(leftComputed.lineHeight) || 25.6) : 25.6;
+
+                    const rightRect = $right.getBoundingClientRect();
+                    const rightComputed = window.getComputedStyle ? window.getComputedStyle($right) : null;
+                    const rightPadTop = rightComputed ? (parseFloat(rightComputed.paddingTop) || 0) : 20;
+
+                    const tocEls = Array.from($right.querySelectorAll('nav.markdown-toc'));
+                    const headingEls = Array.from($right.querySelectorAll('h1, h2, h3, h4, h5, h6')).filter(h =>
+                        !h.closest('.markdown-toc, .footnotes, [data-footnotes]') &&
+                        !h.classList.contains('sr-only') &&
+                        !h.classList.contains('visually-hidden') &&
+                        h.getAttribute('aria-hidden') !== 'true'
+                    );
+
+                    const getLineTop = (lineIndex) => {
+                        if (gutterChildren && gutterRect && gutterChildren[lineIndex]) {
+                            const lineRect = gutterChildren[lineIndex].getBoundingClientRect();
+                            return Math.max(0, Math.min(maxLeft, lineRect.top - gutterRect.top + gutter.scrollTop - gutterPadTop));
+                        }
+                        return Math.max(0, Math.min(maxLeft, leftPadTop + lineIndex * rowHeight - leftPadTop));
+                    };
+
+                    const getLineBottom = (lineIndex) => {
+                        if (gutterChildren && gutterRect && gutterChildren[lineIndex]) {
+                            const lineRect = gutterChildren[lineIndex].getBoundingClientRect();
+                            return Math.max(0, Math.min(maxLeft, lineRect.bottom - gutterRect.top + gutter.scrollTop - gutterPadTop));
+                        }
+                        return Math.max(0, Math.min(maxLeft, (lineIndex + 1) * rowHeight));
+                    };
+
+                    let tocCursor = 0;
+                    let headingCursor = 0;
+                    for (const token of tokens) {
+                        if (token.kind === 'toc') {
+                            const tocEl = tocEls[tocCursor++];
+                            if (!tocEl) continue;
+                            const tocRect = tocEl.getBoundingClientRect();
+                            const tocTop = Math.max(0, Math.min(maxRight, tocRect.top - rightRect.top + $right.scrollTop - rightPadTop));
+                            const tocBottom = Math.max(tocTop, Math.min(maxRight, tocRect.bottom - rightRect.top + $right.scrollTop - rightPadTop));
+                            anchors.push({ src: getLineTop(token.line), dst: tocTop });
+                            anchors.push({ src: getLineBottom(token.line), dst: tocBottom });
+                        } else if (token.kind === 'heading') {
+                            const hEl = headingEls[headingCursor++];
+                            if (!hEl) continue;
+                            const hRect = hEl.getBoundingClientRect();
+                            const hTop = Math.max(0, Math.min(maxRight, hRect.top - rightRect.top + $right.scrollTop - rightPadTop));
+                            anchors.push({ src: getLineTop(token.line), dst: hTop });
+                        }
+                    }
+                }
+            }
+
+            anchors.push({ src: maxLeft, dst: maxRight });
+            return anchors;
+        };
+
         const syncScroll = (source, target) => {
-            const percentage = source.scrollTop / (source.scrollHeight - source.clientHeight);
-            target.scrollTop = percentage * (target.scrollHeight - target.clientHeight);
+            const maxSource = Math.max(0, source.scrollHeight - source.clientHeight);
+            const maxTarget = Math.max(0, target.scrollHeight - target.clientHeight);
+            if (maxSource <= 0 || maxTarget <= 0) {
+                target.scrollTop = 0;
+                return;
+            }
+            if ($textarea && $previewMd && (source === $textarea || source === $previewMd) && typeof window.computeAnchorMappedScrollTop === 'function') {
+                const anchors = buildScrollAnchors($textarea, $previewMd);
+                const direction = source === $textarea ? 'forward' : 'reverse';
+                target.scrollTop = window.computeAnchorMappedScrollTop(source.scrollTop, anchors, direction);
+                return;
+            }
+            const percentage = source.scrollTop / maxSource;
+            target.scrollTop = percentage * maxTarget;
         }
         if ($textarea && ($previewMd || $previewPlain)) {
             const $preview = $previewMd || $previewPlain;

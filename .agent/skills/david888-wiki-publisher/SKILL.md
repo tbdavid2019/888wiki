@@ -720,6 +720,17 @@ For comprehensive reports, technical specs, long-form articles, and documentatio
    - **Glassmorphic Hover Cards**: Readers hovering over footnote numbers see an instant glassmorphic popover preview without losing their reading spot.
    - **Smooth Bidirectional Jump**: Clicking jumps smoothly to the target definition, and clicking `↩` returns directly to the referring text passage.
 
+### H.4 Print-Ready Layouts, Page Breaks & Editable `.pptx` / Motion Slides
+When generating formal documents (One-Pagers, Whitepapers, Resumes/CVs, Meeting Minutes) or presentations:
+
+1. **Explicit Page Breaks (`<div class="page-break"></div>`)**:
+   - Insert `<div class="page-break"></div>` between major sections when the user requests clean PDF/print pagination. Both Takumi vector PDF export (`/api/pdf/export`) and `@media print` enforce `break-before: page` alongside running headers (`David888 Wiki`), page counters (`Page X of Y` / `counter(page) / counter(pages)`), `break-after: avoid` on headings, `break-inside: avoid` on callouts, tables, diagrams, and column blocks, and `orphans: 3; widows: 3` paragraph hygiene.
+2. **Built-in Paper & Slide Templates (`Cmd/Ctrl + Shift + P`)**:
+   - Four bilingual templates are available in the editor's Tools Palette: **One-Pager**, **Whitepaper**, **Resume / CV**, **Meeting Minutes**, and **2D Slides Deck**.
+3. **Motion Loops & Editable `.pptx` Slides**:
+   - Presentation YAML frontmatter supports `transition: fade | slide | convex | zoom | none` and `motionLoop: off | aurora | mesh | orbits` (12-second seamless procedural Canvas backdrops respecting `prefers-reduced-motion`).
+   - Use standard `---` (horizontal) and `--` (vertical) separators plus `<!-- layout: cover -->` so presentations can both play live at `/share/<id>/present` and export directly to editable 16:9 PowerPoint (`.pptx`) files.
+
 
 ## Editor Features and Operational Tips
 

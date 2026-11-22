@@ -1871,6 +1871,13 @@ export const COMMAND_PALETTE_MODAL = (lang, { editorFormat = 'markdown' } = {}) 
                         <small>${zh ? '乾淨雙欄技能與經歷排版，適合匯出 PDF' : 'Clean print-ready CV layout for PDF export'}</small>
                     </span>
                 </button>
+                <button type="button" class="cp-item" data-cp-template="meeting" data-cp-keywords="template meeting minutes 會議紀錄 會議記錄 行動項目 範本">
+                    ${SVG_ICONS.clock}
+                    <span class="cp-item-copy">
+                        <strong>${zh ? '套用範本：會議紀錄 (Meeting Minutes)' : 'Template: Meeting Minutes'}</strong>
+                        <small>${zh ? '含與會資訊、核心決議框與待辦追蹤表格' : 'Attendees, decision callout, and action items table'}</small>
+                    </span>
+                </button>
                 <button type="button" class="cp-item" data-cp-template="slides" data-cp-keywords="template slides presentation pptx 簡報 投影片 範本 motion">
                     ${SVG_ICONS.columns}
                     <span class="cp-item-copy">

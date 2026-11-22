@@ -324,6 +324,70 @@ flowchart LR
 ## Thank you!
 `,
     },
+    'meeting': {
+        'zh-TW': `# 會議紀錄：專案進度與決策同步
+
+**日期**：2026-11-22 ｜ **時間**：10:00 – 11:00 ｜ **記錄人**：主持人  
+**與會人員**：產品、架構、前後端開發團隊
+
+> [!IMPORTANT] 核心決議摘要
+> 本次會議確認下一階段交付優先順序、效能指標與各模組負責人，所有待辦事項須於下週五前完成驗收。
+
+---
+
+## 1. 會議議程與討論重點
+
+### 1.1 架構與效能檢視
+- 檢視現有邊緣運算延遲與快取命中率，確認字型與靜態資源快取策略。
+- 針對雙欄編輯器與目錄 \`[toc]\` 捲動同步進行體驗優化。
+
+### 1.2 匯出與簡報工作流
+- 支援簡報模式直接匯出為可編輯 \`.pptx\`，並強化 PDF 分頁與頁首頁尾頁碼排版。
+
+---
+
+## 2. 決議與行動項目（Action Items）
+
+| 編號 | 待辦事項 | 負責人 | 預計完成日 | 狀態 |
+| :--- | :--- | :--- | :--- | :--- |
+| AI-01 | 完成編輯器捲動錨點對齊 | 前端組 | 2026-11-24 | 進行中 |
+| AI-02 | 驗證 PPTX 與 PDF 分頁輸出 | QA 組 | 2026-11-25 | 待確認 |
+| AI-03 | 更新團隊知識庫排版範本 | 文件組 | 2026-11-26 | 已完成 |
+
+- [ ] 下次追蹤會議：2026-11-29 10:00（確認上線清單）
+`,
+        'en-US': `# Meeting Minutes: Project Sync & Decisions
+
+**Date**: 2026-11-22 | **Time**: 10:00 – 11:00 | **Note Taker**: Facilitator  
+**Attendees**: Product, Architecture, Frontend & Backend Engineering
+
+> [!IMPORTANT] Key Decisions Summary
+> Confirmed next-sprint delivery priorities, latency targets, and module owners. All action items are due by next Friday.
+
+---
+
+## 1. Agenda & Discussion Notes
+
+### 1.1 Architecture & Performance Review
+- Reviewed edge latency and font/asset cache hit rates.
+- Prioritized editor/preview scroll alignment when \`[toc]\` blocks expand.
+
+### 1.2 Export & Presentation Workflow
+- Enabled direct editable \`.pptx\` export and hardened print/PDF page-break rules with running headers and page numbers.
+
+---
+
+## 2. Decisions & Action Items
+
+| ID | Action Item | Owner | Due Date | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| AI-01 | Ship anchor-based editor scroll sync | Frontend | 2026-11-24 | In Progress |
+| AI-02 | Verify PPTX & PDF pagination output | QA | 2026-11-25 | Pending |
+| AI-03 | Publish print-ready document templates | Docs | 2026-11-26 | Done |
+
+- [ ] Next follow-up sync: 2026-11-29 10:00 (release readiness check)
+`,
+    },
 }
 
 export function getPaperTemplate(templateId, lang = 'zh-TW') {
