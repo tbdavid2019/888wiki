@@ -2,6 +2,10 @@
 
 ## [2026-11-22]
 
+- **🌊 修復簡報背景動態手動切換、Toast 堆疊、導出圖示缺字與簡報 Mermaid 競態（Presentation Motion Manual Opt-in & UI Fixes）**：
+  - 於 [src/templates/base.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/base.js) 與 [src/styles/base.css.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/styles/base.css.js) 將 `prefers-reduced-motion: reduce` 限制收斂為「預設不自動播放 YAML 背景動畫」；當使用者**明確手動點擊**簡報工具列 `🌊 背景關`（`#ptb-motion`）時，改為設定 `.motion-user-override` 允許正常循環切換 `極光循環` / `網格波紋` / `軌道幾何` / `關閉`，不再回絕點擊並彈出系統阻擋通知。
+  - 升級 `window.showToast(message, durationMs)` 支援自訂顯示毫秒數與相同訊息去重／上限替換，避免連點按鈕產生多條重複浮動通知；將簡報工具列缺字字元 `⭳ 導出 ▾` 替換為跨平台相容的 `📤 導出 ▾`。
+  - 修復 `renderPresentationComponents()` 與 `_reveal.on('ready')` 併發執行導致簡報內 Mermaid / Pele 圖表競態與 ID 碰撞，加入 `data-diagram-processed` 防重標記與字型／繪圖後重算對齊。
 - **🧹 修復前端 Console 語法錯誤與 Service Worker 舊模組快取錯位（Fix `safeBookUrl` Regex & `sw.js` v8 Network-First `.mjs`）**：
   - 於 [src/templates/base.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/base.js) 將 `safeBookUrl()` 的樣板字面量跳脫異常正則改為明確安全前綴檢查（`#`、單 `/`、`./`、`../`），修復瀏覽器 Console 報錯 `Invalid regular expression: /^(?:/: Unterminated group`。
   - 於 [static/sw.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/sw.js)（同步 [src/templates/base.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/base.js) 與 [test/book-mode-offline-export.test.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/book-mode-offline-export.test.mjs)）將 `CACHE_NAME` 升級至 `david888-wiki-shell-v8`，並對 `/js/*.mjs` 改為 Network-First 策略（離線才回退快取），徹底杜絕新版 HTML 載入舊快取 ES 模組造成 `does not provide an export named ...` 錯誤。

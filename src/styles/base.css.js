@@ -5809,7 +5809,7 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
     opacity: 1;
 }
 @media (prefers-reduced-motion: reduce) {
-    #presentation-motion-canvas {
+    #presentation-container:not(.motion-user-override) #presentation-motion-canvas {
         display: none !important;
     }
 }

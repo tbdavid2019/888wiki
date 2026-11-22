@@ -6796,32 +6796,44 @@ ${getMarkdownCss()}
         setupKeyboardViewport();
 
         // --- Toast Notification Utility ---
-        window.showToast = (message) => {
+        window.showToast = (message, durationMs = 3500) => {
             let container = document.getElementById('toast-container');
             if (!container) {
                 container = document.createElement('div');
                 container.id = 'toast-container';
                 document.body.appendChild(container);
             }
-            
+
+            const msgStr = String(message ?? '');
+            Array.from(container.children).forEach((el) => {
+                if (el.dataset && el.dataset.toastMsg === msgStr) {
+                    el.remove();
+                }
+            });
+            while (container.children.length >= 3) {
+                container.firstElementChild.remove();
+            }
+
             const toast = document.createElement('div');
             toast.className = 'toast';
+            toast.dataset.toastMsg = msgStr;
             const icon = document.createElement('span');
             icon.className = 'toast-check';
             icon.textContent = '✓';
             const text = document.createElement('span');
-            text.textContent = String(message ?? '');
+            text.textContent = msgStr;
             toast.append(icon, text);
             container.appendChild(toast);
-            
+
+            const hideAfter = Number.isFinite(Number(durationMs)) && Number(durationMs) > 0 ? Number(durationMs) : 3500;
             // Fade-in trigger
             setTimeout(() => toast.classList.add('show'), 15);
-            
+
             // Auto fade-out & remove
             setTimeout(() => {
                 toast.classList.remove('show');
                 setTimeout(() => toast.remove(), 250);
-            }, 3500);
+            }, hideAfter);
         };
 
         // --- PWA Manual Install Handler ---
@@ -8472,6 +8484,8 @@ themeCss + '\\n' +
         var _motionController = null;
         var _motionControllerPromise = null;
         var _desiredMotionPreset = 'off';
+        var _motionUserOverride = false;
+        var _mermaidRenderSeq = 0;
         var _reducedMotionMediaQuery = null;
         var _reducedMotionListener = null;
         var _presentationSourceMarkdown = '';
@@ -8483,11 +8497,13 @@ themeCss + '\\n' +
 
         function stopActiveMotionLoop(container) {
             _desiredMotionPreset = 'off';
+            _motionUserOverride = false;
             if (_motionController) {
                 try { _motionController.setPreset('off'); } catch(e) {}
             }
             if (container) {
                 container.classList.remove('has-motion-loop');
+                container.classList.remove('motion-user-override');
                 var mb = container.querySelector('#ptb-motion');
                 if (mb) {
                     mb.classList.remove('active');
@@ -8501,15 +8517,16 @@ themeCss + '\\n' +
         }
 
         function ensureMotionController(container, preset, themeName) {
+            var resolvedPreset = (!_motionUserOverride && isReducedMotionPreferred()) ? 'off' : preset;
             if (_motionController) {
-                _motionController.setPreset(preset);
+                _motionController.setPreset(resolvedPreset);
                 return Promise.resolve(_motionController);
             }
             if (!_motionControllerPromise) {
                 _motionControllerPromise = import('/js/presentation-motion.mjs').then(function(motionMod) {
                     var canvas = container.querySelector('#presentation-motion-canvas');
                     if (!canvas || !container.classList.contains('active')) return null;
-                    var effectivePreset = isReducedMotionPreferred() ? 'off' : _desiredMotionPreset;
+                    var effectivePreset = (!_motionUserOverride && isReducedMotionPreferred()) ? 'off' : _desiredMotionPreset;
                     if (effectivePreset === 'off') {
                         stopActiveMotionLoop(container);
                         return null;
@@ -8642,8 +8659,13 @@ themeCss + '\\n' +
             }
 
             // 2. Mermaid Diagrams
-            var mermaidBlocks = container.querySelectorAll('.reveal pre code.language-mermaid, .reveal code.language-mermaid');
+            var mermaidBlocks = Array.from(container.querySelectorAll('.reveal pre code.language-mermaid, .reveal pre code.mermaid, .reveal code.language-mermaid, .reveal code.mermaid'))
+                .filter(function(el) { return el && el.dataset && el.dataset.diagramProcessed !== 'true' && document.contains(el); });
             if (mermaidBlocks.length > 0) {
+                var presMermaidFontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "PingFang SC", "Hiragino Sans GB", "Microsoft JhengHei", "Microsoft YaHei", "Noto Sans CJK TC", "Noto Sans CJK SC", "Source Han Sans TC", "Source Han Sans SC", Helvetica, Arial, sans-serif';
+                if (document.fonts && document.fonts.ready) {
+                    try { await document.fonts.ready; } catch (fontErr) {}
+                }
                 var peleModule = null;
                 try {
                     peleModule = await import('https://cdn.jsdelivr.net/npm/pele@1.13.0/dist/pele.js');
@@ -8658,23 +8680,27 @@ themeCss + '\\n' +
                     var isDarkTheme = typeof isDarkContext === 'function' ? isDarkContext(APP_STATE.theme) : (APP_STATE.uiTheme === 'dark' || ['tokyo-night', 'x-ai', 'terminal', 'kanagawa', 'catppuccin-macchiato'].includes(APP_STATE.theme));
                     mermaidInstance.initialize({
                         startOnLoad: false,
-                        theme: isDarkTheme ? 'dark' : 'default',
+                        theme: isDarkTheme ? 'dark' : 'neutral',
                         securityLevel: 'loose',
-                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+                        fontFamily: presMermaidFontFamily,
+                        flowchart: { htmlLabels: false, useMaxWidth: true }
                     });
                     return mermaidInstance;
                 };
 
                 for (var i = 0; i < mermaidBlocks.length; i++) {
                     var codeEl = mermaidBlocks[i];
+                    if (!codeEl || (codeEl.dataset && codeEl.dataset.diagramProcessed === 'true')) continue;
                     var preEl = codeEl.closest('pre') || codeEl;
+                    if (!preEl || !preEl.parentNode) continue;
                     var code = (codeEl.textContent || '').trim();
                     if (!code) continue;
+                    codeEl.dataset.diagramProcessed = 'true';
                     var rendered = false;
                     if (peleModule && typeof peleModule.render === 'function') {
                         try {
-                            var pRes = peleModule.render(code, { responsive: true });
-                            if (pRes && pRes.svg) {
+                            var pRes = peleModule.render(code, { fontFamily: presMermaidFontFamily, responsive: true });
+                            if (pRes && pRes.svg && preEl.parentNode) {
                                 var wrap = document.createElement('div');
                                 wrap.className = 'presentation-diagram-fit';
                                 wrap.setAttribute('data-diagram-engine', 'pele');
@@ -8686,16 +8712,19 @@ themeCss + '\\n' +
                             console.warn('Presentation Pele render error, attempting Mermaid fallback:', pErr);
                         }
                     }
-                    if (!rendered) {
+                    if (!rendered && preEl.parentNode) {
                         try {
                             var m = await getPresentationMermaid();
-                            var mid = 'pres-mermaid-' + Date.now() + '-' + i;
+                            _mermaidRenderSeq += 1;
+                            var mid = 'pres-mermaid-' + Date.now() + '-' + _mermaidRenderSeq;
                             var mRes = await m.render(mid, code);
-                            var wrap = document.createElement('div');
-                            wrap.className = 'presentation-diagram-fit';
-                            wrap.setAttribute('data-diagram-engine', 'mermaid');
-                            wrap.innerHTML = mRes.svg;
-                            preEl.parentNode.replaceChild(wrap, preEl);
+                            if (mRes && mRes.svg && preEl.parentNode) {
+                                var wrap = document.createElement('div');
+                                wrap.className = 'presentation-diagram-fit';
+                                wrap.setAttribute('data-diagram-engine', 'mermaid');
+                                wrap.innerHTML = mRes.svg;
+                                preEl.parentNode.replaceChild(wrap, preEl);
+                            }
                         } catch (err) {
                             console.warn('Mermaid render error:', err);
                         }
@@ -8831,7 +8860,7 @@ themeCss + '\\n' +
                 '</div>' +
                 '<div class="presentation-toolbar-divider"></div>' +
                 '<div class="presentation-toolbar-group">' +
-                    '<button type="button" class="presentation-tb-btn" id="ptb-export-btn" title="' + (isZh ? '導出簡報' : 'Export Slides') + '">⭳ ' + (isZh ? '導出' : 'Export') + ' ▾</button>' +
+                    '<button type="button" class="presentation-tb-btn" id="ptb-export-btn" title="' + (isZh ? '導出簡報' : 'Export Slides') + '">📤 ' + (isZh ? '導出' : 'Export') + ' ▾</button>' +
                     '<div id="ptb-export-menu" class="presentation-export-menu" hidden>' +
                         '<button type="button" class="presentation-export-item" id="ptb-export-pptx">📊 ' + (isZh ? '導出可編輯簡報 (.pptx)' : 'Export PowerPoint (.pptx)') + '</button>' +
                         '<button type="button" class="presentation-export-item" id="ptb-export-pdf">📄 ' + (isZh ? '另存 PDF 簡報' : 'Print / Save as PDF') + '</button>' +
@@ -8898,24 +8927,20 @@ themeCss + '\\n' +
 
             if (motionBtn) {
                 motionBtn.onclick = async function() {
-                    if (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-                        _desiredMotionPreset = 'off';
-                        activeMotion = 'off';
-                        motionBtn.textContent = formatMotionBadge('off');
-                        motionBtn.classList.remove('active');
-                        container.classList.remove('has-motion-loop');
-                        if (_motionController) _motionController.setPreset('off');
-                        if (typeof window.showToast === 'function') {
-                            window.showToast(isZh ? '系統已開啟「減少動態效果」，已停用背景循環動畫' : 'Motion backdrop disabled due to prefers-reduced-motion');
-                        }
-                        return;
-                    }
                     var idx = (motionPresets.indexOf(activeMotion) + 1) % motionPresets.length;
                     activeMotion = motionPresets[idx];
                     _desiredMotionPreset = activeMotion;
+                    _motionUserOverride = activeMotion !== 'off';
                     motionBtn.textContent = formatMotionBadge(activeMotion);
                     motionBtn.classList.toggle('active', activeMotion !== 'off');
                     container.classList.toggle('has-motion-loop', activeMotion !== 'off');
+                    container.classList.toggle('motion-user-override', _motionUserOverride);
+                    if (typeof window.showToast === 'function') {
+                        var motionToastLabels = isZh
+                            ? { off: '背景動態：關閉', aurora: '背景動態：極光循環', mesh: '背景動態：網格波紋', orbits: '背景動態：軌道幾何' }
+                            : { off: 'Motion Backdrop: Off', aurora: 'Motion Backdrop: Aurora', mesh: 'Motion Backdrop: Mesh', orbits: 'Motion Backdrop: Orbits' };
+                        window.showToast(motionToastLabels[activeMotion] || activeMotion, 1800);
+                    }
                     try {
                         await ensureMotionController(container, _desiredMotionPreset, _presentationThemeName);
                     } catch (err) {
@@ -9262,7 +9287,6 @@ themeCss + '\\n' +
                 });
                 if (_reveal.on) {
                     _reveal.on('ready', function() {
-                        renderPresentationComponents(container);
                         schedulePresentationFit(container);
                     });
                     _reveal.on('slidechanged', function() {
@@ -9273,13 +9297,15 @@ themeCss + '\\n' +
                     });
                 }
                 await _reveal.initialize();
+                _motionUserOverride = false;
+                container.classList.remove('motion-user-override');
                 _desiredMotionPreset = isReducedMotionPreferred() ? 'off' : customMotion;
                 container.classList.toggle('has-motion-loop', _desiredMotionPreset !== 'off');
                 setupPresentationToolbar(container, _reveal, customTransition, _desiredMotionPreset);
                 if (typeof window.matchMedia === 'function') {
                     _reducedMotionMediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
                     _reducedMotionListener = function(ev) {
-                        if (ev && ev.matches) stopActiveMotionLoop(container);
+                        if (ev && ev.matches && !_motionUserOverride) stopActiveMotionLoop(container);
                     };
                     if (typeof _reducedMotionMediaQuery.addEventListener === 'function') {
                         _reducedMotionMediaQuery.addEventListener('change', _reducedMotionListener);
@@ -9289,6 +9315,7 @@ themeCss + '\\n' +
                     ensureMotionController(container, _desiredMotionPreset, currentTheme).catch(function() {});
                 }
                 await renderPresentationComponents(container);
+                schedulePresentationFit(container);
 
                 container.querySelectorAll('.slides img, .slides video, .slides iframe').forEach(function(media) {
                     if (media.tagName === 'IMG' && media.complete) return;
@@ -9317,6 +9344,7 @@ themeCss + '\\n' +
                 } catch(e) {}
             }
             _desiredMotionPreset = 'off';
+            _motionUserOverride = false;
             _motionControllerPromise = null;
             if (_reducedMotionMediaQuery && _reducedMotionListener && typeof _reducedMotionMediaQuery.removeEventListener === 'function') {
                 _reducedMotionMediaQuery.removeEventListener('change', _reducedMotionListener);
@@ -9331,6 +9359,7 @@ themeCss + '\\n' +
             if (c) {
                 c.classList.remove('active');
                 c.classList.remove('has-motion-loop');
+                c.classList.remove('motion-user-override');
                 c.classList.remove('presentation-authoring');
                 c.classList.remove('laser-active');
                 c.innerHTML = '';
