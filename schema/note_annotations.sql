@@ -27,3 +27,14 @@ CREATE TABLE IF NOT EXISTS annotation_messages (
 
 CREATE INDEX IF NOT EXISTS idx_annotation_messages_thread_created
 ON annotation_messages (thread_id, created_at ASC, id ASC);
+
+CREATE TABLE IF NOT EXISTS annotation_thread_meta (
+    thread_id TEXT PRIMARY KEY,
+    path TEXT NOT NULL,
+    root_message_id TEXT NOT NULL,
+    note_uid TEXT,
+    created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_annotation_thread_meta_path_uid
+ON annotation_thread_meta (path, note_uid);

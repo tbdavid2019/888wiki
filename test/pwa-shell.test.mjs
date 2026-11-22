@@ -61,8 +61,14 @@ test('service worker precaches safe application shell, caches images, and applie
     assert.match(worker, /isImageRequest/)
     assert.match(worker, /isStaticAsset/)
     assert.match(worker, /addEventListener\('sync'/)
-    assert.doesNotMatch(worker, /\/share\//)
-    assert.doesNotMatch(worker, /\/api\//)
+    const bypass = worker.indexOf("pathname === '/_space'")
+    assert.ok(bypass >= 0 && bypass < worker.indexOf('if (request.mode ==='))
+    for (const route of ["'/c/'", "'/api/auth/'", "'/api/account/'", "'/api/space/'", "'/api/circles/'"]) {
+        assert.ok(worker.includes(route), `${route} must bypass Cache Storage`)
+    }
+    const precache = worker.slice(worker.indexOf('const PRECACHE_URLS'), worker.indexOf(']', worker.indexOf('const PRECACHE_URLS')))
+    assert.doesNotMatch(precache, /\/(?:share|api|c)\//)
+    assert.doesNotMatch(precache, /\/_space/)
 })
 
 test('the offline fallback has a dedicated Worker route before dynamic note routing', () => {

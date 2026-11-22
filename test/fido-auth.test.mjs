@@ -62,6 +62,24 @@ test('decodeCbor handles text, numbers, byte arrays, and maps', () => {
     assert.equal(result.get('fmt'), 'none')
 })
 
+function encodeDerInt(bytes) {
+    let start = 0
+    while (start < bytes.length - 1 && bytes[start] === 0x00) {
+        start++
+    }
+    const trimmed = bytes.slice(start)
+    if (trimmed[0] & 0x80) {
+        return new Uint8Array([0x02, trimmed.length + 1, 0x00, ...trimmed])
+    }
+    return new Uint8Array([0x02, trimmed.length, ...trimmed])
+}
+
+function p1363ToDer(p1363Sig) {
+    const rDer = encodeDerInt(p1363Sig.slice(0, 32))
+    const sDer = encodeDerInt(p1363Sig.slice(32, 64))
+    return new Uint8Array([0x30, rDer.length + sDer.length, ...rDer, ...sDer])
+}
+
 test('verifyFidoAssertion cryptographically verifies valid ECDSA P-256 signatures', async () => {
     // Generate real P-256 key pair
     const keyPair = await crypto.subtle.generateKey(
@@ -107,15 +125,8 @@ test('verifyFidoAssertion cryptographically verifies valid ECDSA P-256 signature
         signatureBase
     ))
 
-    // Convert P1363 to DER to simulate browser authenticator output
-    const r = p1363Sig.slice(0, 32)
-    const s = p1363Sig.slice(32, 64)
-    // Build DER
-    const derSig = new Uint8Array([
-        0x30, 0x44,
-        0x02, 0x20, ...r,
-        0x02, 0x20, ...s
-    ])
+    // Convert P1363 to canonical ASN.1 DER to simulate browser authenticator output
+    const derSig = p1363ToDer(p1363Sig)
     const signatureBase64 = bytesToBase64Url(derSig)
 
     // Verify

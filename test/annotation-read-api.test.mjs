@@ -24,6 +24,6 @@ test('share annotation read API hides retained threads while the author setting 
 })
 
 test('share annotation read API preserves view-password access control', () => {
-    assert.match(indexSource, /if \(metadata\.vpw\) \{[\s\S]*Cookies\.parse\(request\.headers\.get\('Cookie'\)[\s\S]*checkAuth\(cookie, path\)[\s\S]*Share password required/)
+    assert.match(indexSource, /if \(metadata\.vpw\) \{[\s\S]*Cookies\.parse\(request\.headers\.get\('Cookie'\)[\s\S]*checkAuth\(cookie, path[\s\S]*Share password required/)
     assert.match(indexSource, /'Cache-Control': 'no-store'/)
 })

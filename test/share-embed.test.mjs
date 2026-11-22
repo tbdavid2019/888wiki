@@ -8,7 +8,7 @@ const commonTemplateSource = readFileSync(new URL('../src/templates/common.js', 
 
 test('share renderer enables embed mode from the embed query parameter', () => {
     assert.match(indexSource, /searchParams\.get\('embed'\) === '1'/)
-    assert.match(indexSource, /content: value,\n\s+shareId,\n\s+ext: \{/)
+    assert.match(indexSource, /content:\s*(?:isBurnInterstitial\s*\?\s*''\s*:\s*)?value,\n\s+shareId,\n\s+ext: \{/)
     assert.match(indexSource, /embed: embedMode/)
 })
 

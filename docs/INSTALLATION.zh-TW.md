@@ -10,7 +10,7 @@
 2. 選擇新 GitHub repository 與 Worker 名稱。
 3. 在部署精靈或 Worker 的 **Settings → Variables and Secrets** 設定下方 3 個必填 Secrets。
 4. 啟動部署。Cloudflare 會複製 repository、連接 Workers Builds，並依 `wrangler.toml` 建立 Cloudflare 資源。
-5. 部署腳本會建立筆記歷史、瀏覽統計與段落註解所需的 D1 資料表。建置完成後開啟 Worker 網址。
+5. 部署腳本會初始化已設定的 D1 結構，包括筆記登錄、帳號、歷史、統計與批註。既有站台恢復流量前，請先依下方程序完成遷移。
 
 Cloudflare Deploy 會讀取 `wrangler.toml` 的資源綁定，以及 `.dev.vars.example` 的 Secret 名稱。大多數執行變數已有可用預設值，部署時不必逐項輸入。下方列出新部署會使用的完整設定。
 
@@ -32,7 +32,7 @@ Cloudflare Deploy 會讀取 `wrangler.toml` 的資源綁定，以及 `.dev.vars.
 | --- | --- | --- |
 | `NOTES` | KV Namespace | 筆記儲存與備援。 |
 | `SHARE` | KV Namespace | 已發布筆記與分享中繼資料。 |
-| `NOTE_HISTORY_DB` | D1 Database | 混合式儲存、筆記歷史、瀏覽統計與段落註解；部署腳本會建立所需資料表。 |
+| `NOTE_HISTORY_DB` | D1 Database | 預設提供筆記登錄、帳號、歷史、統計與批註；也可使用其他 D1 綁定分離職責。 |
 | `IMAGES` | R2 Bucket | 圖片上傳。未設定自訂網域時由 Worker 提供圖片。 |
 
 Worker 也會從 `static/` 提供靜態檔案，並依設定每天於 UTC 01:00（台灣時間 09:00）執行清理 Cron。Cloudflare 會自動建立這些資源，並將 Wrangler 範本中的預設 ID 更新為新資源 ID。
@@ -43,7 +43,7 @@ Worker 也會從 `static/` 提供靜態檔案，並依設定每天於 UTC 01:00�
 
 | 變數 | 預設值 | 作用 |
 | --- | --- | --- |
-| `SCN_STORAGE_DRIVER` | `auto` | `auto` 使用 D1 並以 KV 備援；`kv` 僅用 KV；`d1` 使用 D1 模式。 |
+| `SCN_STORAGE_DRIVER` | `auto` | 使用可用的 D1 筆記登錄；刻意設定 `kv` 時停用帳號。明確指定 D1 為權威資料庫時，資料庫失效會拒絕服務。 |
 | `SCN_APP_NAME` | `888wiki` | 介面顯示的應用名稱。 |
 | `SCN_ADMIN_PATH` | `/admin` | 管理後台路徑；可改成較難猜測的路徑。 |
 | `SCN_SLUG_LENGTH` | `4` | 自動產生的筆記網址長度。 |
@@ -58,6 +58,12 @@ Worker 也會從 `static/` 提供靜態檔案，並依設定每天於 UTC 01:00�
 | `SCN_ENABLE_NOTE_HISTORY` | `1` | 啟用 D1 歷史、統計與註解功能。 |
 | `SCN_NOTE_HISTORY_LIMIT` | `10` | 每篇筆記保留的歷史版本數量。 |
 | `SCN_NOTE_HISTORY_MIN_INTERVAL_SECONDS` | `300` | 自動建立歷史快照的最短間隔秒數。 |
+| `SCN_NOTES_DB_BINDING` | 未設定 | 固定權威筆記 D1 綁定，例如 `NOTE_HISTORY_DB`；綁定遺失時回傳 `503 STORAGE_UNAVAILABLE`。 |
+| `SCN_REQUIRE_NOTES_REGISTRY` | 未設定 | 驗證遷移完成後設為 `1`，要求使用筆記登錄。 |
+| `SCN_LEGACY_HISTORY_RETENTION_DAYS` | `0` | 未標記舊歷史的保留天數；`0` 停用清理。登錄模式下，一般筆記歷史不顯示未標記紀錄。 |
+| `SCN_ENABLE_TURNSTILE` | `0` | 明確關閉 Turnstile；只有網站金鑰與 Secret 均已設定時才設為 `1`。 |
+| `SCN_TURNSTILE_SITE_KEY` | 空白 | 公開的 Turnstile 網站金鑰，須與 `SCN_TURNSTILE_SECRET` Secret 配對。 |
+| `SCN_TURNSTILE_FAIL_OPEN` | `1` | 控制既有互動保護的降階行為；Passkey 註冊驗證仍嚴格拒絕失敗請求。 |
 
 ## 選填參數與整合服務
 
@@ -75,6 +81,27 @@ Worker 也會從 `static/` 提供靜態檔案，並依設定每天於 UTC 01:00�
 | Worker 自訂網域 | `workers.dev` 網址 | 使用自己的網域；部署後在 Cloudflare Dashboard 設定。 |
 
 WebTalk 預設關閉，部署設定中的 Script 與 AI 端點也留空。請先填入自己管理的服務資訊，再開啟功能。
+
+## 帳號與 D1 綁定
+
+Passkey 帳號、個人空間與分享圈需要已初始化的筆記登錄及帳號資料庫。刻意使用純 KV（`SCN_STORAGE_DRIVER="kv"`，或全新 `auto` 且沒有 D1 或登錄要求）時，帳號控制項自動隱藏，匿名筆記仍可使用。筆記登錄正常但沒有帳號資料庫時，筆記完整性保護仍生效，只有帳號 API 停用。缺少必要資料表會回報 `503 D1_SCHEMA_MISSING`。請將穩定的 `SCN_SECRET` 設為 Secret；缺少時帳號操作會拒絕服務。
+
+`wrangler.toml` 執行 `npm run db:init`，`wrangler.owner.toml` 則執行 `npm run db:init:owner`；部署指令也會執行對應初始化。預設單一 `NOTE_HISTORY_DB` 可承擔所有職責。若分離資料庫，可設定 `NOTES_DB` 儲存筆記、`APP_DB` 儲存帳號及批註，另以 `NOTE_HISTORY_DB` 儲存歷史；並用 `SCN_NOTES_DB_BINDING` 固定筆記綁定。未固定時筆記依序使用 `NOTES_DB`、`NOTE_HISTORY_DB`、`DB`；帳號與批註依序使用 `APP_DB`、`NOTE_HISTORY_DB`，且必須共用資料庫。初始化會針對每個實際資料庫執行。其他 Wrangler 設定請帶入對應的 `--config` 與 `--env`。
+
+Passkey 綁定網站 WebAuthn relying-party 網域（`rpId`）；變更網域可能使既有憑證無法在新網域使用。請在失去存取前新增其他裝置的 Passkey；目前沒有電子郵件、電話或 SSO 復原方式。管理員 FIDO 憑證與使用者 Passkey 分開，其挑戰與憑證仍儲存於 KV，不具備 D1 帳號交易保證。
+
+提供的設定預設關閉 Turnstile。啟用時，請同時設定 `SCN_ENABLE_TURNSTILE="1"`、`SCN_TURNSTILE_SITE_KEY`，並以 `npx wrangler secret put SCN_TURNSTILE_SECRET` 儲存 Secret。設定不完整或旗標值無法辨識會拒絕服務並回傳 `503`；明確設為 `0` 或 `false` 則停用。即使既有功能允許 fail-open，Passkey 註冊仍採嚴格單次驗證。
+
+上線前請檢查未追蹤的 `wrangler.owner.toml` 等私人設定，將 `[vars]` 中明文 API 金鑰與憑證移至 `wrangler secret put <名稱> --config wrangler.owner.toml` 綁定，並輪替仍在使用的非工作階段憑證。只有 `SCN_SECRET` 本身外洩時才輪替它：輪替會刻意使先前匿名批註 `deleteToken` HMAC 與筆記／作者 Cookie 失效。
+
+## 既有站台：必要的單向登錄遷移
+
+啟用登錄後，不可退回未驗證的純路徑 KV 模式。請先備份資料並安排維護時段。KV 不提供跨多個鍵的原子快照或跨資料中心強一致性保證；僅靠分頁無法確認先前寫入均已穩定。
+
+1. 先以 `SCN_MAINTENANCE_MODE="1"` 部署新的強制保護 Worker，封鎖 HTTP、API、MCP 與排程操作，並等待至少 60 秒讓進行中的請求結束。整個對帳期間維持維護模式。
+2. 執行 `npm run db:init`（或 `npm run db:init:owner`）初始化資料庫。若設定檔未包含帳號 ID，透過 `CLOUDFLARE_ACCOUNT_ID` 提供，並透過 `CLOUDFLARE_API_TOKEN` 提供可讀取相關 KV 與 D1 的 Cloudflare API Token。執行 `npm run db:migrate-legacy -- --audit`（owner 設定另加 `--config wrangler.owner.toml`）。檢查連續兩次中央 KV 快照穩定性、數量、差異與衝突／提升報告；任何 API 錯誤、截斷游標或不穩定快照都必須停止。
+3. 明確確認維護前的 KV 寫入已穩定並審閱報告後，才使用相同設定執行 `npm run db:migrate-legacy -- --confirm-quiesced-snapshot`。安全、發布、分享對應或相同時間戳內容的衝突須先審慎解決再重試；可視情況使用 `--prefer=kv`、`--prefer=d1` 或 `--resolve-stricter`。不可忽略未解決的衝突。
+4. 驗證遷移筆記數量及有效／終止分享登錄的一致性。將 `SCN_NOTES_DB_BINDING` 設為正確的權威 D1 綁定，並設定 `SCN_REQUIRE_NOTES_REGISTRY="1"`；確認 `/api/health` 就緒後才解除維護模式。固定綁定遺失時會回傳 `503 STORAGE_UNAVAILABLE`，不會靜默回退至 KV 或其他 D1。
 
 ## 使用 Wrangler 部署
 

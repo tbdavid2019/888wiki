@@ -6,6 +6,18 @@
 
 [Live site](https://wiki.david888.com) · [API](https://wiki.david888.com/api) · [Agent Skill](https://wiki.david888.com/.well-known/agent-skills/david888-wiki-publisher/SKILL.md)
 
+## Passkeys, My Space, and Share Circles
+
+With D1 configured, create a Passkey account to organize published notes across Markdown, Block, Canvas, and Whiteboard in private My Space (`/_space`). Import browser guest history only after reviewing it; unpublished browser drafts remain on that device. Account sign-in does not grant edit access or bypass note passwords or Seal. Annotations can be signed with your nickname or posted anonymously.
+
+Bookmarks are private by default. Explicitly add eligible public notes to a Share Circle; circles start off, can be disabled immediately, and their public links can be rotated. Add a second Passkey while you still have access: there is no email or phone recovery. Passkeys are bound to the site's domain, and admin FIDO credentials are separate from user accounts.
+
+Space marks deleted or replaced notes unavailable and lets you remove stale entries, including annotation-only entries. A View Lock alone prevents a bookmark from being upgraded to edit access without edit proof; protected bookmarks remain masked. Share Circles exclude all Seal modes, even after a time lock or dead man's switch has elapsed.
+
+Accounts, Space, and Circles require D1 and disable gracefully in intentional pure KV mode. Operators must initialize the correct bindings, set `SCN_SECRET`, and follow the [installation guide](docs/INSTALLATION.md) for the mandatory one-way legacy cutover, pinned D1 fail-closed settings, optional paired Turnstile keys, and secret hygiene.
+
+During `SCN_MAINTENANCE_MODE=1`, note and share reads, exports, annotations, Space and Circle access, and MCP note tools return maintenance errors; static assets and `/api/health` remain available. Required or pinned note registries also protect KV deletion if D1 is unavailable. For `db:init --env` and legacy migration with `--env`, configure vars and KV, R2, and D1 bindings explicitly in that named environment; root values are not inherited.
+
 ## Capture voice, files, or web pages in one menu
 
 The **+ New** menu moves content from wherever it starts into a note:

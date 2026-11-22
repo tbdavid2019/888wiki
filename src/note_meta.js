@@ -357,6 +357,26 @@ export function parseExpirationSeconds(value) {
     return count
 }
 
+export function safeJsonForInlineScript(value) {
+    return JSON.stringify(value === undefined ? null : value)
+        .replace(/</g, '\\u003c')
+        .replace(/>/g, '\\u003e')
+        .replace(/&/g, '\\u0026')
+        .replace(/\u2028/g, '\\u2028')
+        .replace(/\u2029/g, '\\u2029')
+}
+
+export function isBurnProtected(metadata = {}) {
+    return Boolean(
+        metadata
+        && (
+            metadata.shareMode === 'burn'
+            || metadata.shareMode === 'burn_after_reading'
+            || metadata.shareBurnAfterReading === true
+        )
+    )
+}
+
 export function isShareExpired(metadata = {}, nowUnix = Math.floor(Date.now() / 1000)) {
     const expiresAt = Number(metadata?.shareExpiresAt)
     return Number.isFinite(expiresAt) && expiresAt > 0 && expiresAt <= nowUnix
@@ -367,7 +387,7 @@ export function isShareBurned(metadata = {}) {
     const burnedAt = Number(metadata?.shareBurnedAt)
     if (Number.isFinite(burnedAt) && burnedAt > 0) return true
     const maxViews = Math.max(1, parseInt(metadata?.shareMaxViews || metadata?.sealMaxViews, 10) || 1)
-    if (metadata?.shareBurnAfterReading === true && Number(metadata?.shareViewCount) >= maxViews) return true
+    if (isBurnProtected(metadata) && metadata?.shareViewCount !== undefined && metadata?.shareViewCount !== null && Number(metadata?.shareViewCount) >= maxViews) return true
     return false
 }
 

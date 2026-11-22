@@ -693,7 +693,7 @@ const LANGUAGE_SELECTOR_CONTROL = (lang, t) => `
     </div>
 `
 
-export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, path, theme, width, sharePath, noteHistoryEnabled, publicIndex, authPath, autosave, viewCount, annotationsEnabled, editorFormat = 'markdown', shareExpiresAt, shareExpiresIn = 'none', shareBurnAfterReading = false, shareMode = 'standard', shareUnlockIn = '1d', sharePulseInterval = 604800, sharePulseDueAt, sharePulseToken, shareMaxViews = 1 }) => {
+export const FOOTER = ({ lang, isEdit, isAuthor, isBurnInterstitial = false, updateAt, pw, vpw, mode, share, shareId, path, theme, width, sharePath, noteHistoryEnabled, publicIndex, authPath, autosave, viewCount, annotationsEnabled, accountEnabled = false, editorFormat = 'markdown', shareExpiresAt, shareExpiresIn = 'none', shareBurnAfterReading = false, shareMode = 'standard', shareUnlockIn = '1d', sharePulseInterval = 604800, sharePulseDueAt, sharePulseToken, shareMaxViews = 1 }) => {
     const t = getLangText(lang)
     const effectiveShareMode = (shareBurnAfterReading === true || shareMode === 'burn_after_reading' || shareMode === 'burn') ? 'burn' : (shareMode || 'standard')
     const effectiveWidth = width || DEFAULT_PREVIEW_WIDTH
@@ -734,7 +734,7 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
             <div class="footer-section footer-section-create">
                 <div class="footer-section-body">
                     <div class="footer-control-group">
-                        ${!isEdit && path ? `
+                        ${!isEdit && path && isAuthor !== false ? `
                             <div class="split-action-group">
                                 ${authPath
                                     ? `<button type="button" id="readonly-edit-btn" class="toolbar-icon-button split-action-main" data-tooltip="${t.backToEdit}" title="${t.backToEdit}" aria-label="${t.backToEdit}">${SVG_ICONS.editLock}<span class="toolbar-button-label">${lang === 'zh-TW' ? '編輯' : 'Edit'}</span></button>`
@@ -968,6 +968,7 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                                                 </span>
                                                 <span class="sr-only">${t.recentSharesTitle}</span>
                                             </button>
+                                            ${accountEnabled ? `<a href="/_space" class="dropdown-item dropdown-item-rich">${SVG_ICONS.shareHistory}<span class="dropdown-item-copy"><strong>${lang === 'zh-TW' ? '我的空間' : 'My Space'}</strong><small>${lang === 'zh-TW' ? '跨裝置管理筆記與分享圈' : 'Manage notes and circles across devices'}</small></span></a>` : ''}
                                         </div>
                                         ${SECURITY_CONTROLS_RENDER({ lang, pw, vpw, suffix: '' })}
                                         <div class="dropdown-menu-label">${lang === 'zh-TW' ? '分享設定' : 'Share Settings'}</div>
@@ -1015,6 +1016,7 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                                                 </span>
                                                 <span class="sr-only">${t.recentSharesTitle}</span>
                                             </button>
+                                            ${accountEnabled ? `<a href="/_space" class="dropdown-item dropdown-item-rich">${SVG_ICONS.shareHistory}<span class="dropdown-item-copy"><strong>${lang === 'zh-TW' ? '我的空間' : 'My Space'}</strong><small>${lang === 'zh-TW' ? '跨裝置管理筆記與分享圈' : 'Manage notes and circles across devices'}</small></span></a>` : ''}
                                         </div>
                                         ${SECURITY_CONTROLS_RENDER({ lang, pw, vpw, suffix: '-draft' })}
                                         <div class="dropdown-menu-label">${lang === 'zh-TW' ? '發布預設設定' : 'Publish Default Settings'}</div>
@@ -1055,7 +1057,7 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                         ${editorFormat === 'markdown' ? `
                             <span id="ide-cursor-status" class="ide-cursor-status" aria-live="polite">${lang === 'zh-TW' ? '第 1 行・第 1 欄・總長度 0' : 'Ln 1 · Col 1 · 0 chars'}</span>
                         ` : ''}
-                    ` : (path ? `
+                    ` : (!isBurnInterstitial && (path || sharePath || shareId) ? `
                         ${TOOLBAR_PRINT_BUTTON(lang)}
                         ${EXPORT_DROPDOWN_MENU(lang)}
                         ${COPY_DROPDOWN_MENU(lang, { isPublished: Boolean(shareId) })}
@@ -1085,8 +1087,10 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
                             ${SVG_ICONS.shareHistory}
                             <span class="toolbar-button-label">${lang === 'zh-TW' ? '紀錄' : 'Recent'}</span>
                         </button>
+                        ${accountEnabled ? `<a href="/_space" class="toolbar-icon-button" title="${lang === 'zh-TW' ? '我的空間' : 'My Space'}">${SVG_ICONS.shareHistory}<span class="toolbar-button-label">${lang === 'zh-TW' ? '我的空間' : 'My Space'}</span></a>` : ''}
                     ` : '')}
                     ${!isEdit ? MORE_DROPDOWN_MENU(lang, { isEdit }) : ''}
+                    ${accountEnabled && !isBurnInterstitial && (isEdit || shareId) ? `<button type="button" id="circle-picker-btn" class="toolbar-icon-button" title="${lang === 'zh-TW' ? '收藏至我的空間' : 'Save to My Space'}">${SVG_ICONS.shareHistory}<span class="toolbar-button-label">${lang === 'zh-TW' ? '收藏' : 'Save'}</span></button>` : ''}
                 </div>
             </div>
 
@@ -1244,7 +1248,7 @@ export const FOOTER = ({ lang, isEdit, updateAt, pw, vpw, mode, share, shareId, 
 `
 }
 
-export const EDITOR_PREFERENCE_MODAL = (lang, { autoOpen = false } = {}) => {
+export const EDITOR_PREFERENCE_MODAL = (lang, { autoOpen = false, accountEnabled = false } = {}) => {
     const zh = lang === 'zh-TW'
     const title = zh ? '選擇你的編輯方式' : 'Choose your editor'
     const description = zh ? '這會決定新筆記的預設方式，隨時可於底欄設定中切換。' : 'This sets your default for new notes. You can change it anytime in settings.'
@@ -1331,6 +1335,7 @@ export const EDITOR_PREFERENCE_MODAL = (lang, { autoOpen = false } = {}) => {
         <label class="editor-preference-remember"><input type="checkbox" data-editor-preference-remember><span data-i18n-key="remember">${zh ? '記住我的選擇' : 'Remember my choice'}</span></label>
         <div class="editor-preference-actions">
             ${autoOpen ? '' : `<button type="button" class="opt-button" data-editor-preference-close data-i18n-key="cancel">${zh ? '取消' : 'Cancel'}</button>`}
+            ${accountEnabled ? `<a href="/_space" class="opt-button">${zh ? '我的空間' : 'My Space'}</a>` : ''}
             <button type="submit" class="opt-button opt-button-accent" data-editor-preference-confirm data-i18n-key="confirm">${zh ? '確定' : 'Save'}</button>
         </div>
     </form>

@@ -2,6 +2,21 @@
   "version": 1,
   "tips": [
     {
+      "id": "account-space",
+      "zh-TW": "小訣竅：使用 Passkey 登入後可在個人空間整理跨裝置筆記；未發布的瀏覽器草稿仍只保存在本機，登入不會繞過筆記密碼或 Seal。",
+      "en-US": "Tip: Sign in with a Passkey to organize notes across devices in My Space. Unpublished browser drafts stay local, and signing in does not bypass note passwords or Seal."
+    },
+    {
+      "id": "share-circles",
+      "zh-TW": "小訣竅：收藏預設只存入私人空間；須明確選擇分享圈才能加入，分享圈預設關閉，也可旋轉公開連結。",
+      "en-US": "Tip: Bookmarks go to your private space by default. Explicitly select a Share Circle to add a note; circles start off and their public links can be rotated."
+    },
+    {
+      "id": "passkey-recovery",
+      "zh-TW": "小訣竅：請先新增其他裝置的 Passkey；若失去所有 Passkey，帳號無法透過電子郵件或電話復原。",
+      "en-US": "Tip: Add a Passkey on another device before you need it. If you lose every Passkey, the account cannot be recovered by email or phone."
+    },
+    {
       "id": "toolbar-selection",
       "zh-TW": "小訣竅：先選取文字，再按粗體、斜體、連結或行內程式碼，工具列會直接套用 Markdown 語法。",
       "en-US": "Tip: Select text first, then choose Bold, Italic, Link, or Inline code to apply Markdown syntax directly."

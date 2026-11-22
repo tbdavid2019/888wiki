@@ -1,5 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { DatabaseSync } from 'node:sqlite'
 import {
     getStorageDriverName,
     driverQueryNote,
@@ -9,6 +11,53 @@ import {
     driverPutShare,
     driverDeleteShare,
 } from '../src/storage_driver.mjs'
+
+function createSqliteD1(schemaFiles = ['notes_d1.sql', 'notes_registry.sql']) {
+    const sqlite = new DatabaseSync(':memory:')
+    for (const file of schemaFiles) {
+        sqlite.exec(readFileSync(new URL(`../schema/${file}`, import.meta.url), 'utf8'))
+    }
+    const wrapStmt = (sql, boundArgs = []) => ({
+        _sql: sql,
+        _args: boundArgs,
+        bind(...args) {
+            return wrapStmt(sql, args)
+        },
+        async first() {
+            const row = sqlite.prepare(sql).get(...boundArgs)
+            return row ?? null
+        },
+        async all() {
+            const results = sqlite.prepare(sql).all(...boundArgs)
+            return { results }
+        },
+        async run() {
+            const info = sqlite.prepare(sql).run(...boundArgs)
+            return { success: true, meta: { changes: Number(info?.changes ?? 0) } }
+        },
+    })
+    return {
+        sqlite,
+        prepare(sql) {
+            return wrapStmt(sql)
+        },
+        async batch(statements) {
+            sqlite.exec('BEGIN IMMEDIATE')
+            try {
+                const out = []
+                for (const stmt of statements) {
+                    const info = sqlite.prepare(stmt._sql).run(...stmt._args)
+                    out.push({ success: true, meta: { changes: Number(info?.changes ?? 0) }, results: [] })
+                }
+                sqlite.exec('COMMIT')
+                return out
+            } catch (err) {
+                sqlite.exec('ROLLBACK')
+                throw err
+            }
+        },
+    }
+}
 
 test('storage driver defaults to auto mode', () => {
     delete globalThis.SCN_STORAGE_DRIVER
@@ -48,8 +97,8 @@ test('storage driver query and put note with KV backend', async () => {
 })
 
 test('storage driver query and put note with D1 backend and fallback in auto mode', async () => {
-    const d1Notes = new Map()
     const kvNotes = new Map()
+    const d1 = createSqliteD1(['notes_d1.sql', 'notes_registry.sql'])
 
     globalThis.SCN_STORAGE_DRIVER = 'auto'
     globalThis.NOTES = {
@@ -57,31 +106,7 @@ test('storage driver query and put note with D1 backend and fallback in auto mod
         put: async (key, value, { metadata }) => kvNotes.set(key, { value, metadata }),
         delete: async (key) => kvNotes.delete(key),
     }
-    globalThis.NOTES_DB = {
-        prepare: (sql) => {
-            return {
-                bind: (...args) => ({
-                    first: async () => {
-                        if (sql.includes('SELECT content, metadata FROM notes')) {
-                            const note = d1Notes.get(args[0])
-                            return note ? { content: note.content, metadata: JSON.stringify(note.metadata) } : null
-                        }
-                        return null
-                    },
-                    run: async () => {
-                        if (sql.includes('INSERT INTO notes')) {
-                            const [path, content, metadata] = args
-                            d1Notes.set(path, { content, metadata: JSON.parse(metadata) })
-                        }
-                        if (sql.includes('DELETE FROM notes')) {
-                            d1Notes.delete(args[0])
-                        }
-                        return { success: true }
-                    },
-                })
-            }
-        }
-    }
+    globalThis.NOTES_DB = d1
 
     // 1. Existing note in KV should be read via fallback
     kvNotes.set('legacy-kv-note', { value: '# Legacy Note', metadata: { share: true } })
@@ -94,6 +119,7 @@ test('storage driver query and put note with D1 backend and fallback in auto mod
     const d1Result = await driverQueryNote('new-auto-note')
     assert.equal(d1Result.value, '# Dual Note')
     assert.equal(d1Result.metadata.theme, 'serif')
+    assert.ok(d1Result.metadata.noteUid)
     assert.ok(kvNotes.has('new-auto-note'))
 
     delete globalThis.NOTES

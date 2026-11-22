@@ -2,14 +2,14 @@
  * src/templates/base.js
  * HTML wrapper function (base page structure for editor/share pages)
  */
-import { CDN_PREFIX, SUPPORTED_LANG, APP_NAME, DEFAULT_PREVIEW_WIDTH, DARK_PREVIEW_THEMES, getFlowTrackerScript } from '../constant.js'
+import { CDN_PREFIX, SUPPORTED_LANG, APP_NAME, DEFAULT_PREVIEW_WIDTH, DARK_PREVIEW_THEMES, ALL_PREVIEW_THEMES, getFlowTrackerScript, getWebtalkConfig } from '../constant.js'
 import { THEMES } from '../theme_data.js'
 import { EDITOR_TOOLBAR, FOOTER, MODAL, EDITOR_PREFERENCE_MODAL, MATH_FORMAT_MODAL, URL_IMPORT_MODAL, CITE_MODAL, VAULT_PRESETS_MODAL, COMMAND_PALETTE_MODAL, SVG_ICONS } from './common.js'
 import { getBaseCss } from '../styles/base.css.js'
 import { getEditorCss } from '../styles/editor.css.js'
 import { getMarkdownCss } from '../styles/markdown.css.js'
 import { AUTOSAVE_IDLE_MS } from '../save_policy.mjs'
-import { resolveAnnotationsEnabled, resolveEditorFormat, isCanvasContent, formatShareRemainingTime } from '../note_meta.js'
+import { resolveAnnotationsEnabled, resolveEditorFormat, isCanvasContent, formatShareRemainingTime, isBurnProtected, safeJsonForInlineScript } from '../note_meta.js'
 
 const PUBLIC_ICON_SVG_URL = '/icon.svg'
 const PUBLIC_ICON_PNG_URL = '/icon.png'
@@ -140,7 +140,10 @@ export const HTML = ({ lang = 'zh-TW', title, content = '', ext = {}, tips, isEd
     const htmlLang = lang === 'zh-TW' ? 'zh-Hant-TW' : 'en'
     const ogLocale = lang === 'zh-TW' ? 'zh_TW' : 'en_US'
     const isSharePage = Boolean(shareId && !isEdit)
-    const isBurnInterstitial = isSharePage && ext.shareBurnAfterReading === true && !ext.isAuthor && !ext.burnUnlocked
+    const isBurnInterstitial = isSharePage && isBurnProtected(ext) && !ext.isAuthor && !ext.burnUnlocked
+    const effectiveTitle = isBurnInterstitial
+        ? (getLangText(lang).burnRevealTitle || 'Confidential Share • Burn After Reading')
+        : title
     const effectiveEditorFormat = resolveEditorFormat(ext, content)
     const isBlockDocument = effectiveEditorFormat === 'block'
     const isCanvasDocument = effectiveEditorFormat === 'canvas'
@@ -156,30 +159,32 @@ export const HTML = ({ lang = 'zh-TW', title, content = '', ext = {}, tips, isEd
                     ? escapeHtml(ext.whiteboardMarkdown || '')
                     : escapeHtml(content))
     const textareaContent = isBurnInterstitial ? '' : escapeHtml(content)
+    const fallbackDocTheme = isWhiteboardDocument ? 'claude-canvas' : 'ayu-light'
+    const safeStoredTheme = ALL_PREVIEW_THEMES.includes(ext.theme) ? ext.theme : ''
     const pageTheme = (isBlockDocument || isCanvasDocument || isWhiteboardDocument)
-        ? (ext.theme || (isWhiteboardDocument ? 'claude-canvas' : 'ayu-light'))
+        ? (safeStoredTheme || fallbackDocTheme)
         : resolvePageTheme({
             randomize: isEdit && ext.isNewEntry === true,
-            storedTheme: ext.theme,
+            storedTheme: safeStoredTheme,
         })
     const initialEditorPreviewDevice = isEdit && ext.isNewEntry === true
         ? resolveInitialPreviewDevice({ isNewEntry: true, storedDevice: ext.previewDevice })
         : ''
     const annotationsEnabled = resolveAnnotationsEnabled(ext)
     const annotationsUiEnabled = isSharePage && !isEmbed && annotationsEnabled
-    const pageDescription = ext.meta?.description || tips || title || APP_NAME
-    const ogSiteNameMeta = ext.meta?.siteName === false
+    const pageDescription = isBurnInterstitial ? '' : (ext.meta?.description || tips || effectiveTitle || APP_NAME)
+    const ogSiteNameMeta = (isBurnInterstitial || ext.meta?.siteName === false)
         ? ''
         : `<meta property="og:site_name" content="${escapeHtml(ext.meta?.siteName || DEFAULT_OG_SITE_NAME)}" />`
-    const structuredData = ext.meta?.canonicalUrl
-        ? JSON.stringify({
+    const structuredData = (!isBurnInterstitial && ext.meta?.canonicalUrl)
+        ? safeJsonForInlineScript({
             '@context': 'https://schema.org',
             '@type': ext.meta?.ogType === 'article' ? 'Article' : 'WebPage',
-            name: title || APP_NAME,
+            name: effectiveTitle || APP_NAME,
             description: pageDescription,
             url: ext.meta.canonicalUrl,
             ...(ext.meta?.ogImageUrl ? { image: ext.meta.ogImageUrl } : {}),
-        }).replace(/</g, '\\u003c')
+        })
         : ''
     const gaScript = gaMeasurementId ? `
     <script async src="https://www.googletagmanager.com/gtag/js?id=${escapeHtml(gaMeasurementId)}"></script>
@@ -187,14 +192,17 @@ export const HTML = ({ lang = 'zh-TW', title, content = '', ext = {}, tips, isEd
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
         gtag('js', new Date());
-        gtag('config', ${JSON.stringify(gaMeasurementId)});
+        gtag('config', ${safeJsonForInlineScript(gaMeasurementId)});
     </script>` : ''
-    const webtalkScript = isSharePage ? `
+    const webtalk = ext.webtalk ?? getWebtalkConfig()
+    const webtalkEnabled = isSharePage && !isBurnInterstitial && webtalk?.enabled === true && Boolean(webtalk.scriptUrl)
+    const webtalkMeta = webtalkEnabled ? `<meta name="webtalk-page-id" content="${escapeHtml(shareId)}" />` : ''
+    const webtalkScript = webtalkEnabled ? `
     <script
         defer
-        src="https://webtalk.david888.com/webtalk.js"
-        data-webtalk-scope="origin"
-        data-webtalk-ai-endpoint="https://webtalk.david888.com/api/webtalk/ai">
+        src="${escapeHtml(webtalk.scriptUrl)}"
+        data-webtalk-scope="${escapeHtml(webtalk.scope || 'origin')}"${webtalk.siteId ? `\n        data-webtalk-site-id="${escapeHtml(webtalk.siteId)}"` : ''}
+        data-webtalk-ai-endpoint="${escapeHtml(webtalk.aiEndpoint || '')}">
     </script>` : ''
 
     return `
@@ -204,10 +212,10 @@ export const HTML = ({ lang = 'zh-TW', title, content = '', ext = {}, tips, isEd
     <script>
         (function() {
             try {
-                var darkThemes = ${JSON.stringify(DARK_PREVIEW_THEMES)};
+                var darkThemes = ${safeJsonForInlineScript(DARK_PREVIEW_THEMES)};
                 window.__DARK_PREVIEW_THEMES = darkThemes;
                 window.__isDarkPreviewTheme = function(name) { return darkThemes.indexOf(name) !== -1; };
-                var pageTheme = ${JSON.stringify(pageTheme)};
+                var pageTheme = ${safeJsonForInlineScript(pageTheme)};
                 var isDarkPreviewTheme = window.__isDarkPreviewTheme(pageTheme);
                 document.documentElement.setAttribute('data-preview-theme', pageTheme);
                 var syncKey = 'cf-notepad-ui-theme-sync';
@@ -243,38 +251,38 @@ export const HTML = ({ lang = 'zh-TW', title, content = '', ext = {}, tips, isEd
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${escapeHtml(title)} - ${escapeHtml(APP_NAME)}</title>
-    <meta name="description" content="${escapeHtml(pageDescription)}" />
-    <meta name="robots" content="${escapeHtml(ext.meta?.robots || 'noindex,nofollow')}" />
+    <title>${escapeHtml(effectiveTitle)} - ${escapeHtml(APP_NAME)}</title>
+    ${isBurnInterstitial ? '' : `<meta name="description" content="${escapeHtml(pageDescription)}" />`}
+    <meta name="robots" content="${escapeHtml(isBurnInterstitial ? 'noindex,nofollow' : (ext.meta?.robots || 'noindex,nofollow'))}" />
     <meta name="theme-color" content="#0f172a" />
     <link rel="manifest" href="/app.webmanifest" />
     <script>window.__deferredPwaPrompt=null;window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__deferredPwaPrompt=e;if(typeof window.__onPwaPromptReady==='function'){window.__onPwaPromptReady(e);}});</script>
-    ${isSharePage ? `<meta name="webtalk-page-id" content="${escapeHtml(shareId)}" />` : ''}
+    ${webtalkMeta}
     ${webtalkScript}
     ${ogSiteNameMeta}
-    ${ext.meta?.canonicalUrl ? `<meta property="og:locale" content="${ogLocale}" />` : ''}
-    <meta property="og:type" content="${escapeHtml(ext.meta?.ogType || 'website')}" />
-    <meta property="og:title" content="${escapeHtml(title || APP_NAME)}" />
+    ${!isBurnInterstitial && ext.meta?.canonicalUrl ? `<meta property="og:locale" content="${ogLocale}" />` : ''}
+    ${isBurnInterstitial ? '' : `<meta property="og:type" content="${escapeHtml(ext.meta?.ogType || 'website')}" />
+    <meta property="og:title" content="${escapeHtml(effectiveTitle || APP_NAME)}" />
     <meta property="og:description" content="${escapeHtml(pageDescription)}" />
     <meta name="twitter:card" content="${escapeHtml(ext.meta?.twitterCard || 'summary')}" />
-    <meta name="twitter:title" content="${escapeHtml(title || APP_NAME)}" />
-    <meta name="twitter:description" content="${escapeHtml(pageDescription)}" />
+    <meta name="twitter:title" content="${escapeHtml(effectiveTitle || APP_NAME)}" />
+    <meta name="twitter:description" content="${escapeHtml(pageDescription)}" />`}
     <link rel="stylesheet" href="https://ka-f.webawesome.com/webawesome@${WEB_AWESOME_VERSION}/styles/webawesome.css" />
     ${annotationsUiEnabled ? '<link rel="stylesheet" href="/css/share-annotations.css" />' : ''}
     ${isEdit && isBlockDocument ? '<link rel="stylesheet" href="/js/block-editor.bundle.css?v=2.0" />' : ''}
     ${isCanvasDocument ? '<link rel="stylesheet" href="/js/canvas-editor.bundle.css?v=3.9" />' : ''}
     ${isWhiteboardDocument ? '<link rel="stylesheet" href="/js/whiteboard-editor.bundle.css?v=1.2" />' : ''}
     <script type="module" src="https://ka-f.webawesome.com/webawesome@${WEB_AWESOME_VERSION}/webawesome.loader.js"></script>
-    ${ext.meta?.canonicalUrl ? `<link rel="canonical" href="${escapeHtml(ext.meta.canonicalUrl)}" />` : ''}
-    ${ext.meta?.canonicalUrl ? `<meta property="og:url" content="${escapeHtml(ext.meta.canonicalUrl)}" />` : ''}
-    ${ext.meta?.ogImageUrl ? `<meta property="og:image" content="${escapeHtml(ext.meta.ogImageUrl)}" />` : ''}
-    ${ext.meta?.ogImageUrl ? `<meta property="og:image:secure_url" content="${escapeHtml(ext.meta.ogImageUrl)}" />` : ''}
-    ${ext.meta?.ogImageUrl ? '<meta property="og:image:type" content="image/png" />' : ''}
-    ${ext.meta?.ogImageUrl ? '<meta property="og:image:width" content="1200" />' : ''}
-    ${ext.meta?.ogImageUrl ? '<meta property="og:image:height" content="630" />' : ''}
-    ${ext.meta?.ogImageUrl ? `<meta property="og:image:alt" content="${escapeHtml(ext.meta?.ogImageAlt || title || APP_NAME)}" />` : ''}
-    ${ext.meta?.ogImageUrl ? `<meta name="twitter:image" content="${escapeHtml(ext.meta.ogImageUrl)}" />` : ''}
-    ${ext.meta?.ogImageUrl ? `<meta name="twitter:image:alt" content="${escapeHtml(ext.meta?.ogImageAlt || title || APP_NAME)}" />` : ''}
+    ${!isBurnInterstitial && ext.meta?.canonicalUrl ? `<link rel="canonical" href="${escapeHtml(ext.meta.canonicalUrl)}" />` : ''}
+    ${!isBurnInterstitial && ext.meta?.canonicalUrl ? `<meta property="og:url" content="${escapeHtml(ext.meta.canonicalUrl)}" />` : ''}
+    ${!isBurnInterstitial && ext.meta?.ogImageUrl ? `<meta property="og:image" content="${escapeHtml(ext.meta.ogImageUrl)}" />` : ''}
+    ${!isBurnInterstitial && ext.meta?.ogImageUrl ? `<meta property="og:image:secure_url" content="${escapeHtml(ext.meta.ogImageUrl)}" />` : ''}
+    ${!isBurnInterstitial && ext.meta?.ogImageUrl ? '<meta property="og:image:type" content="image/png" />' : ''}
+    ${!isBurnInterstitial && ext.meta?.ogImageUrl ? '<meta property="og:image:width" content="1200" />' : ''}
+    ${!isBurnInterstitial && ext.meta?.ogImageUrl ? '<meta property="og:image:height" content="630" />' : ''}
+    ${!isBurnInterstitial && ext.meta?.ogImageUrl ? `<meta property="og:image:alt" content="${escapeHtml(ext.meta?.ogImageAlt || effectiveTitle || APP_NAME)}" />` : ''}
+    ${!isBurnInterstitial && ext.meta?.ogImageUrl ? `<meta name="twitter:image" content="${escapeHtml(ext.meta.ogImageUrl)}" />` : ''}
+    ${!isBurnInterstitial && ext.meta?.ogImageUrl ? `<meta name="twitter:image:alt" content="${escapeHtml(ext.meta?.ogImageAlt || effectiveTitle || APP_NAME)}" />` : ''}
     ${structuredData ? `<script type="application/ld+json">${structuredData}</script>` : ''}
     <style>
 ${getBaseCss()}
@@ -426,7 +434,7 @@ ${getMarkdownCss()}
                     ${isEdit && !isBlockDocument && !isCanvasDocument && !isWhiteboardDocument ? EDITOR_TOOLBAR(lang) : ''}
                     <div class="layer_3">
                         ${tips ? `<div class="tips">${tips}</div>` : ''}
-                        ${ext.sharePath && !isEdit ? `<h1 class="sr-only">${escapeHtml(title || APP_NAME)}</h1>` : ''}
+                        ${ext.sharePath && !isEdit ? `<h1 class="sr-only">${escapeHtml(effectiveTitle || APP_NAME)}</h1>` : ''}
                         ${isSharePage && ext.isAuthor ? `
                             <div class="share-author-preview-banner">
                                 <span class="author-banner-badge">👑 ${escapeHtml(
@@ -540,7 +548,7 @@ ${getMarkdownCss()}
                 </div>
             </div>
         </div>
-        ${isEmbed ? '' : FOOTER({ ...ext, mode: ext.mode || 'md', isEdit, lang, path, shareId, sharePath: ext.sharePath, autosave: ext.autosave === true, annotationsEnabled, theme: pageTheme, editorFormat: isWhiteboardDocument ? 'whiteboard' : (isCanvasDocument ? 'canvas' : (isBlockDocument ? 'block' : 'markdown')) })}
+        ${isEmbed ? '' : FOOTER({ ...(ext.isAuthor || !isSharePage ? ext : { ...ext, pw: undefined, vpw: undefined, sharePulseToken: undefined }), mode: ext.mode || 'md', isEdit, isAuthor: ext.isAuthor === true, isBurnInterstitial, lang, path: (ext.isAuthor || !isSharePage) ? path : '', shareId, sharePath: ext.sharePath, autosave: ext.autosave === true, annotationsEnabled, theme: pageTheme, editorFormat: isWhiteboardDocument ? 'whiteboard' : (isCanvasDocument ? 'canvas' : (isBlockDocument ? 'block' : 'markdown')) })}
     </div>
     ${annotationsUiEnabled ? `<div id="share-annotation-root" data-share-id="${escapeHtml(shareId)}" data-lang="${escapeHtml(lang)}"></div>` : ''}
     ${ext.sharePath && !isEdit && !isEmbed ? '<button type="button" id="share-back-to-top" class="share-back-to-top" aria-label="Back to top">＾</button>' : ''}
@@ -560,13 +568,33 @@ ${getMarkdownCss()}
     \u003c/script\u003e
     ` : ''}
     ${MODAL(lang, { noteHistoryEnabled: ext.noteHistoryEnabled === true && isEdit })}
-    ${isEmbed ? '' : EDITOR_PREFERENCE_MODAL(lang)}
+    ${isEmbed ? '' : EDITOR_PREFERENCE_MODAL(lang, { accountEnabled: ext.accountEnabled === true })}
     ${URL_IMPORT_MODAL(lang)}
     ${MATH_FORMAT_MODAL(lang)}
     ${CITE_MODAL(lang)}
     ${isEdit ? VAULT_PRESETS_MODAL(lang) : ''}
     ${isEdit ? PUBLISH_NUDGE_MODAL(lang) : ''}
     ${isEdit && !isEmbed ? COMMAND_PALETTE_MODAL(lang, { theme: pageTheme, width: ext.width, share: ext.share === true, shareId, editorFormat: effectiveEditorFormat, mode: ext.mode || 'md', noteHistoryEnabled: ext.noteHistoryEnabled === true }) : ''}
+    ${ext.accountEnabled === true && !isEmbed && !isBurnInterstitial && (isEdit || shareId) ? `
+    <script type="module">
+        import { openCirclePicker } from '/js/account-circle-picker.mjs';
+        document.getElementById('circle-picker-btn')?.addEventListener('click', function () {
+            const state = window.APP_STATE;
+            if (!state || (state.isEdit && !state.isPublished)) {
+                alert(${safeJsonForInlineScript(lang === 'zh-TW' ? '請先發布筆記，再收藏至我的空間。未發布的草稿只保存在此裝置。' : 'Publish this note before saving it to My Space. Unpublished drafts stay on this device.')});
+                return;
+            }
+            openCirclePicker({
+                lang: state.lang,
+                shareId: state.shareId,
+                notePath: state.isEdit ? state.path : '',
+                noteUid: state.isEdit ? state.noteUid : '',
+                editorFormat: state.editorFormat,
+                titleSummary: state.title,
+                triggerEl: this,
+            });
+        });
+    </script>` : ''}
     ${((ext.mode || 'md') === 'md' || ext.share || !isEdit) ? `
     <script src="${CDN_PREFIX}/dompurify@3.4.18/dist/purify.min.js"></script>
     <script src="/js/marked.min.js"></script>
@@ -1169,7 +1197,7 @@ ${getMarkdownCss()}
             wrapper.appendChild(toolbar);
         };
 
-        const DARK_PREVIEW_THEMES = ${JSON.stringify(DARK_PREVIEW_THEMES)};
+        const DARK_PREVIEW_THEMES = ${safeJsonForInlineScript(DARK_PREVIEW_THEMES)};
         const isDarkPreviewTheme = (themeName) => window.__isDarkPreviewTheme
             ? window.__isDarkPreviewTheme(themeName)
             : DARK_PREVIEW_THEMES.includes(themeName);
@@ -1198,12 +1226,22 @@ ${getMarkdownCss()}
                  } catch (peleLoadErr) {
                      console.warn('Pele engine load failed, will use Mermaid fallback:', peleLoadErr);
                  }
+                 const sanitizeSvgOrFail = (rawSvg) => {
+                     if (typeof DOMPurify === 'undefined' || typeof DOMPurify.sanitize !== 'function') {
+                         return null;
+                     }
+                     return DOMPurify.sanitize(rawSvg, { USE_PROFILES: { svg: true, svgFilters: true } });
+                 };
+                 const showSanitizerError = (el) => {
+                     el.textContent = 'Diagram Sanitizer Unavailable: DOMPurify is required to render SVG.';
+                     el.classList.add('diagram-render-error');
+                 };
                  let mermaidInstance = null;
                  const getMermaid = async () => {
                      if (!mermaidInstance) {
                          const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@12/dist/mermaid.esm.min.mjs');
                          mermaidInstance = mermaid;
-                         const currentTheme = (typeof APP_STATE !== 'undefined' && APP_STATE?.theme) || window.APP_STATE?.theme || '${pageTheme}';
+                         const currentTheme = (typeof APP_STATE !== 'undefined' && APP_STATE?.theme) || window.APP_STATE?.theme || ${safeJsonForInlineScript(pageTheme)};
                          const isDark = isDarkContext(currentTheme);
                          mermaidInstance.initialize({
                              startOnLoad: false,
@@ -1236,11 +1274,15 @@ ${getMarkdownCss()}
                                      responsive: true
                                  });
                                  if (res && res.svg) {
-                                     const svg = res.svg;
-                                     renderNode.innerHTML = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true, svgFilters: true } }) : svg;
-                                     renderNode.setAttribute('data-processed', 'true');
-                                     renderNode.setAttribute('data-diagram-engine', 'pele');
-                                     attachDiagramActions(renderNode, code, 'mermaid');
+                                     const cleanSvg = sanitizeSvgOrFail(res.svg);
+                                     if (cleanSvg === null) {
+                                         showSanitizerError(renderNode);
+                                     } else {
+                                         renderNode.innerHTML = cleanSvg;
+                                         renderNode.setAttribute('data-processed', 'true');
+                                         renderNode.setAttribute('data-diagram-engine', 'pele');
+                                         attachDiagramActions(renderNode, code, 'mermaid');
+                                     }
                                      rendered = true;
                                  }
                              } catch (peleErr) {
@@ -1252,14 +1294,22 @@ ${getMarkdownCss()}
                                   const mermaid = await getMermaid();
                                   const id = \`mermaid-svg-\${Date.now()}-\${i}\`;
                                   const { svg } = await mermaid.render(id, code);
-                                  renderNode.innerHTML = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true, svgFilters: true } }) : svg;
-                                  renderNode.setAttribute('data-processed', 'true');
-                                  renderNode.setAttribute('data-diagram-engine', 'mermaid');
-                                  attachDiagramActions(renderNode, code, 'mermaid');
+                                  const cleanSvg = sanitizeSvgOrFail(svg);
+                                  if (cleanSvg === null) {
+                                      showSanitizerError(renderNode);
+                                  } else {
+                                      renderNode.innerHTML = cleanSvg;
+                                      renderNode.setAttribute('data-processed', 'true');
+                                      renderNode.setAttribute('data-diagram-engine', 'mermaid');
+                                      attachDiagramActions(renderNode, code, 'mermaid');
+                                  }
                              } catch (e) {
                                   console.error('Mermaid render error', e);
-                                  const errMsg = String(e?.message || e || 'Unknown error').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                                  renderNode.innerHTML = \`<pre style="color:red; background:#fee; padding:10px; border:1px solid red;">Mermaid Render Error: \${errMsg}</pre>\`;
+                                  const errPre = document.createElement('pre');
+                                  errPre.style.cssText = 'color:red; background:#fee; padding:10px; border:1px solid red;';
+                                  errPre.textContent = 'Mermaid Render Error: ' + String(e?.message || e || 'Unknown error');
+                                  renderNode.textContent = '';
+                                  renderNode.appendChild(errPre);
                              }
                          }
                      }
@@ -1308,7 +1358,15 @@ ${getMarkdownCss()}
                          if (el.hasAttribute('data-processed')) return;
                          const code = el.previousElementSibling.textContent.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
                          const graphvizSvg = graphviz.layout(code, "svg", "dot");
-                         el.innerHTML = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(graphvizSvg, { USE_PROFILES: { svg: true, svgFilters: true } }) : graphvizSvg;
+                         const cleanGraphvizSvg = (typeof DOMPurify !== 'undefined' && typeof DOMPurify.sanitize === 'function')
+                             ? DOMPurify.sanitize(graphvizSvg, { USE_PROFILES: { svg: true, svgFilters: true } })
+                             : null;
+                         if (cleanGraphvizSvg === null) {
+                             el.textContent = 'Diagram Sanitizer Unavailable: DOMPurify is required to render SVG.';
+                             el.classList.add('diagram-render-error');
+                             return;
+                         }
+                         el.innerHTML = cleanGraphvizSvg;
                          el.setAttribute('data-processed', 'true');
                          attachDiagramActions(el, code, 'graphviz');
                      });
@@ -1337,7 +1395,7 @@ ${getMarkdownCss()}
                 try {
                     await loadScript('https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js');
                     const { renderEchartsChart } = await import('/js/echarts-renderer.mjs');
-                    const currentTheme = (typeof APP_STATE !== 'undefined' && APP_STATE?.theme) || window.APP_STATE?.theme || '${pageTheme}';
+                    const currentTheme = (typeof APP_STATE !== 'undefined' && APP_STATE?.theme) || window.APP_STATE?.theme || ${safeJsonForInlineScript(pageTheme)};
                     const chartTheme = isDarkContext(currentTheme) ? 'dark' : null;
                     document.querySelectorAll('.diagram-echarts-render').forEach(el => {
                         if (el.hasAttribute('data-processed') || !el.isConnected) return;
@@ -1399,7 +1457,11 @@ ${getMarkdownCss()}
                 scheduleHashScroll();
             } catch (e) {
                 console.error('Markdown rendering error:', e);
-                node.innerHTML = '<p style="color:red">Rendering Error: ' + e.message + '</p>';
+                node.textContent = '';
+                const errP = document.createElement('p');
+                errP.style.color = 'red';
+                errP.textContent = 'Rendering Error: ' + (e?.message || e || 'Unknown error');
+                node.appendChild(errP);
             }
         };
 
@@ -1417,7 +1479,7 @@ ${getMarkdownCss()}
 <script>
     function makeError(){return new DOMException("The request is not allowed","NotAllowedError")}async function copyClipboardApi(e){if(!navigator.clipboard)throw makeError();return navigator.clipboard.writeText(e)}async function copyExecCommand(e){const o=document.createElement("span");o.textContent=e,o.style.whiteSpace="pre",o.style.webkitUserSelect="auto",o.style.userSelect="all",document.body.appendChild(o);const t=window.getSelection(),n=window.document.createRange();t.removeAllRanges(),n.selectNode(o),t.addRange(n);let r=!1;try{r = window.document.execCommand("copy")}finally{t.removeAllRanges(), window.document.body.removeChild(o)}if(!r)throw makeError()}async function clipboardCopy(e){try{await copyClipboardApi(e)}catch(o){try{await copyExecCommand(e)}catch(e){throw e||o||makeError()}}}async function copyRichClipboard(markdown, html){try{if(navigator.clipboard?.write && window.ClipboardItem){const item=new ClipboardItem({'text/html':new Blob([html||''],{type:'text/html'}),'text/plain':new Blob([markdown||''],{type:'text/plain'})});await navigator.clipboard.write([item]);return}}catch(e){}await clipboardCopy(markdown||'')}
 
-    const APP_STATE = ${JSON.stringify({
+    const APP_STATE = ${safeJsonForInlineScript({
         authPath: ext.authPath || '',
         sharePath: ext.sharePath || '',
         embed: isEmbed,
@@ -1426,6 +1488,7 @@ ${getMarkdownCss()}
         settingPath: (ext.isAuthor || !isSharePage) ? (ext.settingPath || (path ? '/' + path + '/setting' : '')) : '',
         path: (ext.isAuthor || !isSharePage) ? (path || '') : '',
         shareId: shareId || '',
+        noteUid: isEdit ? (ext.noteUid || '') : '',
         presentationEntry: ext.presentationEntry === true,
         autoPresent: ext.autoPresent === true,
         autoBook: ext.autoBook === true,
@@ -1446,8 +1509,8 @@ ${getMarkdownCss()}
         updateAt: Number.isFinite(Number(ext.updateAt)) ? Number(ext.updateAt) : null,
         shareExpiresAt: Number.isFinite(Number(ext.shareExpiresAt)) ? Number(ext.shareExpiresAt) : null,
         shareExpiresIn: ext.shareExpiresIn || 'none',
-        shareBurnAfterReading: ext.shareBurnAfterReading === true,
-        shareMode: ext.shareMode || (ext.shareBurnAfterReading === true ? 'burn' : 'standard'),
+        shareBurnAfterReading: isBurnProtected(ext),
+        shareMode: ext.shareMode || (isBurnProtected(ext) ? 'burn' : 'standard'),
         shareUnlockIn: ext.shareUnlockIn || '1d',
         shareUnlockAt: Number.isFinite(Number(ext.shareUnlockAt)) ? Number(ext.shareUnlockAt) : null,
         sharePulseInterval: Number.isFinite(Number(ext.sharePulseInterval)) ? Number(ext.sharePulseInterval) : 604800,
@@ -1468,9 +1531,9 @@ ${getMarkdownCss()}
         turnstileEnabled: ext.turnstileEnabled === true,
         appName: APP_NAME,
         lang,
-        title: title || '',
+        title: isBurnInterstitial ? effectiveTitle : (title || ''),
         i18n: getLangText(lang),
-    }).replace(/</g, '\\u003c')}
+    })}
     window.APP_STATE = APP_STATE
 
     let turnstileWidgetId = null
@@ -5764,7 +5827,7 @@ ${getMarkdownCss()}
                 $shareBookOpenLink.href = shareUrl + '/book'
             })
         }
-        if (initialShareUrl) recordShareHistory('created', initialShareUrl, APP_STATE.title);
+        if (APP_STATE.isEdit && initialShareUrl) recordShareHistory('created', initialShareUrl, APP_STATE.title);
         const copyShareTargetUrl = async (kind) => {
             const presentationUrl = getCurrentShareUrl()
             if (!presentationUrl) {
@@ -7285,8 +7348,8 @@ ${getMarkdownCss()}
     </script>
 
     <script>
-        const THEMES = ${JSON.stringify(THEMES)};
-        const DEFAULT_PREVIEW_WIDTH = ${JSON.stringify(DEFAULT_PREVIEW_WIDTH)};
+        const THEMES = ${safeJsonForInlineScript(THEMES)};
+        const DEFAULT_PREVIEW_WIDTH = ${safeJsonForInlineScript(DEFAULT_PREVIEW_WIDTH)};
         const PREVIEW_WIDTH_STORAGE_KEY = 'cf-notepad-preview-width';
         const PREVIEW_DEVICE_STORAGE_KEY = 'cf-notepad-preview-device';
         const PREVIEW_SPLIT_STORAGE_KEY = 'cf-notepad-split-direction';
@@ -8706,11 +8769,16 @@ themeCss + '\\n' +
                     mermaidInstance.initialize({
                         startOnLoad: false,
                         theme: isDarkTheme ? 'dark' : 'neutral',
-                        securityLevel: 'loose',
+                        securityLevel: 'strict',
                         fontFamily: presMermaidFontFamily,
                         flowchart: { htmlLabels: false, useMaxWidth: true }
                     });
                     return mermaidInstance;
+                };
+                var sanitizePresSvg = function(rawSvg) {
+                    var purifyLib = typeof DOMPurify !== 'undefined' ? DOMPurify : window.DOMPurify;
+                    if (!purifyLib || typeof purifyLib.sanitize !== 'function') return null;
+                    return purifyLib.sanitize(rawSvg, { USE_PROFILES: { svg: true, svgFilters: true } });
                 };
 
                 for (var i = 0; i < mermaidBlocks.length; i++) {
@@ -8729,7 +8797,13 @@ themeCss + '\\n' +
                                 var wrap = document.createElement('div');
                                 wrap.className = 'presentation-diagram-fit';
                                 wrap.setAttribute('data-diagram-engine', 'pele');
-                                wrap.innerHTML = pRes.svg;
+                                var cleanPeleSvg = sanitizePresSvg(pRes.svg);
+                                if (cleanPeleSvg === null) {
+                                    wrap.textContent = 'Diagram Sanitizer Unavailable: DOMPurify is required to render SVG.';
+                                    wrap.classList.add('diagram-render-error');
+                                } else {
+                                    wrap.innerHTML = cleanPeleSvg;
+                                }
                                 preEl.parentNode.replaceChild(wrap, preEl);
                                 rendered = true;
                             }
@@ -8747,7 +8821,13 @@ themeCss + '\\n' +
                                 var wrap = document.createElement('div');
                                 wrap.className = 'presentation-diagram-fit';
                                 wrap.setAttribute('data-diagram-engine', 'mermaid');
-                                wrap.innerHTML = mRes.svg;
+                                var cleanMermaidSvg = sanitizePresSvg(mRes.svg);
+                                if (cleanMermaidSvg === null) {
+                                    wrap.textContent = 'Diagram Sanitizer Unavailable: DOMPurify is required to render SVG.';
+                                    wrap.classList.add('diagram-render-error');
+                                } else {
+                                    wrap.innerHTML = cleanMermaidSvg;
+                                }
                                 preEl.parentNode.replaceChild(wrap, preEl);
                             }
                         } catch (err) {
@@ -9873,6 +9953,14 @@ themeCss + '\\n' +
                 }
             }
 
+            function sanitizeBookChapterHtml(rawHtml, fallbackText) {
+                var purifyLib = typeof DOMPurify !== 'undefined' ? DOMPurify : window.DOMPurify;
+                if (purifyLib && typeof purifyLib.sanitize === 'function') {
+                    return purifyLib.sanitize(rawHtml || '', { WHOLE_DOCUMENT: false, FORCE_BODY: true });
+                }
+                return '<p>' + escBookHtml(fallbackText || '') + '</p>';
+            }
+
             async function exportStandaloneHtml() {
                 if (exportMenu) exportMenu.classList.remove('show');
                 if (typeof showToast === 'function') {
@@ -9881,17 +9969,19 @@ themeCss + '\\n' +
                 var chapterData = [];
                 for (var i = 0; i < bookData.chapters.length; i++) {
                     var ch = bookData.chapters[i];
-                    var chUrl = (ch.url || '').replace(new RegExp('\\\\/book\\\\/?(\\\\?.*)?$'), '$1').replace(new RegExp('\\\\/book\\\\/?$'), '');
+                    var chUrl = safeBookUrl((ch.url || '').replace(new RegExp('\\\\/book\\\\/?(\\\\?.*)?$'), '$1').replace(new RegExp('\\\\/book\\\\/?$'), ''));
                     var chHtml = '';
                     try {
-                        var embedUrl = chUrl + (chUrl.includes('?') ? '&' : '?') + 'embed=1';
-                        var resp = await fetch(embedUrl);
-                        if (resp.ok) {
-                            var htmlText = await resp.text();
-                            var parser = new DOMParser();
-                            var doc = parser.parseFromString(htmlText, 'text/html');
-                            var bodyEl = doc.querySelector('.markdown-body') || doc.body;
-                            chHtml = bodyEl ? bodyEl.innerHTML : htmlText;
+                        if (chUrl !== '#') {
+                            var embedUrl = chUrl + (chUrl.includes('?') ? '&' : '?') + 'embed=1';
+                            var resp = await fetch(embedUrl);
+                            if (resp.ok) {
+                                var htmlText = await resp.text();
+                                var parser = new DOMParser();
+                                var doc = parser.parseFromString(htmlText, 'text/html');
+                                var bodyEl = doc.querySelector('.markdown-body') || doc.body;
+                                chHtml = sanitizeBookChapterHtml(bodyEl ? bodyEl.innerHTML : '', bodyEl ? (bodyEl.textContent || '') : '');
+                            }
                         }
                     } catch(e) {}
                     if (!chHtml) chHtml = '<h1>' + escBookHtml(ch.title) + '</h1><p><em>(載入中 / Loading)</em></p>';
@@ -9903,6 +9993,13 @@ themeCss + '\\n' +
                         html: chHtml
                     });
                 }
+
+                var safeChaptersJson = JSON.stringify(chapterData)
+                    .replace(/</g, '\\\\u003c')
+                    .replace(/>/g, '\\\\u003e')
+                    .replace(/&/g, '\\\\u0026')
+                    .replace(/\\u2028/g, '\\\\u2028')
+                    .replace(/\\u2029/g, '\\\\u2029');
 
                 var singleHtml = '<!DOCTYPE html>\\n<html lang="' + (isZh ? 'zh-TW' : 'en') + '">\\n<head>\\n<meta charset="utf-8">\\n<meta name="viewport" content="width=device-width, initial-scale=1">\\n<title>' + safeBookTitle + '</title>\\n<style>' +
                     'body { margin:0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display:flex; height:100vh; overflow:hidden; background:#fff; color:#1f2328; }' +
@@ -9922,7 +10019,7 @@ themeCss + '\\n' +
                     '<div class="book-sidebar"><div class="book-sidebar-header">📖 ' + safeBookTitle + '</div><div class="book-toc-scroll" id="toc-list"></div></div>' +
                     '<div class="book-main"><div class="book-topbar"><strong id="crumb"></strong><div><button class="btn" id="prev-btn">← ' + (isZh ? '上一章' : 'Prev') + '</button> <button class="btn" id="next-btn">' + (isZh ? '下一章' : 'Next') + ' →</button></div></div><div class="book-content" id="content-body"></div></div>' +
                     '<script>' +
-                    'var chapters = ' + JSON.stringify(chapterData).replace(/</g, '\\\\u003c') + ';' +
+                    'var chapters = ' + safeChaptersJson + ';' +
                     'var cur = 0;' +
                     'var toc = document.getElementById("toc-list");' +
                     'var crumb = document.getElementById("crumb");' +
@@ -10033,31 +10130,40 @@ themeCss + '\\n' +
                 
                 var htmlParts = [
                     '<div class="book-print-cover">' +
-                        '<h1>' + bookData.title + '</h1>' +
+                        '<h1>' + safeBookTitle + '</h1>' +
                         '<p>' + (isZh ? 'David888 Wiki 電子書手冊' : 'David888 Wiki Book Edition') + '</p>' +
                     '</div>'
                 ];
 
                 for (var i = 0; i < bookData.chapters.length; i++) {
                     var ch = bookData.chapters[i];
-                    var chUrl = (ch.url || '').replace(new RegExp('\\\\/book\\\\/?(\\\\?.*)?$'), '$1').replace(new RegExp('\\\\/book\\\\/?$'), '');
+                    var chUrl = safeBookUrl((ch.url || '').replace(new RegExp('\\\\/book\\\\/?(\\\\?.*)?$'), '$1').replace(new RegExp('\\\\/book\\\\/?$'), ''));
+                    var safeChTitle = escBookHtml(ch.title);
                     var chHtml = '';
                     try {
-                        var embedUrl = chUrl + (chUrl.includes('?') ? '&' : '?') + 'embed=1';
-                        var resp = await fetch(embedUrl);
-                        if (resp.ok) {
-                            var htmlText = await resp.text();
-                            var parser = new DOMParser();
-                            var doc = parser.parseFromString(htmlText, 'text/html');
-                            var bodyEl = doc.querySelector('.markdown-body') || doc.body;
-                            chHtml = bodyEl ? bodyEl.innerHTML : htmlText;
+                        if (chUrl !== '#') {
+                            var embedUrl = chUrl + (chUrl.includes('?') ? '&' : '?') + 'embed=1';
+                            var resp = await fetch(embedUrl);
+                            if (resp.ok) {
+                                var htmlText = await resp.text();
+                                var parser = new DOMParser();
+                                var doc = parser.parseFromString(htmlText, 'text/html');
+                                var bodyEl = doc.querySelector('.markdown-body') || doc.body;
+                                chHtml = sanitizeBookChapterHtml(bodyEl ? bodyEl.innerHTML : '', bodyEl ? (bodyEl.textContent || '') : '');
+                            }
                         }
                     } catch(e) {}
-                    if (!chHtml) chHtml = '<p><em>' + ch.title + '</em></p>';
-                    htmlParts.push('<div class="book-print-chapter"><h2>' + ch.title + '</h2>' + chHtml + '</div>');
+                    if (!chHtml) chHtml = '<p><em>' + safeChTitle + '</em></p>';
+                    htmlParts.push('<div class="book-print-chapter"><h2>' + safeChTitle + '</h2>' + chHtml + '</div>');
                 }
 
-                printContainer.innerHTML = htmlParts.join('');
+                var combinedPrintHtml = htmlParts.join('');
+                var purifyLib = typeof DOMPurify !== 'undefined' ? DOMPurify : window.DOMPurify;
+                if (purifyLib && typeof purifyLib.sanitize === 'function') {
+                    printContainer.innerHTML = purifyLib.sanitize(combinedPrintHtml, { WHOLE_DOCUMENT: false, FORCE_BODY: true });
+                } else {
+                    printContainer.textContent = bookData.title || '';
+                }
                 window.print();
             }
 

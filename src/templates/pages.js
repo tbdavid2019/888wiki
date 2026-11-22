@@ -14,18 +14,49 @@ const escapeHtml = value => String(value || '')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
 
-export const NeedPasswd = data => HTML({ tips: SUPPORTED_LANG[data.lang].tipEncrypt, showPwPrompt: true, ...data })
-export const Page404 = data => HTML({ tips: SUPPORTED_LANG[data.lang].tip404, ...data })
+export const NeedPasswd = data => HTML({ tips: (SUPPORTED_LANG[data?.lang] || SUPPORTED_LANG['zh-TW']).tipEncrypt, showPwPrompt: true, ...data })
+export const Page404 = data => HTML({ tips: (SUPPORTED_LANG[data?.lang] || SUPPORTED_LANG['zh-TW']).tip404, ...data })
+
+const getSealNoteIdentifier = (data = {}, lang = 'zh-TW') => {
+    const isAuthor = data?.ext?.isAuthor === true
+    if (isAuthor) {
+        return data?.title || data?.path || data?.shareId || (lang === 'zh-TW' ? '機密筆記' : 'Confidential Note')
+    }
+    return data?.shareId || (lang === 'zh-TW' ? '機密筆記' : 'Confidential Note')
+}
+
+const buildSealPageData = (data = {}, { title, tips }) => {
+    const isAuthor = data?.ext?.isAuthor === true
+    const safeExt = isAuthor
+        ? (data?.ext || {})
+        : {
+            isAuthor: false,
+            shareUnlockAt: data?.ext?.shareUnlockAt,
+            sharePulseDueAt: data?.ext?.sharePulseDueAt,
+            meta: {
+                robots: 'noindex,nofollow',
+                description: title,
+            },
+        }
+    return {
+        ...data,
+        path: isAuthor ? (data?.path || '') : '',
+        content: '',
+        title,
+        tips,
+        ext: safeExt,
+    }
+}
 
 export const ShareExpired = data => {
     const lang = data?.lang || 'zh-TW'
     const t = SUPPORTED_LANG[lang] || SUPPORTED_LANG['zh-TW']
     const isAuthor = data?.ext?.isAuthor === true
-    const editUrl = data?.path ? `/${data.path}` : '/'
-    const noteIdentifier = data?.title || data?.path || data?.shareId || (lang === 'zh-TW' ? '機密筆記' : 'Confidential Note')
-    return HTML({
-        ...data,
-        title: t.shareExpiredTitle || 'Share Expired',
+    const editUrl = isAuthor && data?.path ? `/${data.path}` : '/'
+    const noteIdentifier = getSealNoteIdentifier(data, lang)
+    const pageTitle = t.shareExpiredTitle || 'Share Expired'
+    return HTML(buildSealPageData(data, {
+        title: pageTitle,
         tips: `
             <div class="share-status-page share-expired-page">
                 <div class="seal-visitor-brand">David888 Wiki / Seal</div>
@@ -54,18 +85,18 @@ export const ShareExpired = data => {
                 `}
             </div>
         `,
-    })
+    }))
 }
 
 export const ShareBurned = data => {
     const lang = data?.lang || 'zh-TW'
     const t = SUPPORTED_LANG[lang] || SUPPORTED_LANG['zh-TW']
     const isAuthor = data?.ext?.isAuthor === true
-    const editUrl = data?.path ? `/${data.path}` : '/'
-    const noteIdentifier = data?.title || data?.path || data?.shareId || (lang === 'zh-TW' ? '機密筆記' : 'Confidential Note')
-    return HTML({
-        ...data,
-        title: t.shareBurnedTitle || 'Share Destroyed',
+    const editUrl = isAuthor && data?.path ? `/${data.path}` : '/'
+    const noteIdentifier = getSealNoteIdentifier(data, lang)
+    const pageTitle = t.shareBurnedTitle || 'Share Destroyed'
+    return HTML(buildSealPageData(data, {
+        title: pageTitle,
         tips: `
             <div class="share-status-page share-burned-page">
                 <div class="seal-visitor-brand">David888 Wiki / Seal</div>
@@ -94,7 +125,7 @@ export const ShareBurned = data => {
                 `}
             </div>
         `,
-    })
+    }))
 }
 
 export const ShareTimeLocked = data => {
@@ -102,12 +133,12 @@ export const ShareTimeLocked = data => {
     const t = SUPPORTED_LANG[lang] || SUPPORTED_LANG['zh-TW']
     const isAuthor = data?.ext?.isAuthor === true
     const unlockAt = Number(data?.ext?.shareUnlockAt) || 0
-    const editUrl = data?.path ? `/${data.path}` : '/'
+    const editUrl = isAuthor && data?.path ? `/${data.path}` : '/'
     const formattedUnlockTime = unlockAt ? dayjs(unlockAt * 1000).format('YYYY-MM-DD HH:mm:ss') : ''
-    const noteIdentifier = data?.title || data?.path || data?.shareId || (lang === 'zh-TW' ? '機密筆記' : 'Confidential Note')
-    return HTML({
-        ...data,
-        title: t.shareTimeLockedTitle || 'Time-Locked Capsule',
+    const noteIdentifier = getSealNoteIdentifier(data, lang)
+    const pageTitle = t.shareTimeLockedTitle || 'Time-Locked Capsule'
+    return HTML(buildSealPageData(data, {
+        title: pageTitle,
         tips: `
             <div class="share-status-page share-timelock-page">
                 <div class="seal-visitor-brand">David888 Wiki / Seal</div>
@@ -199,7 +230,7 @@ export const ShareTimeLocked = data => {
                 })();
             </script>
         `,
-    })
+    }))
 }
 
 export const ShareDeadmanLocked = data => {
@@ -207,13 +238,13 @@ export const ShareDeadmanLocked = data => {
     const t = SUPPORTED_LANG[lang] || SUPPORTED_LANG['zh-TW']
     const isAuthor = data?.ext?.isAuthor === true
     const pulseDueAt = Number(data?.ext?.sharePulseDueAt) || 0
-    const editUrl = data?.path ? `/${data.path}` : '/'
+    const editUrl = isAuthor && data?.path ? `/${data.path}` : '/'
     const shareId = data?.shareId
     const formattedPulseDue = pulseDueAt ? dayjs(pulseDueAt * 1000).format('YYYY-MM-DD HH:mm:ss') : ''
-    const noteIdentifier = data?.title || data?.path || data?.shareId || (lang === 'zh-TW' ? '機密筆記' : 'Confidential Note')
-    return HTML({
-        ...data,
-        title: t.shareDeadmanTitle || "Dead Man's Switch Active",
+    const noteIdentifier = getSealNoteIdentifier(data, lang)
+    const pageTitle = t.shareDeadmanTitle || "Dead Man's Switch Active"
+    return HTML(buildSealPageData(data, {
+        title: pageTitle,
         tips: `
             <div class="share-status-page share-deadman-page">
                 <div class="seal-visitor-brand">David888 Wiki / Seal</div>
@@ -314,10 +345,10 @@ export const ShareDeadmanLocked = data => {
                 })();
             </script>
         `,
-    })
+    }))
 }
 
-export const Home = ({ lang = 'zh-TW', canonicalUrl, ogImageUrl }) => `
+export const Home = ({ lang = 'zh-TW', canonicalUrl, ogImageUrl, accountEnabled = false }) => `
 <!DOCTYPE html>
 <html lang="${lang === 'zh-TW' ? 'zh-Hant-TW' : 'en'}">
 <head>
@@ -426,7 +457,7 @@ export const Home = ({ lang = 'zh-TW', canonicalUrl, ogImageUrl }) => `
         </div>
     </main>
     <button type="button" id="home-motion-switcher" class="home-motion-switcher" title="${lang === 'zh-TW' ? '切換首頁動態背景' : 'Switch ambient motion'}">🌊 Aurora</button>
-    ${EDITOR_PREFERENCE_MODAL(lang, { autoOpen: true })}
+    ${EDITOR_PREFERENCE_MODAL(lang, { autoOpen: true, accountEnabled })}
     <script type="module">
         import { createPresentationMotionController } from '/js/presentation-motion.mjs?v=20261122f';
         const canvas = document.getElementById('home-motion-canvas');

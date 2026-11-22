@@ -19,6 +19,8 @@ export { Edit } from './templates/edit.js'
 export { Share } from './templates/share.js'
 export { Admin } from './templates/admin.js'
 export { Home, NeedPasswd, Page404, ShareExpired, ShareBurned, ShareTimeLocked, ShareDeadmanLocked } from './templates/pages.js'
+export { Space } from './templates/space.js'
+export { Circle } from './templates/circle.js'
 
 // Also re-export shared utilities for any code that imports them from template.js
 export { FOOTER, MODAL, SWITCHER, VAULT_PRESETS_MODAL } from './templates/common.js'

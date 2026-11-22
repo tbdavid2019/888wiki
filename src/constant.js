@@ -1,4 +1,7 @@
-// static CDN
+import { ALL_PREVIEW_THEMES } from './theme_data.js'
+
+export { ALL_PREVIEW_THEMES }
+
 // static CDN
 export const CDN_PREFIX = 'https://cdn.jsdelivr.net/npm'
 
@@ -629,3 +632,71 @@ export const SUPPORTED_LANG = {
 }
 
 export const DARK_PREVIEW_THEMES = ['tokyo-night', 'x-ai', 'terminal', 'kanagawa', 'catppuccin-macchiato']
+
+export const RESERVED_SLUGS = Object.freeze([
+    'api',
+    'share',
+    'shares',
+    'new',
+    'static',
+    'js',
+    'css',
+    'assets',
+    'img',
+    'upload',
+    'admin',
+    'auth',
+    'account',
+    'space',
+    'circle',
+    'circles',
+    '_space',
+    '_pwa-offline',
+    'c',
+    'mcp',
+    'docs',
+    '.well-known',
+    'robots.txt',
+    'sitemap.xml',
+    'llms.txt',
+    'llms-full.txt',
+    'openapi.json',
+    'auth.md',
+    'sw.js',
+    'manifest.json',
+    'app.webmanifest',
+    'favicon.ico',
+    'icon.svg',
+    'icon.png',
+    'og-image.png',
+    'notepad-icon.png',
+    'notepad-icon-192.png',
+    'health',
+])
+
+const RESERVED_SLUG_SET = new Set(RESERVED_SLUGS)
+
+export function isReservedSlug(path, env = globalThis) {
+    let raw = String(path || '').trim()
+    if (!raw) return true
+    if (raw.includes('%')) {
+        try {
+            raw = decodeURIComponent(raw).trim()
+        } catch {}
+    }
+    const normalized = raw.replace(/^\/+|\/+$/g, '').toLowerCase()
+    if (!normalized) return true
+    const firstSegment = normalized.split('/')[0]
+    if (RESERVED_SLUG_SET.has(normalized) || RESERVED_SLUG_SET.has(firstSegment)) {
+        return true
+    }
+    const rawAdminPath = env?.SCN_ADMIN_PATH ?? getAdminPath() ?? '/admin'
+    const adminNormalized = String(rawAdminPath).trim().replace(/^\/+|\/+$/g, '').toLowerCase()
+    if (adminNormalized) {
+        const adminFirstSegment = adminNormalized.split('/')[0]
+        if (normalized === adminNormalized || firstSegment === adminFirstSegment) {
+            return true
+        }
+    }
+    return false
+}

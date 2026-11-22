@@ -1196,6 +1196,79 @@
     outline-offset: 3px;
 }
 
+.annotation-identity-mode {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
+    background: var(--annotation-surface);
+    border: 1px solid var(--annotation-border);
+    border-radius: 10px;
+    font-size: 13px;
+}
+
+.annotation-identity-mode[hidden] {
+    display: none;
+}
+
+.annotation-identity-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    color: var(--annotation-text);
+}
+
+.annotation-input.is-signed-locked {
+    background: var(--annotation-surface);
+    color: var(--annotation-muted);
+    cursor: not-allowed;
+}
+
+.annotation-signed-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--annotation-accent-soft);
+    color: var(--annotation-accent-strong);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.annotation-session-expired-prompt {
+    display: grid;
+    gap: 8px;
+    padding: 10px 12px;
+    background: var(--annotation-accent-soft);
+    border: 1px solid var(--annotation-accent);
+    border-radius: 10px;
+    color: var(--annotation-text);
+    font-size: 13px;
+}
+
+.annotation-session-expired-prompt[hidden] {
+    display: none;
+}
+
+.annotation-session-expired-text {
+    margin: 0;
+    line-height: 1.45;
+}
+
+.annotation-session-expired-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.annotation-space-reauth-link {
+    font-size: 12px;
+    color: var(--annotation-accent-strong);
+    text-decoration: underline;
+}
+
 @media (max-width: 720px) {
     .annotation-rail-button {
         inset-block-start: auto;

@@ -38,16 +38,22 @@ test('annotation cursors round-trip and reject malformed values', () => {
 
 test('annotation threads include immutable quote anchors and ordered messages', async () => {
     const calls = []
+    let queryCount = 0
     const db = {
         prepare(sql) {
+            const isIntrospection = /sqlite_master/i.test(sql)
             const call = { sql }
-            calls.push(call)
+            if (!isIntrospection) calls.push(call)
             return {
                 bind(...values) {
                     call.values = values
                     return {
+                        async first() {
+                            return null
+                        },
                         async all() {
-                            if (calls.length === 1) {
+                            queryCount += 1
+                            if (queryCount === 1) {
                                 return {
                                     results: [{
                                         id: 'thread-1',
@@ -95,8 +101,8 @@ test('annotation threads include immutable quote anchors and ordered messages', 
         messageCount: 2,
         hasMoreMessages: false,
         messages: [
-            { id: 'message-1', authorName: 'Alice', body: 'First', createdAt: 100 },
-            { id: 'message-2', authorName: 'Bob', body: 'Second', createdAt: 110 },
+            { id: 'message-1', authorName: 'Alice', body: 'First', createdAt: 100, isSignedAccount: false, canDelete: false },
+            { id: 'message-2', authorName: 'Bob', body: 'Second', createdAt: 110, isSignedAccount: false, canDelete: false },
         ],
     }])
     assert.match(calls[0].sql, /WHERE path = \?/)
@@ -157,21 +163,29 @@ test('annotation replies trim valid text and reject oversized bodies', () => {
     }), null)
 })
 
-test('createAnnotationThread stores its first message in one D1 batch', async () => {
+test('createAnnotationThread stores its first message and thread meta in one D1 batch', async () => {
     const calls = []
     const db = {
         prepare(sql) {
+            const isIntrospection = /sqlite_master/i.test(sql)
             const call = { sql }
-            calls.push(call)
+            if (!isIntrospection) calls.push(call)
             return {
                 bind(...values) {
                     call.values = values
+                    if (isIntrospection) {
+                        return {
+                            async first() {
+                                return values[0] === 'annotation_thread_meta' ? { name: 'annotation_thread_meta' } : null
+                            },
+                        }
+                    }
                     return call
                 },
             }
         },
         async batch(statements) {
-            assert.equal(statements.length, 2)
+            assert.equal(statements.length, 3)
             return statements.map(() => ({ success: true, meta: { changes: 1 } }))
         },
     }
@@ -198,6 +212,8 @@ test('createAnnotationThread stores its first message in one D1 batch', async ()
 
     assert.equal(thread.id, 'thread-1')
     assert.equal(thread.messages[0].id, 'message-1')
+    assert.equal(thread.messages[0].isSignedAccount, false)
+    assert.equal(thread.messages[0].canDelete, false)
     assert.match(calls[0].sql, /INSERT INTO annotation_threads/)
     assert.deepEqual(calls[0].values, [
         'thread-1',
@@ -212,6 +228,8 @@ test('createAnnotationThread stores its first message in one D1 batch', async ()
         123456,
     ])
     assert.match(calls[1].sql, /INSERT INTO annotation_messages/)
+    assert.match(calls[2].sql, /INSERT OR IGNORE INTO annotation_thread_meta/)
+    assert.deepEqual(calls[2].values, ['thread-1', 'article-one', 'message-1', null, 123456])
 })
 
 test('addAnnotationMessage only replies to a thread belonging to the same article', async () => {
@@ -249,6 +267,8 @@ test('addAnnotationMessage only replies to a thread belonging to the same articl
         authorName: 'Alice',
         body: 'Agreed.',
         createdAt: 123457,
+        isSignedAccount: false,
+        canDelete: false,
     })
     assert.match(calls[0].sql, /SELECT \?, id, \?, \?, \?[\s\S]*WHERE id = \?[\s\S]*AND path = \?/)
     assert.deepEqual(calls[0].values, [
@@ -277,11 +297,15 @@ test('deleteAnnotationMessage soft-deletes a message and reports active message 
     const calls = []
     const db = {
         prepare(sql) {
+            const isIntrospection = /sqlite_master/i.test(sql)
             const call = { sql }
-            calls.push(call)
+            if (!isIntrospection) calls.push(call)
             return {
                 bind(...values) {
                     call.values = values
+                    if (isIntrospection) {
+                        return { async first() { return null } }
+                    }
                     return call
                 },
             }
@@ -316,11 +340,15 @@ test('deleteAnnotationThread soft-deletes all messages of a thread', async () =>
     const calls = []
     const db = {
         prepare(sql) {
+            const isIntrospection = /sqlite_master/i.test(sql)
             const call = { sql }
-            calls.push(call)
+            if (!isIntrospection) calls.push(call)
             return {
                 bind(...values) {
                     call.values = values
+                    if (isIntrospection) {
+                        return { async first() { return null } }
+                    }
                     return call
                 },
             }

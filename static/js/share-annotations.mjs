@@ -1,3 +1,5 @@
+import { loginWithPasskey } from './account-auth.mjs'
+
 const MAX_QUOTE_LENGTH = 1000
 const CONTEXT_LENGTH = 160
 const AUTHOR_STORAGE_KEY = 'cf-notepad:annotation-author'
@@ -431,12 +433,15 @@ function createElement(document, tagName, className, text) {
 }
 
 function readApiError(payload, fallback) {
-    if (typeof payload?.msg !== 'string') return fallback
+    const raw = typeof payload?.msg === 'string'
+        ? payload.msg
+        : (typeof payload?.message === 'string' ? payload.message : null)
+    if (typeof raw !== 'string') return fallback
     try {
-        const parsed = JSON.parse(payload.msg)
+        const parsed = JSON.parse(raw)
         return typeof parsed === 'string' ? parsed : fallback
     } catch {
-        return payload.msg || fallback
+        return raw || fallback
     }
 }
 
@@ -536,6 +541,13 @@ export function initShareAnnotations(options = {}) {
             confirmDelete: '確定要刪除這則註解嗎？此動作無法復原。',
             commentDeleted: '已成功刪除註解。',
             deleteError: '刪除失敗，可能無此權限。',
+            postAsAccount: nickname => `以帳號暱稱「${nickname}」留言`,
+            postAnonymously: '匿名自行填寫',
+            signedBadge: '已驗證帳號',
+            sessionExpired: 'Passkey 登入已過期，您的草稿已保留。請重新驗證 Passkey，或切換為匿名留言。',
+            reauthPasskey: '重新驗證 Passkey',
+            openSpaceLink: '前往空間重新登入',
+            switchToAnonymous: '切換為匿名留言',
         }
         : {
             title: 'Paragraph annotations',
@@ -583,7 +595,24 @@ export function initShareAnnotations(options = {}) {
             confirmDelete: 'Are you sure you want to delete this comment? This cannot be undone.',
             commentDeleted: 'Comment deleted successfully.',
             deleteError: 'Failed to delete comment. Permission denied.',
+            postAsAccount: nickname => `Post as "${nickname}"`,
+            postAnonymously: 'Post anonymously',
+            signedBadge: 'Signed account',
+            sessionExpired: 'Your Passkey session expired. Your draft has been preserved. Re-authenticate with Passkey or switch to anonymous.',
+            reauthPasskey: 'Re-authenticate Passkey',
+            openSpaceLink: 'Sign in on Space',
+            switchToAnonymous: 'Switch to anonymous',
         }
+
+    const resolveInitialAccount = () => {
+        const candidate = config.account !== undefined
+            ? config.account
+            : (window.APP_STATE?.account || null)
+        if (candidate && typeof candidate.nickname === 'string' && candidate.nickname.trim()) {
+            return { id: candidate.id || '', nickname: candidate.nickname.trim() }
+        }
+        return null
+    }
 
     const state = {
         currentRevision: '',
@@ -591,6 +620,230 @@ export function initShareAnnotations(options = {}) {
         threads: [],
         located: new Map(),
         activeMiniThreadId: null,
+        account: resolveInitialAccount(),
+    }
+
+    let identityGroupSeq = 0
+    const identityControllers = new Set()
+
+    const getStoredAuthorName = () => {
+        try {
+            return window.localStorage.getItem(AUTHOR_STORAGE_KEY) || ''
+        } catch {
+            return ''
+        }
+    }
+
+    const persistAnonymousAuthorName = name => {
+        const clean = typeof name === 'string' ? name.trim() : ''
+        if (!clean) return
+        if (state.account?.nickname && clean === state.account.nickname) return
+        try {
+            window.localStorage.setItem(AUTHOR_STORAGE_KEY, clean)
+        } catch {}
+    }
+
+    const loadAccountSession = async ({ forceFetch = false } = {}) => {
+        if (!forceFetch && config.account !== undefined) {
+            state.account = resolveInitialAccount()
+            return state.account
+        }
+        if (!forceFetch && window.APP_STATE?.accountEnabled === false) {
+            state.account = null
+            return null
+        }
+        try {
+            const response = await fetch('/api/account/me', {
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json' },
+            })
+            if (!response.ok) {
+                state.account = null
+                return null
+            }
+            const raw = await response.json().catch(() => null)
+            const data = raw?.err === 0 && raw?.data ? raw.data : raw
+            if (data?.authenticated === true && typeof data?.account?.nickname === 'string' && data.account.nickname.trim()) {
+                state.account = {
+                    id: data.account.id || '',
+                    nickname: data.account.nickname.trim(),
+                }
+            } else {
+                state.account = null
+            }
+        } catch {
+            state.account = null
+        }
+        return state.account
+    }
+
+    const createIdentityModeController = ({ authorInput, bodyInput, errorEl, recoveryEl }) => {
+        identityGroupSeq += 1
+        const groupName = `annotation-identity-mode-${identityGroupSeq}`
+
+        const modeGroup = createElement(document, 'div', 'annotation-identity-mode')
+        modeGroup.setAttribute('role', 'radiogroup')
+        modeGroup.hidden = !state.account
+
+        const signedOption = createElement(document, 'label', 'annotation-identity-option')
+        const signedRadio = createElement(document, 'input')
+        signedRadio.type = 'radio'
+        signedRadio.name = groupName
+        signedRadio.value = 'signed'
+        const signedLabel = createElement(document, 'span', 'annotation-identity-label')
+        signedOption.append(signedRadio, signedLabel)
+
+        const anonOption = createElement(document, 'label', 'annotation-identity-option')
+        const anonRadio = createElement(document, 'input')
+        anonRadio.type = 'radio'
+        anonRadio.name = groupName
+        anonRadio.value = 'anonymous'
+        const anonLabel = createElement(document, 'span', 'annotation-identity-label', copy.postAnonymously)
+        anonOption.append(anonRadio, anonLabel)
+
+        modeGroup.append(signedOption, anonOption)
+
+        let mode = state.account ? 'signed' : 'anonymous'
+        let userTouchedMode = false
+
+        const clearRecovery = () => {
+            recoveryEl.hidden = true
+            recoveryEl.replaceChildren()
+        }
+
+        const applyModeToInputs = ({ clearAuthorOnAnon = false } = {}) => {
+            if (state.account) {
+                signedLabel.textContent = copy.postAsAccount(state.account.nickname)
+                modeGroup.hidden = false
+            } else {
+                modeGroup.hidden = true
+            }
+
+            signedRadio.checked = mode === 'signed'
+            anonRadio.checked = mode === 'anonymous'
+
+            if (mode === 'signed' && state.account) {
+                authorInput.value = state.account.nickname
+                authorInput.readOnly = true
+                authorInput.required = true
+                authorInput.classList.add('is-signed-locked')
+            } else {
+                authorInput.readOnly = false
+                authorInput.required = true
+                authorInput.classList.remove('is-signed-locked')
+                if (clearAuthorOnAnon) {
+                    authorInput.value = ''
+                }
+            }
+        }
+
+        const switchToAnonymous = ({ focusAuthor = false } = {}) => {
+            userTouchedMode = true
+            mode = 'anonymous'
+            clearRecovery()
+            errorEl.textContent = ''
+            applyModeToInputs({ clearAuthorOnAnon: true })
+            if (focusAuthor) authorInput.focus()
+        }
+
+        const switchToSigned = () => {
+            if (!state.account) return
+            userTouchedMode = true
+            mode = 'signed'
+            clearRecovery()
+            errorEl.textContent = ''
+            applyModeToInputs()
+        }
+
+        signedRadio.addEventListener('change', () => {
+            if (signedRadio.checked) switchToSigned()
+        })
+        anonRadio.addEventListener('change', () => {
+            if (anonRadio.checked) switchToAnonymous({ focusAuthor: true })
+        })
+
+        const syncWithAccount = () => {
+            if (state.account && !userTouchedMode) {
+                mode = 'signed'
+            } else if (!state.account && !userTouchedMode) {
+                mode = 'anonymous'
+            }
+            applyModeToInputs({ clearAuthorOnAnon: false })
+        }
+
+        const showSessionExpiredPrompt = () => {
+            errorEl.textContent = ''
+            recoveryEl.replaceChildren()
+            recoveryEl.hidden = false
+
+            const msg = createElement(document, 'p', 'annotation-session-expired-text', copy.sessionExpired)
+            const actionsRow = createElement(document, 'div', 'annotation-session-expired-actions')
+
+            const reauthBtn = createElement(document, 'button', 'annotation-secondary-button annotation-reauth-btn', copy.reauthPasskey)
+            reauthBtn.type = 'button'
+            reauthBtn.addEventListener('click', async () => {
+                reauthBtn.disabled = true
+                errorEl.textContent = ''
+                const reauthFn = typeof config.loginWithPasskey === 'function' ? config.loginWithPasskey : loginWithPasskey
+                try {
+                    await reauthFn()
+                    await loadAccountSession({ forceFetch: true })
+                    if (state.account) {
+                        mode = 'signed'
+                        clearRecovery()
+                        for (const ctrl of identityControllers) ctrl.syncWithAccount()
+                    } else {
+                        errorEl.textContent = copy.saveError
+                    }
+                } catch (err) {
+                    if (err?.code === 'WEBAUTHN_UNSUPPORTED' || err?.code === 'WEBVIEW_UNSUPPORTED') {
+                        window.open?.('/_space', '_blank', 'noopener')
+                    }
+                    errorEl.textContent = err?.message || copy.saveError
+                } finally {
+                    reauthBtn.disabled = false
+                }
+            })
+
+            const spaceLink = createElement(document, 'a', 'annotation-space-reauth-link', copy.openSpaceLink)
+            spaceLink.href = '/_space'
+            spaceLink.target = '_blank'
+            spaceLink.rel = 'noopener noreferrer'
+
+            const switchAnonBtn = createElement(document, 'button', 'annotation-secondary-button annotation-switch-anon-btn', copy.switchToAnonymous)
+            switchAnonBtn.type = 'button'
+            switchAnonBtn.addEventListener('click', () => {
+                switchToAnonymous({ focusAuthor: true })
+            })
+
+            actionsRow.append(reauthBtn, switchAnonBtn, spaceLink)
+            recoveryEl.append(msg, actionsRow)
+        }
+
+        const controller = {
+            element: modeGroup,
+            getMode: () => mode,
+            buildPayload: (extra = {}) => (
+                mode === 'signed'
+                    ? { ...extra, mode: 'signed', body: bodyInput.value }
+                    : { ...extra, mode: 'anonymous', authorName: authorInput.value, body: bodyInput.value }
+            ),
+            clearRecovery,
+            showSessionExpiredPrompt,
+            syncWithAccount,
+            setDisabled: disabled => {
+                signedRadio.disabled = disabled
+                anonRadio.disabled = disabled
+            },
+            persistIfAnonymous: () => {
+                if (mode === 'anonymous') {
+                    persistAnonymousAuthorName(authorInput.value)
+                }
+            },
+        }
+        identityControllers.add(controller)
+        applyModeToInputs()
+        return controller
     }
 
     const panel = createElement(document, 'aside', 'annotation-sidebar')
@@ -633,17 +886,29 @@ export function initShareAnnotations(options = {}) {
     bodyInput.placeholder = copy.comment
     const composerError = createElement(document, 'p', 'annotation-inline-error')
     composerError.setAttribute('aria-live', 'polite')
+    const composerRecovery = createElement(document, 'div', 'annotation-session-expired-prompt')
+    composerRecovery.setAttribute('role', 'alert')
+    composerRecovery.hidden = true
     const composerActions = createElement(document, 'div', 'annotation-form-actions')
     const cancelButton = createElement(document, 'button', 'annotation-secondary-button', copy.cancel)
     cancelButton.type = 'button'
     const submitButton = createElement(document, 'button', 'annotation-primary-button', copy.send)
     submitButton.type = 'submit'
     composerActions.append(cancelButton, submitButton)
+    authorInput.value = getStoredAuthorName()
+    const composerIdentity = createIdentityModeController({
+        authorInput,
+        bodyInput,
+        errorEl: composerError,
+        recoveryEl: composerRecovery,
+    })
     composer.append(
         composerQuoteBox,
+        composerIdentity.element,
         authorInput,
         bodyInput,
         composerError,
+        composerRecovery,
         composerActions,
     )
 
@@ -746,11 +1011,6 @@ export function initShareAnnotations(options = {}) {
     panel.append(header, intro, composer, status, threadList)
     appRoot.append(railButton, selectionToolbar, aiPopover, miniPopover, panel)
 
-    try {
-        authorInput.value = window.localStorage.getItem(AUTHOR_STORAGE_KEY) || ''
-    } catch {
-        authorInput.value = ''
-    }
     setupAnnotationRailDragging(railButton, {
         storageKey: `${RAIL_POSITION_STORAGE_PREFIX}${shareId}`,
     })
@@ -766,18 +1026,21 @@ export function initShareAnnotations(options = {}) {
         state.pendingAnchor = anchor
         composerQuote.textContent = anchor.exact
         composerError.textContent = ''
+        composerIdentity.clearRecovery()
+        composerIdentity.syncWithAccount()
         composer.hidden = false
         setPanelOpen(true)
         if (typeof composer.scrollIntoView === 'function') {
             composer.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
         }
-        window.setTimeout(() => (authorInput.value ? bodyInput : authorInput).focus(), 0)
+        window.setTimeout(() => (authorInput.readOnly || authorInput.value ? bodyInput : authorInput).focus(), 0)
     }
 
     const hideComposer = () => {
         state.pendingAnchor = null
         composer.hidden = true
         composerError.textContent = ''
+        composerIdentity.clearRecovery()
     }
 
     const setSaving = saving => {
@@ -785,6 +1048,7 @@ export function initShareAnnotations(options = {}) {
         cancelButton.disabled = saving
         authorInput.disabled = saving
         bodyInput.disabled = saving
+        composerIdentity.setDisabled(saving)
     }
 
     const updateHighlight = () => {
@@ -808,35 +1072,50 @@ export function initShareAnnotations(options = {}) {
         const form = createElement(document, 'form', 'annotation-reply-form')
         form.hidden = true
         const replyAuthor = createElement(document, 'input', 'annotation-input')
+        replyAuthor.name = 'authorName'
         replyAuthor.required = true
         replyAuthor.maxLength = 40
         replyAuthor.placeholder = copy.name
-        replyAuthor.value = authorInput.value
+        replyAuthor.value = state.account ? '' : (authorInput.value || getStoredAuthorName())
         const replyBody = createElement(document, 'textarea', 'annotation-textarea')
+        replyBody.name = 'body'
         replyBody.required = true
         replyBody.maxLength = 2000
         replyBody.rows = 3
         replyBody.placeholder = copy.comment
         const replyError = createElement(document, 'p', 'annotation-inline-error')
         replyError.setAttribute('aria-live', 'polite')
+        const replyRecovery = createElement(document, 'div', 'annotation-session-expired-prompt')
+        replyRecovery.setAttribute('role', 'alert')
+        replyRecovery.hidden = true
         const replySubmit = createElement(document, 'button', 'annotation-primary-button', copy.sendReply)
         replySubmit.type = 'submit'
-        form.append(replyAuthor, replyBody, replyError, replySubmit)
+
+        const replyIdentity = createIdentityModeController({
+            authorInput: replyAuthor,
+            bodyInput: replyBody,
+            errorEl: replyError,
+            recoveryEl: replyRecovery,
+        })
+
+        form.append(replyIdentity.element, replyAuthor, replyBody, replyError, replyRecovery, replySubmit)
 
         form.addEventListener('submit', async event => {
             event.preventDefault()
             replyError.textContent = ''
+            replyIdentity.clearRecovery()
             replySubmit.disabled = true
+            replyAuthor.disabled = true
+            replyBody.disabled = true
+            replyIdentity.setDisabled(true)
+            const submittedMode = replyIdentity.getMode()
             try {
                 const data = await requestJson(
                     `/api/shares/${encodeURIComponent(shareId)}/annotations/${encodeURIComponent(thread.id)}/messages`,
                     {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            authorName: replyAuthor.value,
-                            body: replyBody.value,
-                        }),
+                        body: JSON.stringify(replyIdentity.buildPayload()),
                     },
                 )
                 if (data.message?.deleteToken) {
@@ -845,14 +1124,19 @@ export function initShareAnnotations(options = {}) {
                 thread.messages.push(data.message)
                 thread.messageCount += 1
                 thread.updatedAt = data.message.createdAt
-                try {
-                    window.localStorage.setItem(AUTHOR_STORAGE_KEY, replyAuthor.value.trim())
-                } catch {}
+                replyIdentity.persistIfAnonymous()
                 renderThreads()
             } catch (error) {
-                replyError.textContent = error.message || copy.saveError
+                if (submittedMode === 'signed' && error?.status === 401) {
+                    replyIdentity.showSessionExpiredPrompt()
+                } else {
+                    replyError.textContent = error.message || copy.saveError
+                }
             } finally {
                 replySubmit.disabled = false
+                replyAuthor.disabled = false
+                replyBody.disabled = false
+                replyIdentity.setDisabled(false)
             }
         })
 
@@ -935,6 +1219,10 @@ export function initShareAnnotations(options = {}) {
                 const avatar = createElement(document, 'span', 'annotation-author-avatar', (message.authorName || 'U').trim().charAt(0).toUpperCase())
                 const author = createElement(document, 'strong', 'annotation-author-name', message.authorName)
                 authorGroup.append(avatar, author)
+                if (message.isSignedAccount) {
+                    const signedBadge = createElement(document, 'span', 'annotation-signed-badge', copy.signedBadge)
+                    authorGroup.append(signedBadge)
+                }
 
                 const actions = createElement(document, 'div', 'annotation-message-meta-actions')
                 const date = createElement(
@@ -950,7 +1238,8 @@ export function initShareAnnotations(options = {}) {
 
                 const deleteToken = getStoredDeleteToken(message.id)
                 const isEditor = Boolean(window.APP_STATE?.isEdit || window.APP_STATE?.role === 'edit')
-                if (deleteToken || isEditor) {
+                const canDelete = Boolean(message.canDelete || deleteToken || isEditor)
+                if (canDelete) {
                     const deleteButton = createElement(document, 'button', 'annotation-delete-message-btn', '🗑️')
                     deleteButton.type = 'button'
                     deleteButton.title = copy.deleteComment
@@ -974,9 +1263,9 @@ export function initShareAnnotations(options = {}) {
                                     method: 'DELETE',
                                     headers: {
                                         'Content-Type': 'application/json',
-                                        'X-Annotation-Delete-Token': deleteToken || '',
+                                        ...(deleteToken ? { 'X-Annotation-Delete-Token': deleteToken } : {}),
                                     },
-                                    body: JSON.stringify({ deleteToken: deleteToken || '' }),
+                                    body: JSON.stringify(deleteToken ? { deleteToken } : {}),
                                 },
                             )
                             removeStoredDeleteToken(message.id)
@@ -1046,9 +1335,11 @@ export function initShareAnnotations(options = {}) {
     const loadThreads = async () => {
         status.textContent = copy.loading
         try {
-            const data = await requestJson(
-                `/api/shares/${encodeURIComponent(shareId)}/annotations?limit=25`,
-            )
+            const [, data] = await Promise.all([
+                loadAccountSession(),
+                requestJson(`/api/shares/${encodeURIComponent(shareId)}/annotations?limit=25`),
+            ])
+            for (const ctrl of identityControllers) ctrl.syncWithAccount()
             state.currentRevision = data.sourceRevision || ''
             state.threads = Array.isArray(data.threads) ? data.threads : []
             status.textContent = ''
@@ -1286,7 +1577,12 @@ export function initShareAnnotations(options = {}) {
         loading.style.display = 'none'
         askView.style.display = 'none'
         resultView.style.display = 'block'
-        resultContent.innerHTML = `<span style="color:#d9534f;font-weight:600;">⚠️ ${errorMessage}</span>`
+        resultContent.textContent = ''
+        const errorSpan = document.createElement('span')
+        errorSpan.style.color = '#d9534f'
+        errorSpan.style.fontWeight = '600'
+        errorSpan.textContent = `⚠️ ${errorMessage}`
+        resultContent.appendChild(errorSpan)
         positionAiPopover()
     }
 
@@ -1499,52 +1795,55 @@ export function initShareAnnotations(options = {}) {
         if (!state.pendingAnchor) return
 
         composerError.textContent = ''
+        composerIdentity.clearRecovery()
         setSaving(true)
+        const submittedMode = composerIdentity.getMode()
         try {
             const data = await requestJson(
                 `/api/shares/${encodeURIComponent(shareId)}/annotations`,
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
+                    body: JSON.stringify(composerIdentity.buildPayload({
                         anchor: state.pendingAnchor,
-                        authorName: authorInput.value,
-                        body: bodyInput.value,
-                    }),
+                    })),
                 },
             )
             if (data.thread?.messages?.[0]?.deleteToken) {
                 storeDeleteToken(data.thread.messages[0].id, data.thread.messages[0].deleteToken)
             }
             state.threads.unshift(data.thread)
-            try {
-                window.localStorage.setItem(AUTHOR_STORAGE_KEY, authorInput.value.trim())
-            } catch {}
+            composerIdentity.persistIfAnonymous()
             bodyInput.value = ''
             hideComposer()
             const win = articleRoot?.ownerDocument?.defaultView || (typeof window !== 'undefined' ? window : null)
             win?.getSelection?.()?.removeAllRanges()
             renderThreads()
         } catch (error) {
-            composerError.textContent = error.status === 409 ? copy.stale : (error.message || copy.saveError)
+            if (submittedMode === 'signed' && error?.status === 401) {
+                composerIdentity.showSessionExpiredPrompt()
+            } else {
+                composerError.textContent = error.status === 409 ? copy.stale : (error.message || copy.saveError)
+            }
         } finally {
             setSaving(false)
         }
     })
 
+    const timerApi = articleRoot?.ownerDocument?.defaultView || (typeof window !== 'undefined' ? window : globalThis)
     let selectionTimer = null
     document.addEventListener('selectionchange', () => {
-        window.clearTimeout(selectionTimer)
-        selectionTimer = window.setTimeout(captureSelection, 80)
+        timerApi.clearTimeout(selectionTimer)
+        selectionTimer = timerApi.setTimeout(captureSelection, 80)
     })
-    articleRoot.addEventListener('pointerup', () => window.setTimeout(captureSelection, 0))
+    articleRoot.addEventListener('pointerup', () => timerApi.setTimeout(captureSelection, 0))
     articleRoot.addEventListener('keyup', captureSelection)
     window.addEventListener('hashchange', locateThreadFromLocation)
 
     let highlightTimer = null
     const observer = new MutationObserver(() => {
-        window.clearTimeout(highlightTimer)
-        highlightTimer = window.setTimeout(() => {
+        timerApi.clearTimeout(highlightTimer)
+        highlightTimer = timerApi.setTimeout(() => {
             if (state.currentRevision) renderThreads()
         }, 120)
     })

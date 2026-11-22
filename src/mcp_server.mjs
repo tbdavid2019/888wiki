@@ -1,17 +1,27 @@
 import dayjs from 'dayjs'
-import { driverQueryNote, driverPutNote, driverQueryShare, driverPutShare, driverDeleteShare, driverSetShareStatus } from './storage_driver.mjs'
+import {
+    StorageAuthorityError,
+    StorageConflictError,
+    assertNotesAuthorityReady,
+    commitAuthoritativeNoteWrite,
+    driverQueryNote,
+    generateShareToken,
+    isMaintenanceMode,
+    isNotesRegistryEnabled,
+    isUnbackfilledBurnNote,
+} from './storage_driver.mjs'
 import { renderMarkdownToHtml, extractMarkdownData, lintMarkdownText } from './markdown-processor.mjs'
 import { renderMarkdownToPdf } from './pdf_service.mjs'
 import { getNoteStatsDb, getNoteViewCount } from './note_stats.mjs'
 import { resolvePasswordRole } from './password_policy.mjs'
-import { DEFAULT_PREVIEW_WIDTH, normalizePreviewWidth } from './constant.js'
+import { ALL_PREVIEW_THEMES, DEFAULT_PREVIEW_WIDTH, isReservedSlug, normalizePreviewWidth } from './constant.js'
 import { canPersistNoteContent } from './save_policy.mjs'
 import { getNoteHistoryConfig, saveNoteHistoryVersionIfNeeded } from './note_history.mjs'
 import { AGENT_SKILL_MARKDOWN } from './generated/agent-skill.generated.mjs'
 import { parseCanvasDocument, validateCanvasDocument } from './canvas_document.mjs'
 import { parseWhiteboardDocument, validateWhiteboardDocument, whiteboardToMarkdown } from './whiteboard_document.mjs'
 import { buildWikiLinkCanvas } from '../static/js/canvas-v2/model/wikiGraphGenerator.mjs'
-import { parseExpirationSeconds, formatShareRemainingTime } from './note_meta.js'
+import { parseExpirationSeconds, formatShareRemainingTime, isBurnProtected, isShareBurned } from './note_meta.js'
 
 export const MCP_SERVER_INFO = {
     name: 'david888-wiki',
@@ -400,6 +410,14 @@ async function checkPasswordRole(password, metadata) {
     return resolvePasswordRole(password, metadata, checkPasswordMatch)
 }
 
+const MUTATING_MCP_TOOLS = new Set([
+    'write_note',
+    'append_note',
+    'write_canvas',
+    'write_whiteboard',
+    'generate_canvas_from_wikilinks',
+])
+
 function createJsonResponse(data, status = 200) {
     return new Response(JSON.stringify(data), {
         status,
@@ -409,37 +427,6 @@ function createJsonResponse(data, status = 200) {
             ...CORS_HEADERS,
         },
     })
-}
-
-async function ensureMcpShareMetadata(path, metadata = {}) {
-    if (metadata?.share !== true) return { ...metadata }
-    const existingSlug = metadata?.shareSlug || metadata?.shareId
-    if (existingSlug) {
-        return {
-            ...metadata,
-            shareSlug: existingSlug,
-            shareId: existingSlug,
-        }
-    }
-    let attempts = 0
-    let candidate = ''
-    while (attempts < 8) {
-        const gen = genRandomStr(6)
-        const existing = await driverQueryShare(gen)
-        if (!existing || existing === path) {
-            candidate = gen
-            break
-        }
-        attempts += 1
-    }
-    if (!candidate) {
-        candidate = `${path}-${Date.now().toString(36).slice(-4)}`
-    }
-    return {
-        ...metadata,
-        shareSlug: candidate,
-        shareId: candidate,
-    }
 }
 
 function applyVaultMetadata(nextMetadata, args, nowUnix = dayjs().unix()) {
@@ -479,27 +466,27 @@ function applyVaultMetadata(nextMetadata, args, nowUnix = dayjs().unix()) {
     return nextMetadata
 }
 
-async function persistMcpNote({ path, content, metadata, previousContent }) {
-    await driverPutNote(path, content, metadata)
-
-    const legacyShareId = await md5Hex(path)
-    const shareKeys = [...new Set([legacyShareId, metadata.shareSlug, metadata.shareId].filter(Boolean))]
-    if (metadata.share === true) {
-        const shareOpts = metadata.shareExpiresAt ? { expiration: metadata.shareExpiresAt } : undefined
-        for (const key of shareKeys) {
-            await driverPutShare(key, path, shareOpts)
-            if (!metadata.shareBurnedAt && !metadata.shareExpiredAt) {
-                await driverSetShareStatus(key, null)
-            }
-        }
-    } else if (metadata.share === false) {
-        for (const key of shareKeys) {
-            await driverDeleteShare(key)
-            if (!metadata.shareBurnedAt && !metadata.shareExpiredAt) {
-                await driverSetShareStatus(key, null)
-            }
-        }
-    }
+async function persistMcpNote({
+    path,
+    content,
+    metadata,
+    previousContent,
+    previousMetadata = {},
+    expectedNoteUid = undefined,
+    expectedMetaVersion = undefined,
+    shareAction = 'auto',
+}) {
+    const nowUnix = dayjs().unix()
+    const commitResult = await commitAuthoritativeNoteWrite({
+        path,
+        content,
+        nextMetadata: metadata,
+        previousMetadata,
+        expectedNoteUid,
+        expectedMetaVersion,
+        shareAction,
+        nowUnix,
+    })
 
     const historyConfig = getNoteHistoryConfig()
     if (historyConfig.enabled && historyConfig.db) {
@@ -510,18 +497,77 @@ async function persistMcpNote({ path, content, metadata, previousContent }) {
                 limit: historyConfig.limit,
                 minIntervalSeconds: historyConfig.minIntervalSeconds,
                 path,
+                noteUid: commitResult.noteUid || commitResult.metadata?.noteUid || '',
                 previousContent,
                 nextContent: content,
-                nowSeconds: dayjs().unix(),
+                nowSeconds: nowUnix,
             })
         } catch (err) {
             console.error(`[MCP] Note history save failed for ${path}:`, err?.message || err)
         }
     }
+
+    return commitResult
+}
+
+async function checkMcpBurnReadGuard({ path, noteResult, password = '' }) {
+    const metadata = noteResult?.metadata || {}
+    if (!isBurnProtected(metadata) && !isShareBurned(metadata)) {
+        return null
+    }
+    const role = (metadata.pw || metadata.vpw)
+        ? await checkPasswordRole(password || '', metadata)
+        : null
+    if (role === 'edit') {
+        return null
+    }
+    if (isShareBurned(metadata)) {
+        return {
+            isError: true,
+            text: JSON.stringify({
+                error: 'gone',
+                status: 410,
+                code: 'BURN_SHARE_DESTROYED',
+                message: `Error (410): Share for note "${path}" has already been burned and destroyed.`,
+            }),
+        }
+    }
+    if (isUnbackfilledBurnNote(noteResult)) {
+        return {
+            isError: true,
+            text: JSON.stringify({
+                error: 'conflict',
+                status: 409,
+                code: 'BURN_SHARE_UNBACKFILLED',
+                message: `Conflict (409): Burn-protected note "${path}" is not backfilled in D1 and cannot be read via MCP without edit credentials.`,
+            }),
+        }
+    }
+    return {
+        isError: true,
+        text: JSON.stringify({
+            error: 'conflict',
+            status: 409,
+            code: 'BURN_SHARE_PROTECTED',
+            message: `Conflict (409): Burn-protected note "${path}" cannot be read via MCP without edit credentials.`,
+        }),
+    }
 }
 
 async function executeMcpTool(name, args = {}, requestUrl) {
     const origin = requestUrl ? `${requestUrl.protocol}//${requestUrl.host}` : 'https://wiki.david888.com'
+
+    if (isMaintenanceMode() && (MUTATING_MCP_TOOLS.has(name) || name.startsWith('read_') || name === 'get_view_stats')) {
+        return {
+            isError: true,
+            text: JSON.stringify({
+                error: 'service_unavailable',
+                status: 503,
+                code: 'MAINTENANCE_MODE',
+                message: 'Service is in maintenance mode; note access is temporarily disabled.',
+            }),
+        }
+    }
 
     switch (name) {
         case 'get_authoring_skill_guide': {
@@ -536,7 +582,8 @@ async function executeMcpTool(name, args = {}, requestUrl) {
             if (!path) {
                 return { isError: true, text: 'Error: "path" parameter is required.' }
             }
-            const { value, metadata } = await driverQueryNote(path)
+            const noteResult = await driverQueryNote(path)
+            const { value, metadata } = noteResult
             if (!value && (!metadata || Object.keys(metadata).length === 0)) {
                 return { isError: true, text: `Error: Note "${path}" not found.` }
             }
@@ -555,6 +602,9 @@ async function executeMcpTool(name, args = {}, requestUrl) {
                     }
                 }
             }
+
+            const burnGuardError = await checkMcpBurnReadGuard({ path, noteResult, password: args.password || '' })
+            if (burnGuardError) return burnGuardError
 
             const shareSlug = metadata.share && (metadata.shareSlug || metadata.shareId)
             const shareUrl = shareSlug ? `${origin}/share/${shareSlug}` : null
@@ -586,7 +636,8 @@ async function executeMcpTool(name, args = {}, requestUrl) {
         case 'generate_canvas_from_wikilinks': {
             const sourcePath = String(args.source_path || '').trim()
             if (!sourcePath) return { isError: true, text: 'Error: "source_path" parameter is required.' }
-            const { value: markdown, metadata } = await driverQueryNote(sourcePath)
+            const noteResult = await driverQueryNote(sourcePath)
+            const { value: markdown, metadata } = noteResult
             if (!markdown && (!metadata || Object.keys(metadata).length === 0)) {
                 return { isError: true, text: 'Error: Markdown note "' + sourcePath + '" not found.' }
             }
@@ -594,6 +645,9 @@ async function executeMcpTool(name, args = {}, requestUrl) {
                 const role = await checkPasswordRole(args.password || '', metadata)
                 if (!role) return { isError: true, text: 'Error: Password required for Markdown note "' + sourcePath + '".' }
             }
+            const burnGuardError = await checkMcpBurnReadGuard({ path: sourcePath, noteResult, password: args.password || '' })
+            if (burnGuardError) return burnGuardError
+
             const document = buildWikiLinkCanvas({ sourcePath, markdown: markdown || '' })
             const targetPath = String(args.canvas_path || (sourcePath + '-graph')).trim()
             return executeMcpTool('write_canvas', {
@@ -609,6 +663,10 @@ async function executeMcpTool(name, args = {}, requestUrl) {
             const path = String(args.path || '').trim()
             const document = args.document && typeof args.document === 'object' ? args.document : null
             if (!path) return { isError: true, text: 'Error: "path" parameter is required.' }
+            if (isReservedSlug(path)) return { isError: true, text: `Error: Path "${path}" is reserved and cannot be used.` }
+            if (args.theme !== undefined && !ALL_PREVIEW_THEMES.includes(String(args.theme).trim())) {
+                return { isError: true, text: 'Error: Invalid theme.' }
+            }
 
             let validated
             try {
@@ -617,7 +675,8 @@ async function executeMcpTool(name, args = {}, requestUrl) {
                 return { isError: true, text: `Invalid Canvas document: ${error.message}` }
             }
 
-            const { value: previousContent, metadata: previousMetadata } = await driverQueryNote(path)
+            const prevNoteResult = await driverQueryNote(path)
+            const { value: previousContent, metadata: previousMetadata } = prevNoteResult
             const metadata = previousMetadata || {}
             if (metadata.pw || metadata.vpw) {
                 const role = await checkPasswordRole(args.password || '', metadata)
@@ -629,13 +688,24 @@ async function executeMcpTool(name, args = {}, requestUrl) {
                 editorFormat: 'canvas',
                 updateAt: dayjs().unix(),
                 share: args.make_private !== true,
-                theme: args.theme || metadata.theme || 'claude-canvas',
+                theme: args.theme ? String(args.theme).trim() : (metadata.theme || 'claude-canvas'),
                 width: normalizePreviewWidth(args.width, metadata.width || DEFAULT_PREVIEW_WIDTH) || DEFAULT_PREVIEW_WIDTH,
             }
 
             if (args.password) nextMetadata.pw = await saltPassword(args.password)
             if (args.view_password) nextMetadata.vpw = await saltPassword(args.view_password)
             if (nextMetadata.share === true && metadata.share !== true) nextMetadata.annotationsEnabled = true
+            if (nextMetadata.share === true) {
+                if (isShareBurned(metadata) || metadata.shareExpiredAt) {
+                    delete nextMetadata.shareSlug
+                    delete nextMetadata.shareId
+                }
+                delete nextMetadata.shareBurnedAt
+                delete nextMetadata.shareExpiredAt
+                delete nextMetadata.burned
+                delete nextMetadata.shareBurned
+                delete nextMetadata.shareViewCount
+            }
             if (nextMetadata.share === false) {
                 nextMetadata.publicIndex = false
                 nextMetadata.annotationsEnabled = false
@@ -644,9 +714,17 @@ async function executeMcpTool(name, args = {}, requestUrl) {
                 return { isError: true, text: 'Error: Canvas saving is currently blocked by server policy.' }
             }
             nextMetadata = applyVaultMetadata(nextMetadata, args)
-            nextMetadata = await ensureMcpShareMetadata(path, nextMetadata)
             const content = JSON.stringify(validated, null, 2)
-            await persistMcpNote({ path, content, metadata: nextMetadata, previousContent })
+            const commitResult = await persistMcpNote({
+                path,
+                content,
+                metadata: nextMetadata,
+                previousContent,
+                previousMetadata: metadata,
+                expectedNoteUid: prevNoteResult._source === 'd1' ? (metadata.noteUid || null) : null,
+                expectedMetaVersion: prevNoteResult._source === 'd1' ? Number(metadata.metaVersion || 0) : 0,
+            })
+            nextMetadata = commitResult.metadata
 
             const editUrl = `${origin}/${path}`
             const shareSlug = nextMetadata.share && (nextMetadata.shareSlug || nextMetadata.shareId)
@@ -675,12 +753,16 @@ async function executeMcpTool(name, args = {}, requestUrl) {
         case 'read_canvas': {
             const path = String(args.path || '').trim()
             if (!path) return { isError: true, text: 'Error: "path" parameter is required.' }
-            const { value, metadata } = await driverQueryNote(path)
+            const noteResult = await driverQueryNote(path)
+            const { value, metadata } = noteResult
             if (!value && (!metadata || Object.keys(metadata).length === 0)) return { isError: true, text: `Error: Canvas "${path}" not found.` }
             if (metadata.pw || metadata.vpw) {
                 const role = await checkPasswordRole(args.password || '', metadata)
                 if (!role) return { isError: true, text: `Error: Password required for Canvas "${path}".` }
             }
+            const burnGuardError = await checkMcpBurnReadGuard({ path, noteResult, password: args.password || '' })
+            if (burnGuardError) return burnGuardError
+
             try {
                 const document = validateCanvasDocument(parseCanvasDocument(value, { allowFallback: false }))
                 const shareSlug = metadata.share && (metadata.shareSlug || metadata.shareId)
@@ -716,6 +798,10 @@ async function executeMcpTool(name, args = {}, requestUrl) {
             const path = String(args.path || '').trim()
             const document = args.document && typeof args.document === 'object' ? args.document : null
             if (!path) return { isError: true, text: 'Error: "path" parameter is required.' }
+            if (isReservedSlug(path)) return { isError: true, text: `Error: Path "${path}" is reserved and cannot be used.` }
+            if (args.theme !== undefined && !ALL_PREVIEW_THEMES.includes(String(args.theme).trim())) {
+                return { isError: true, text: 'Error: Invalid theme.' }
+            }
 
             let validated
             try {
@@ -726,7 +812,8 @@ async function executeMcpTool(name, args = {}, requestUrl) {
                 return { isError: true, text: `Invalid Whiteboard document: ${error.message}` }
             }
 
-            const { value: previousContent, metadata: previousMetadata } = await driverQueryNote(path)
+            const prevNoteResult = await driverQueryNote(path)
+            const { value: previousContent, metadata: previousMetadata } = prevNoteResult
             const metadata = previousMetadata || {}
             if (metadata.pw || metadata.vpw) {
                 const role = await checkPasswordRole(args.password || '', metadata)
@@ -738,13 +825,24 @@ async function executeMcpTool(name, args = {}, requestUrl) {
                 editorFormat: 'whiteboard',
                 updateAt: dayjs().unix(),
                 share: args.make_private !== true,
-                theme: args.theme || metadata.theme || 'claude-canvas',
+                theme: args.theme ? String(args.theme).trim() : (metadata.theme || 'claude-canvas'),
                 width: normalizePreviewWidth(args.width, metadata.width || DEFAULT_PREVIEW_WIDTH) || DEFAULT_PREVIEW_WIDTH,
             }
 
             if (args.password) nextMetadata.pw = await saltPassword(args.password)
             if (args.view_password) nextMetadata.vpw = await saltPassword(args.view_password)
             if (nextMetadata.share === true && metadata.share !== true) nextMetadata.annotationsEnabled = true
+            if (nextMetadata.share === true) {
+                if (isShareBurned(metadata) || metadata.shareExpiredAt) {
+                    delete nextMetadata.shareSlug
+                    delete nextMetadata.shareId
+                }
+                delete nextMetadata.shareBurnedAt
+                delete nextMetadata.shareExpiredAt
+                delete nextMetadata.burned
+                delete nextMetadata.shareBurned
+                delete nextMetadata.shareViewCount
+            }
             if (nextMetadata.share === false) {
                 nextMetadata.publicIndex = false
                 nextMetadata.annotationsEnabled = false
@@ -753,9 +851,17 @@ async function executeMcpTool(name, args = {}, requestUrl) {
                 return { isError: true, text: 'Error: Whiteboard saving is currently blocked by server policy.' }
             }
             nextMetadata = applyVaultMetadata(nextMetadata, args)
-            nextMetadata = await ensureMcpShareMetadata(path, nextMetadata)
             const content = JSON.stringify(validated, null, 2)
-            await persistMcpNote({ path, content, metadata: nextMetadata, previousContent })
+            const commitResult = await persistMcpNote({
+                path,
+                content,
+                metadata: nextMetadata,
+                previousContent,
+                previousMetadata: metadata,
+                expectedNoteUid: prevNoteResult._source === 'd1' ? (metadata.noteUid || null) : null,
+                expectedMetaVersion: prevNoteResult._source === 'd1' ? Number(metadata.metaVersion || 0) : 0,
+            })
+            nextMetadata = commitResult.metadata
 
             const editUrl = `${origin}/${path}`
             const shareSlug = nextMetadata.share && (nextMetadata.shareSlug || nextMetadata.shareId)
@@ -782,7 +888,8 @@ async function executeMcpTool(name, args = {}, requestUrl) {
         case 'read_whiteboard': {
             const path = String(args.path || '').trim()
             if (!path) return { isError: true, text: 'Error: "path" parameter is required.' }
-            const { value, metadata } = await driverQueryNote(path)
+            const noteResult = await driverQueryNote(path)
+            const { value, metadata } = noteResult
             if (!value && (!metadata || Object.keys(metadata).length === 0)) {
                 return { isError: true, text: `Error: Whiteboard "${path}" not found.` }
             }
@@ -790,6 +897,9 @@ async function executeMcpTool(name, args = {}, requestUrl) {
                 const role = await checkPasswordRole(args.password || '', metadata)
                 if (!role) return { isError: true, text: `Error: Password required to access protected Whiteboard "${path}".` }
             }
+            const burnGuardError = await checkMcpBurnReadGuard({ path, noteResult, password: args.password || '' })
+            if (burnGuardError) return burnGuardError
+
             let parsedDoc
             try {
                 parsedDoc = parseWhiteboardDocument(value)
@@ -816,8 +926,15 @@ async function executeMcpTool(name, args = {}, requestUrl) {
             if (!path) {
                 return { isError: true, text: 'Error: "path" parameter is required.' }
             }
+            if (isReservedSlug(path)) {
+                return { isError: true, text: `Error: Path "${path}" is reserved and cannot be used.` }
+            }
+            if (args.theme !== undefined && !ALL_PREVIEW_THEMES.includes(String(args.theme).trim())) {
+                return { isError: true, text: 'Error: Invalid theme.' }
+            }
 
-            const { value: prevValue, metadata: prevMeta } = await driverQueryNote(path)
+            const prevNoteResult = await driverQueryNote(path)
+            const { value: prevValue, metadata: prevMeta } = prevNoteResult
             const metadata = prevMeta || {}
 
             // Check edit permission if note has an existing lock
@@ -836,7 +953,7 @@ async function executeMcpTool(name, args = {}, requestUrl) {
                 ...metadata,
                 updateAt: dayjs().unix(),
                 share: args.make_private !== true,
-                theme: args.theme || metadata.theme || 'claude-canvas',
+                theme: args.theme ? String(args.theme).trim() : (metadata.theme || 'claude-canvas'),
                 width: normalizePreviewWidth(args.width, metadata.width || DEFAULT_PREVIEW_WIDTH) || DEFAULT_PREVIEW_WIDTH,
             }
 
@@ -850,24 +967,38 @@ async function executeMcpTool(name, args = {}, requestUrl) {
             if (nextMetadata.share === true && metadata.share !== true) {
                 nextMetadata.annotationsEnabled = true
             }
+            if (nextMetadata.share === true) {
+                if (isShareBurned(metadata) || metadata.shareExpiredAt) {
+                    delete nextMetadata.shareSlug
+                    delete nextMetadata.shareId
+                }
+                delete nextMetadata.shareBurnedAt
+                delete nextMetadata.shareExpiredAt
+                delete nextMetadata.burned
+                delete nextMetadata.shareBurned
+                delete nextMetadata.shareViewCount
+            }
             if (nextMetadata.share === false) {
                 nextMetadata.publicIndex = false
                 nextMetadata.annotationsEnabled = false
             }
 
             nextMetadata = applyVaultMetadata(nextMetadata, args)
-            nextMetadata = await ensureMcpShareMetadata(path, nextMetadata)
 
             if (!canPersistNoteContent(nextMetadata)) {
                 return { isError: true, text: 'Error: Note saving is currently blocked by server policy.' }
             }
 
-            await persistMcpNote({
+            const commitResult = await persistMcpNote({
                 path,
                 content: text,
                 metadata: nextMetadata,
                 previousContent: prevValue,
+                previousMetadata: metadata,
+                expectedNoteUid: prevNoteResult._source === 'd1' ? (metadata.noteUid || null) : null,
+                expectedMetaVersion: prevNoteResult._source === 'd1' ? Number(metadata.metaVersion || 0) : 0,
             })
+            nextMetadata = commitResult.metadata
 
             const editUrl = `${origin}/${path}`
             const shareSlug = nextMetadata.share && (nextMetadata.shareSlug || nextMetadata.shareId)
@@ -908,11 +1039,15 @@ async function executeMcpTool(name, args = {}, requestUrl) {
             if (!path) {
                 return { isError: true, text: 'Error: "path" parameter is required.' }
             }
+            if (isReservedSlug(path)) {
+                return { isError: true, text: `Error: Path "${path}" is reserved and cannot be used.` }
+            }
             if (!text) {
                 return { isError: true, text: 'Error: "text" parameter is required.' }
             }
 
-            const { value: prevValue, metadata: prevMeta } = await driverQueryNote(path)
+            const prevNoteResult = await driverQueryNote(path)
+            const { value: prevValue, metadata: prevMeta } = prevNoteResult
             const metadata = prevMeta || {}
 
             if (metadata.pw || metadata.vpw) {
@@ -932,18 +1067,21 @@ async function executeMcpTool(name, args = {}, requestUrl) {
                 updateAt: dayjs().unix(),
                 share: metadata.share === undefined ? true : Boolean(metadata.share),
             }
-            nextMetadata = await ensureMcpShareMetadata(path, nextMetadata)
 
             if (!canPersistNoteContent(nextMetadata)) {
                 return { isError: true, text: 'Error: Note saving is currently blocked by server policy.' }
             }
 
-            await persistMcpNote({
+            const commitResult = await persistMcpNote({
                 path,
                 content: newContent,
                 metadata: nextMetadata,
                 previousContent: prevValue,
+                previousMetadata: metadata,
+                expectedNoteUid: prevNoteResult._source === 'd1' ? (metadata.noteUid || null) : null,
+                expectedMetaVersion: prevNoteResult._source === 'd1' ? Number(metadata.metaVersion || 0) : 0,
             })
+            nextMetadata = commitResult.metadata
 
             const shareSlug = nextMetadata.share && (nextMetadata.shareSlug || nextMetadata.shareId)
             const shareUrl = shareSlug ? `${origin}/share/${shareSlug}` : null
@@ -981,7 +1119,14 @@ async function executeMcpTool(name, args = {}, requestUrl) {
                 return { isError: true, text: 'Error: "path" parameter is required.' }
             }
             const db = getNoteStatsDb()
-            const viewCount = await getNoteViewCount(db, path)
+            let viewCount = null
+            if (isNotesRegistryEnabled()) {
+                const noteResult = await driverQueryNote(path)
+                const noteUid = noteResult?.metadata?.noteUid || ''
+                viewCount = await getNoteViewCount(db, path, { noteUid })
+            } else {
+                viewCount = await getNoteViewCount(db, path)
+            }
             return {
                 isError: false,
                 text: JSON.stringify({ path, uniqueViews: viewCount }, null, 2),
@@ -1203,6 +1348,14 @@ export async function handleMcpRequest(request) {
                         },
                     }
                 } catch (err) {
+                    const errText = (err instanceof StorageAuthorityError || err instanceof StorageConflictError)
+                        ? JSON.stringify({
+                            error: err.status === 409 ? 'conflict' : 'service_unavailable',
+                            status: err.status,
+                            code: err.code,
+                            message: err.message,
+                        })
+                        : `Execution error: ${err?.message || err}`
                     return {
                         jsonrpc: '2.0',
                         id,
@@ -1210,7 +1363,7 @@ export async function handleMcpRequest(request) {
                             content: [
                                 {
                                     type: 'text',
-                                    text: `Execution error: ${err?.message || err}`,
+                                    text: errText,
                                 },
                             ],
                             isError: true,

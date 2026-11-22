@@ -3,8 +3,8 @@ import { Router } from 'itty-router'
 import { Cookies } from './cookie_compat.mjs'
 import jwt from '@tsndr/cloudflare-worker-jwt'
 import { queryNote, MD5, checkAuth, verifyJwtPayload, genRandomStr, returnPage, returnJSON, saltPw, passwordMatches, constantTimeStringCompare, getPasswordRole, getI18n, deleteEmptyPages, deleteNoteHistoryForPath } from './helper.js'
-import { APP_NAME, getSlugLength, getAdminPath, getAdminPassword, getEnableR2, getR2Domain, getGaMeasurementId, getWebtalkConfig, getSecret, DEFAULT_PREVIEW_WIDTH, normalizePreviewWidth, isTurnstileEnabled } from './constant.js'
-import { verifyTurnstileAccess } from './turnstile.mjs'
+import { APP_NAME, ALL_PREVIEW_THEMES, RESERVED_SLUGS, SUPPORTED_LANG, isReservedSlug, getSlugLength, getAdminPath, getAdminPassword, getEnableR2, getR2Domain, getGaMeasurementId, getWebtalkConfig, getSecret, DEFAULT_PREVIEW_WIDTH, normalizePreviewWidth, isTurnstileEnabled } from './constant.js'
+import { resolveTurnstilePolicy, verifyTurnstileAccess } from './turnstile.mjs'
 import { NOTEPAD_ICON_SVG } from './icon.js'
 import { NOTEPAD_FAVICON_ICO, NOTEPAD_ICON_PNG, NOTEPAD_OG_IMAGE_PNG } from './icon_assets.js'
 import { handleMcpRequest } from './mcp_server.mjs'
@@ -35,6 +35,7 @@ import {
     parseExpirationSeconds,
     isShareExpired,
     isShareBurned,
+    isBurnProtected,
     isShareTimeLocked,
     isShareDeadmanLocked,
     formatShareRemainingTime,
@@ -43,7 +44,32 @@ import { renderBlockToHtml, blockToMarkdown, parseBlockDocument, validateBlockDo
 import { canvasToMarkdown, validateCanvasDocument, parseCanvasDocument } from './canvas_document.mjs'
 import { whiteboardToMarkdown, validateWhiteboardDocument, parseWhiteboardDocument, DEFAULT_WHITEBOARD_DOCUMENT } from './whiteboard_document.mjs'
 import { renderMarkdownToHtml, parseHtmlToMarkdown, extractMarkdownData, lintMarkdownText } from './markdown-processor.mjs'
-import { driverQueryNote, driverPutNote, driverDeleteNote, driverListNotes, driverQueryShare, driverPutShare, driverDeleteShare, driverSetShareStatus, driverGetShareStatus, driverFindNoteByShareId, driverClaimBurnShare, driverRecordBurnView } from './storage_driver.mjs'
+import {
+    StorageAuthorityError,
+    StorageConflictError,
+    assertNotesAuthorityReady,
+    checkD1Tables,
+    checkNotesRegistryHealth,
+    commitAuthoritativeNoteWrite,
+    driverQueryNote,
+    driverPutNote,
+    driverDeleteNote,
+    driverListNotes,
+    driverGetShareStatus,
+    driverRecordBurnView,
+    getAccountDb,
+    getStorageDb,
+    getStorageDriverName,
+    isAccountFeatureEnabled,
+    isAuthorityModeRequired,
+    isCanonicalShareToken,
+    isMaintenanceMode,
+    isNotesRegistryEnabled,
+    isUnbackfilledBurnNote,
+    resolveAuthoritativeShare,
+    resolveAuthoritativeShareMetadata,
+    resolveLegacyToken,
+} from './storage_driver.mjs'
 import { summarizeHistoryContent } from './note_history_presenter.js'
 import {
     AGENT_SKILL_MARKDOWN,
@@ -64,13 +90,17 @@ import {
     requestAcceptsMarkdown,
 } from './discovery.mjs'
 import {
+    getLegacyHistoryRetentionDays,
     getNoteHistoryConfig,
     getNoteHistoryCounts,
+    getNoteHistoryDb,
     getNoteHistoryVersionById,
+    hasNoteHistoryMetaTable,
+    isNoteHistoryConfigured,
     listNoteHistoryVersions,
     saveNoteHistoryVersionIfNeeded,
 } from './note_history.mjs'
-import { filterAdminNotes, normalizeAdminQuery, paginateAdminNotes, sortAdminNotes, summarizeAdminNotes } from './admin_data.mjs'
+import { filterAdminNotes, normalizeAdminDeleteSelection, normalizeAdminQuery, paginateAdminNotes, sortAdminNotes, summarizeAdminNotes } from './admin_data.mjs'
 import { canPersistNoteContent, getSaveBlockedMessage } from './save_policy.mjs'
 import {
     parseVttTimestamp,
@@ -95,6 +125,9 @@ import {
     validateAnnotationMessage,
     verifyAnnotationDeleteToken,
 } from './annotation_data.mjs'
+import { handleAccountRoutes, mapAccountErrorResponse } from './account_routes.mjs'
+import { handleCircleRoutes } from './circle_routes.mjs'
+import { assertAccountFeatureReady, enforceAccountCsrf, enforceJsonContentType, readBoundedJsonBody, resolveAccountSession, upsertSpaceActivity, reconcilePendingImportFinalizations } from './account_data.mjs'
 import {
     AI_FORMAT_SYSTEM_PROMPT,
     AUDIO_SMART_FORMAT_SYSTEM_PROMPT,
@@ -292,33 +325,23 @@ async function transcribeWithGroq(groqApiKey, audioBytes, model = 'whisper-large
     }
 }
 
-async function generateUniqueShareSlug() {
-    for (let attempt = 0; attempt < 12; attempt += 1) {
-        const candidate = genRandomStr(SHARE_SLUG_LENGTH)
-        const existing = await driverQueryShare(candidate)
-        if (!existing) return candidate
-    }
-    throw new Error('Failed to generate unique share slug')
+function maintenanceModeResponse() {
+    return returnJSON(503, 'Service is in maintenance mode; note access is temporarily disabled.', {
+        status: 503,
+        'Cache-Control': 'no-store',
+    }, {
+        code: 'MAINTENANCE_MODE',
+    })
 }
+const MAINTENANCE_STATIC_ROOT_PATHS = new Set(['/app.webmanifest', '/sw.js', '/icon.svg', '/icon.png', '/og-image.png', '/favicon.ico', '/robots.txt', '/notepad-icon-192.png', '/notepad-icon.png', '/notepad-icon.svg', '/note-svgrepo-com.svg', '/og-card.svg'])
 
-async function getShareIdForPath(path, metadata = {}) {
-    if (metadata.share !== true) return null
-    return metadata.shareSlug || metadata.shareId || await MD5(path)
-}
 
-async function ensureShareMetadata(path, metadata = {}) {
-    if (metadata.share !== true) return { ...metadata }
-    if (metadata.shareSlug) return { ...metadata }
-    if (metadata.shareId) {
-        return {
-            ...metadata,
-            shareSlug: metadata.shareId,
-        }
-    }
-    return {
-        ...metadata,
-        shareSlug: await generateUniqueShareSlug(),
-    }
+async function getCanonicalShareId(path, metadata = {}) {
+    if (!path || metadata?.share !== true) return null
+    const token = resolveLegacyToken(metadata)
+    if (!token) return null
+    const md5Path = await MD5(path)
+    return isCanonicalShareToken(token, path, md5Path) ? token : null
 }
 
 let EPHEMERAL_AUTHOR_SECRET = null
@@ -329,13 +352,16 @@ function getAuthorSecretFallback() {
     return EPHEMERAL_AUTHOR_SECRET
 }
 
-async function isNoteAuthor(request, path, cookie = {}) {
+async function isNoteAuthor(request, path, cookie = {}, options = {}) {
     if (!path) return false
     const adminPassword = getAdminPassword()
     if (adminPassword && await verifyAdminSession(cookie, adminPassword)) {
         return true
     }
-    const { valid, role } = await checkAuth(cookie, path)
+    const expectedNoteUid = options?.noteUid !== undefined
+        ? (options.noteUid || '')
+        : (options?.metadata?.noteUid !== undefined ? (options.metadata.noteUid || '') : undefined)
+    const { valid, role } = await checkAuth(cookie, path, { noteUid: expectedNoteUid })
     if (valid && role === 'edit') {
         return true
     }
@@ -344,16 +370,28 @@ async function isNoteAuthor(request, path, cookie = {}) {
     if (cookie && cookie[authorCookieKey]) {
         try {
             const payload = await verifyJwtPayload(cookie[authorCookieKey], secret)
-            if (payload?.path === path) return true
+            if (payload?.path === path) {
+                const payloadNoteUid = payload?.noteUid || ''
+                if (expectedNoteUid !== undefined && (expectedNoteUid || payloadNoteUid) && payloadNoteUid !== expectedNoteUid) {
+                    return false
+                }
+                return true
+            }
         } catch {}
     }
     return false
 }
 
-async function createAuthorCookie(path) {
+async function createAuthorCookie(path, noteUid = '') {
     const secret = getSecret() || getAdminPassword() || getAuthorSecretFallback()
     const exp = Math.floor(Date.now() / 1000) + 30 * 86400
-    const token = await jwt.sign({ path, role: 'author', exp }, secret)
+    const payload = {
+        path,
+        role: 'author',
+        ...(noteUid ? { noteUid } : {}),
+        exp,
+    }
+    const token = await jwt.sign(payload, secret)
     const authorCookieKey = 'cn_author_' + (await MD5(path)).substring(0, 16)
     return Cookies.serialize(authorCookieKey, token, {
         path: '/',
@@ -364,49 +402,6 @@ async function createAuthorCookie(path) {
     })
 }
 
-async function syncShareMappings(path, metadata = {}, previousMetadata = {}) {
-    const legacyShareId = await MD5(path)
-
-    if (metadata.share === true) {
-        const options = metadata.shareExpiresAt ? { expiration: metadata.shareExpiresAt } : undefined
-        if (options) {
-            if (legacyShareId) await driverPutShare(legacyShareId, path, options)
-            if (metadata.shareSlug) {
-                await driverPutShare(metadata.shareSlug, path, options)
-            }
-            if (metadata.shareId && metadata.shareId !== metadata.shareSlug) {
-                await driverPutShare(metadata.shareId, path, options)
-            }
-            await driverPutShare(path, path, options)
-        } else {
-            if (legacyShareId) await driverPutShare(legacyShareId, path)
-            if (metadata.shareSlug) {
-                await driverPutShare(metadata.shareSlug, path)
-            }
-            if (metadata.shareId && metadata.shareId !== metadata.shareSlug) {
-                await driverPutShare(metadata.shareId, path)
-            }
-            // Also map direct note path as share alias
-            await driverPutShare(path, path)
-        }
-    } else {
-        if (legacyShareId) await driverDeleteShare(legacyShareId)
-        if (previousMetadata.shareSlug) {
-            await driverDeleteShare(previousMetadata.shareSlug)
-        }
-        if (previousMetadata.shareId) {
-            await driverDeleteShare(previousMetadata.shareId)
-        }
-        if (metadata.shareSlug && metadata.shareSlug !== previousMetadata.shareSlug) {
-            await driverDeleteShare(metadata.shareSlug)
-        }
-        if (metadata.shareId && metadata.shareId !== previousMetadata.shareId) {
-            await driverDeleteShare(metadata.shareId)
-        }
-        await driverDeleteShare(path)
-    }
-}
-
 function formatSitemapLastmod(updateAt) {
     const unixSeconds = Number(updateAt)
     if (!Number.isFinite(unixSeconds) || unixSeconds <= 0) return undefined
@@ -414,25 +409,77 @@ function formatSitemapLastmod(updateAt) {
 }
 
 async function buildSitemapEntries(origin) {
+    const now = Math.floor(Date.now() / 1000)
     const keys = await driverListNotes({ includeContent: false })
 
-    const publicKeys = keys.filter(note =>
-        note?.metadata?.share === true && note?.metadata?.publicIndex === true
-    )
+    const publicKeys = keys.filter(note => {
+        const meta = note?.metadata || {}
+        return meta.share === true
+            && meta.publicIndex === true
+            && !meta.vpw
+            && !isBurnProtected(meta)
+            && !isShareBurned(meta)
+            && !isShareExpired(meta, now)
+            && !isShareTimeLocked(meta, now)
+            && !isShareDeadmanLocked(meta, now)
+    })
 
-    return Promise.all(publicKeys.map(async note => ({
-        loc: `${origin}/share/${await getShareIdForPath(note.name, note.metadata || {})}`,
-        lastmod: formatSitemapLastmod(note.metadata?.updateAt),
-    })))
+    const entries = await Promise.all(publicKeys.map(async note => {
+        const token = await getCanonicalShareId(note.name, note.metadata || {})
+        if (!token) return null
+        const resolved = await resolveAuthoritativeShareMetadata(token, { nowUnix: now })
+        if (resolved?.status !== 'active') return null
+        return {
+            loc: `${origin}/share/${resolved.shareId}`,
+            lastmod: formatSitemapLastmod(resolved.metadata?.updateAt ?? note.metadata?.updateAt),
+        }
+    }))
+
+    return entries.filter(Boolean)
 }
 
-async function requireApiEditAccess(request, metadata, bodyPassword) {
+function sanitizePublicNoteMetadata(metadata = {}) {
+    const safe = { ...(metadata || {}) }
+    delete safe.pw
+    delete safe.vpw
+    delete safe.sharePulseToken
+    delete safe.claimNonce
+    delete safe.shareOpNonce
+    return safe
+}
+
+async function requireApiEditAccess(request, metadata, bodyPassword, options = {}) {
+    const { requireEditProofForBurn = false, isUnbackfilled = false } = options || {}
+    const path = request.params?.path
+    const expectedNoteUid = metadata?.noteUid || ''
+
+    if (requireEditProofForBurn && isBurnProtected(metadata)) {
+        const cookie = Cookies.parse(request.headers.get('Cookie') || '')
+        if (await isNoteAuthor(request, path, cookie, { noteUid: expectedNoteUid })) {
+            return { ok: true }
+        }
+        const providedPw = readApiPassword(request, bodyPassword)
+        if (metadata?.pw && providedPw && (await getPasswordRole(providedPw, metadata)) === 'edit') {
+            return { ok: true }
+        }
+        if (isUnbackfilled) {
+            return { ok: false, response: returnJSON(409, 'Burn-protected note requires D1 backfill before history access', { status: 409 }) }
+        }
+        if (!metadata?.pw && !metadata?.vpw) {
+            return { ok: false, response: returnJSON(403, 'Forbidden: Edit proof required for burn-protected note history', { status: 403 }) }
+        }
+        if (!providedPw) {
+            return { ok: false, response: returnJSON(401, 'Unauthorized: Edit password required', { status: 401 }) }
+        }
+        return { ok: false, response: returnJSON(403, 'Forbidden: Incorrect edit password', { status: 403 }) }
+    }
+
     if (!metadata?.pw && !metadata?.vpw) {
         return { ok: true }
     }
 
     const cookie = Cookies.parse(request.headers.get('Cookie') || '')
-    const { valid, role } = await checkAuth(cookie, request.params?.path)
+    const { valid, role } = await checkAuth(cookie, path, { noteUid: expectedNoteUid })
     if (valid && role === 'edit') {
         return { ok: true }
     }
@@ -453,13 +500,29 @@ async function persistNoteContent({
     path,
     content,
     metadata,
+    previousMetadata = undefined,
     previousContent,
+    expectedNoteUid = undefined,
+    expectedMetaVersion = undefined,
+    isNewNote = false,
+    shareAction = 'auto',
 }) {
-    await driverPutNote(path, content, metadata)
+    const nowUnix = dayjs().unix()
+    const commitResult = await commitAuthoritativeNoteWrite({
+        path,
+        content,
+        nextMetadata: metadata,
+        previousMetadata,
+        expectedNoteUid,
+        expectedMetaVersion,
+        isNewNote,
+        shareAction,
+        nowUnix,
+    })
 
     const historyConfig = getNoteHistoryConfig()
     if (!historyConfig.enabled || !historyConfig.db) {
-        return
+        return commitResult
     }
 
     try {
@@ -469,13 +532,16 @@ async function persistNoteContent({
             limit: historyConfig.limit,
             minIntervalSeconds: historyConfig.minIntervalSeconds,
             path,
+            noteUid: commitResult.noteUid || commitResult.metadata?.noteUid || '',
             previousContent,
             nextContent: content,
-            nowSeconds: dayjs().unix(),
+            nowSeconds: nowUnix,
         })
     } catch (error) {
         console.error(`Note history save failed for ${path}:`, error)
     }
+
+    return commitResult
 }
 
 function getBlockPageExt(value, metadata = {}) {
@@ -502,6 +568,7 @@ function getMarkdownExportContent(value, metadata = {}) {
 
 async function backupCurrentNoteBeforeRestore({
     path,
+    noteUid = '',
     currentContent,
     restoredContent,
 }) {
@@ -516,6 +583,7 @@ async function backupCurrentNoteBeforeRestore({
         limit: historyConfig.limit,
         minIntervalSeconds: historyConfig.minIntervalSeconds,
         path,
+        noteUid,
         previousContent: currentContent,
         nextContent: restoredContent,
         nowSeconds: dayjs().unix(),
@@ -529,8 +597,11 @@ async function getEditorPublicationStats(path, metadata = {}) {
     }
 
     const historyConfig = getNoteHistoryConfig()
+    const historyCountTarget = isNotesRegistryEnabled()
+        ? [{ path, noteUid: metadata?.noteUid || '' }]
+        : [path]
     const historyPromise = historyConfig.enabled && historyConfig.db
-        ? getNoteHistoryCounts(historyConfig.db, [path])
+        ? getNoteHistoryCounts(historyConfig.db, historyCountTarget)
             .then(counts => counts.get(path) || 0)
             .catch(error => {
                 console.warn(`Editor history count failed for ${path}:`, error?.message || error)
@@ -539,7 +610,7 @@ async function getEditorPublicationStats(path, metadata = {}) {
         : Promise.resolve(null)
     const statsDb = getNoteStatsDb()
     const viewsPromise = statsDb
-        ? getNoteViewCount(statsDb, path).catch(error => {
+        ? getNoteViewCount(statsDb, path, { noteUid: metadata?.noteUid || '' }).catch(error => {
             console.warn(`Editor view count failed for ${path}:`, error?.message || error)
             return null
         })
@@ -547,6 +618,27 @@ async function getEditorPublicationStats(path, metadata = {}) {
     const [versionCount, viewCount] = await Promise.all([historyPromise, viewsPromise])
 
     return { versionCount, viewCount }
+}
+
+async function recordSpaceActivity(request, path, metadata, facet) {
+    if (metadata?.share !== true || !metadata.noteUid || !isAccountFeatureEnabled() || !getSecret()) return
+    if (!request.headers.get('Cookie')?.includes('cn_account_session=')) return
+    try {
+        enforceAccountCsrf(request)
+        const session = await resolveAccountSession(request)
+        if (!session) return
+        await upsertSpaceActivity({
+            accountId: session.account_id,
+            notePath: path,
+            noteUid: metadata.noteUid,
+            editorFormat: metadata.editorFormat || 'markdown',
+            titleSummary: metadata.titleSummary || '',
+            accessLevel: 'edit',
+            facet,
+        })
+    } catch (error) {
+        console.warn('Space activity update failed:', error?.message || error)
+    }
 }
 
 const homePage = request => {
@@ -557,6 +649,7 @@ const homePage = request => {
     return returnPage('Home', {
         lang: getI18n(request),
         canonicalUrl: canonicalUrl.href,
+        accountEnabled: Boolean(isAccountFeatureEnabled() && String(getSecret() || '').trim()),
         ogImageUrl,
     })
 }
@@ -565,6 +658,9 @@ router.get('/', homePage)
 router.head('/', homePage)
 
 async function createNewNote(request, editorFormat) {
+    if (isMaintenanceMode()) return maintenanceModeResponse()
+    await assertNotesAuthorityReady()
+
     const originUrl = new URL(request.url)
     const lang = getI18n(request)
     const shareTitle = originUrl.searchParams.get('title')
@@ -610,15 +706,27 @@ async function createNewNote(request, editorFormat) {
 
     for (let attempt = 0; attempt < 12; attempt += 1) {
         const path = genRandomStr(getSlugLength())
+        if (isReservedSlug(path)) continue
         const existing = await driverQueryNote(path)
         if (existing.value || Object.keys(existing.metadata || {}).length > 0) continue
 
-        await driverPutNote(path, initialContent, {
-            editorFormat,
-            theme: editorFormat === 'block' ? 'ayu-light' : (editorFormat === 'whiteboard' ? 'claude-canvas' : undefined),
-            title: shareTitle || undefined,
-            blockDocumentVersion: editorFormat === 'block' ? 2 : undefined
-        })
+        try {
+            await commitAuthoritativeNoteWrite({
+                path,
+                content: initialContent,
+                nextMetadata: {
+                    editorFormat,
+                    theme: editorFormat === 'block' ? 'ayu-light' : (editorFormat === 'whiteboard' ? 'claude-canvas' : undefined),
+                    title: shareTitle || undefined,
+                    blockDocumentVersion: editorFormat === 'block' ? 2 : undefined,
+                },
+                previousMetadata: {},
+                isNewNote: true,
+            })
+        } catch (err) {
+            if (err instanceof StorageConflictError) continue
+            throw err
+        }
         const nextUrl = new URL(`/${path}`, originUrl)
         nextUrl.searchParams.set('new', '1')
         return Response.redirect(nextUrl.href, 302)
@@ -784,8 +892,11 @@ async function buildAdminData(request) {
     const needsContentScan = Boolean(query.title || query.text || query.sort === 'title')
     const listedNotes = await listAllAdminNotes(needsContentScan)
     const historyConfig = getNoteHistoryConfig()
+    const historyTarget = isNotesRegistryEnabled()
+        ? listedNotes.map(note => ({ path: note.name, noteUid: note.metadata?.noteUid || '' }))
+        : listedNotes.map(note => note.name)
     const versionCounts = historyConfig.enabled && historyConfig.db
-        ? await getNoteHistoryCounts(historyConfig.db, listedNotes.map(note => note.name))
+        ? await getNoteHistoryCounts(historyConfig.db, historyTarget)
         : new Map()
 
     const records = await mapWithConcurrency(listedNotes, async note => {
@@ -804,6 +915,7 @@ async function buildAdminData(request) {
 
         return {
             path: note.name,
+            noteUid: metadata.noteUid || '__legacy__',
             title: title || decodeURIComponent(note.name),
             content,
             updatedAt: Number.isFinite(Number(metadata.updateAt)) ? Number(metadata.updateAt) : 0,
@@ -859,31 +971,52 @@ const handleAdminPost = async (request) => {
             const contentType = request.headers.get('Content-Type') || '';
             if (contentType.includes('application/json')) {
                 if (await verifyAdminSession(cookie, adminPassword)) {
+                    if (isMaintenanceMode()) return maintenanceModeResponse()
                     const body = await request.json();
-                    const { action, paths } = body;
+                    const { action } = body;
+                    const selection = normalizeAdminDeleteSelection(body)
 
-                    if (action === 'batch-delete' && (!Array.isArray(paths) || paths.length > 100 || paths.some(path => !isValidAdminNotePath(path)))) {
+                    if (action === 'batch-delete' && (!Array.isArray(selection) || selection.length > 100 || selection.some(item => !isValidAdminNotePath(item.path)))) {
                         return new Response(JSON.stringify({ success: false, message: 'Invalid note selection' }), {
                             status: 400,
                             headers: { 'Content-Type': 'application/json' },
                         })
                     }
 
-                    if (action === 'batch-delete' && Array.isArray(paths)) {
+                    if (action === 'batch-delete' && Array.isArray(selection)) {
                     try {
-                        // Delete all selected notes
-                        await Promise.all(paths.map(async (path) => {
-                            const { metadata } = await queryNote(path)
-                            await driverDeleteNote(path)
-                            await syncShareMappings(path, { share: false }, metadata || {})
-                            await deleteNoteHistoryForPath(path)
+                        const conflicts = []
+                        await Promise.all(selection.map(async ({ path, noteUid }) => {
+                            const delRes = await driverDeleteNote(path, noteUid ? { noteUid } : {})
+                            if (!delRes?.deleted) {
+                                conflicts.push(path)
+                                return
+                            }
+                            if (delRes.noteUid && delRes.noteUid !== '__legacy__') {
+                                await deleteNoteHistoryForPath(path, { noteUid: delRes.noteUid })
+                            } else if (!isNotesRegistryEnabled()) {
+                                await deleteNoteHistoryForPath(path)
+                            }
                         }))
+
+                        if (conflicts.length > 0) {
+                            return new Response(JSON.stringify({
+                                success: false,
+                                code: 'DELETE_CONFLICT',
+                                conflicts,
+                                message: `Conflict deleting: ${conflicts.join(', ')}`,
+                            }), {
+                                status: 409,
+                                headers: { 'Content-Type': 'application/json' },
+                            })
+                        }
 
                         return new Response(JSON.stringify({ success: true }), {
                             headers: { 'Content-Type': 'application/json' }
                         })
                     } catch (e) {
                         return new Response(JSON.stringify({ success: false, message: e.message }), {
+                            status: e?.status || 500,
                             headers: { 'Content-Type': 'application/json' }
                         })
                     }
@@ -902,6 +1035,7 @@ const handleAdminPost = async (request) => {
                         })
                     } catch (e) {
                         return new Response(JSON.stringify({ success: false, message: e.message }), {
+                            status: e?.status || 500,
                             headers: { 'Content-Type': 'application/json' }
                         })
                     }
@@ -931,13 +1065,22 @@ const handleAdminPost = async (request) => {
         // Action Logic (Delete)
         // Check session for actions
         if (await verifyAdminSession(cookie, adminPassword)) {
+            if (isMaintenanceMode() && (action === 'delete' || action === 'delete-empty')) {
+                return maintenanceModeResponse()
+            }
             if (action === 'delete') {
                 const path = formData.get('path')
+                const selectedNoteUid = formData.get('noteUid')
                 if (isValidAdminNotePath(path)) {
-                    const { metadata } = await queryNote(path)
-                    await driverDeleteNote(path)
-                    await syncShareMappings(path, { share: false }, metadata || {})
-                    await deleteNoteHistoryForPath(path)
+                    const delRes = await driverDeleteNote(path, selectedNoteUid ? { noteUid: String(selectedNoteUid) } : {})
+                    if (!delRes?.deleted) {
+                        return returnPage('Admin', { lang, adminPath, error: 'Note changed or deleted concurrently' }, { status: 409 })
+                    }
+                    if (delRes.noteUid && delRes.noteUid !== '__legacy__') {
+                        await deleteNoteHistoryForPath(path, { noteUid: delRes.noteUid })
+                    } else if (!isNotesRegistryEnabled()) {
+                        await deleteNoteHistoryForPath(path)
+                    }
                 } else {
                     return returnPage('Admin', { lang, adminPath, error: 'Invalid note path' })
                 }
@@ -1058,6 +1201,7 @@ const handleAdminFido = async (request, adminPath) => {
         }
 
         if (subPath === '/fido/register' && request.method === 'POST') {
+            if (isMaintenanceMode()) return maintenanceModeResponse()
             try {
                 const body = await request.json()
                 const { credential, name } = body || {}
@@ -1099,6 +1243,7 @@ const handleAdminFido = async (request, adminPath) => {
         }
 
         if (subPath === '/fido/credentials/delete' && request.method === 'POST') {
+            if (isMaintenanceMode()) return maintenanceModeResponse()
             const { credentialId } = await request.json()
             const updatedList = await deleteFidoCredential(kv, credentialId)
             return new Response(JSON.stringify({ success: true, credentials: updatedList.map(c => ({ id: c.id, name: c.name, createdAt: c.createdAt })) }), { headers: { 'Content-Type': 'application/json' } })
@@ -1149,17 +1294,24 @@ router.get('/img/*', async (request) => {
 
 async function handleR2ImageUpload(request, { requireTurnstile = false } = {}) {
     if (!getEnableR2()) return returnJSON(403, 'R2 Upload Disabled')
+    if (isMaintenanceMode()) return maintenanceModeResponse()
 
     let turnstileSetCookie = null
     let formData = null
 
     if (requireTurnstile) {
         const cookie = Cookies.parse(request.headers.get('Cookie') || '')
-        const { valid, role } = await checkAuth(cookie, '')
-        let hasValidNoteAuth = Boolean(valid && role === 'edit')
-        if (!hasValidNoteAuth && cookie?.auth && getSecret()) {
+        let hasValidNoteAuth = false
+        if (cookie?.auth && getSecret()) {
             const payload = await verifyJwtPayload(cookie.auth, getSecret()).catch(() => null)
-            hasValidNoteAuth = Boolean(payload?.path && payload?.role === 'edit')
+            if (payload?.path && payload?.role === 'edit') {
+                const noteRes = await queryNote(payload.path).catch(() => null)
+                const noteExists = Boolean(noteRes && (noteRes.value || Object.keys(noteRes.metadata || {}).length > 0))
+                if (noteExists) {
+                    const checked = await checkAuth(cookie, payload.path, { noteUid: noteRes.metadata?.noteUid || '' })
+                    hasValidNoteAuth = Boolean(checked.valid && checked.role === 'edit')
+                }
+            }
         }
         const isAdminAuthed = await verifyAdminSession(cookie, getAdminPassword())
         const isAuthedUser = Boolean(hasValidNoteAuth || isAdminAuthed)
@@ -1911,7 +2063,9 @@ router.post('/api/markdown/pdf', async (request) => handleDirectPdfExport(reques
 router.get('/api/pdf/export', async (request) => handleDirectPdfExport(request))
 
 router.post('/api/new-note', async (request) => {
+    if (isMaintenanceMode()) return maintenanceModeResponse()
     try {
+        await assertNotesAuthorityReady()
         const body = await request.json().catch(() => ({}))
         const content = body.content || ''
         const editorFormat = body.editorFormat || 'markdown'
@@ -1919,13 +2073,29 @@ router.post('/api/new-note', async (request) => {
 
         for (let attempt = 0; attempt < 12; attempt += 1) {
             const path = genRandomStr(getSlugLength())
+            if (isReservedSlug(path)) continue
             const existing = await driverQueryNote(path)
             if (existing.value || Object.keys(existing.metadata || {}).length > 0) continue
 
-            await driverPutNote(path, content, {
-                editorFormat,
-                blockDocumentVersion: editorFormat === 'block' ? 2 : undefined
-            })
+            let commitRes
+            try {
+                commitRes = await commitAuthoritativeNoteWrite({
+                    path,
+                    content,
+                    nextMetadata: {
+                        editorFormat,
+                        blockDocumentVersion: editorFormat === 'block' ? 2 : undefined,
+                        ...(body.share === true ? { share: true, annotationsEnabled: true } : {}),
+                    },
+                    previousMetadata: {},
+                    isNewNote: true,
+                    shareAction: body.share === true ? 'republish' : 'auto',
+                })
+            } catch (err) {
+                if (err instanceof StorageConflictError) continue
+                throw err
+            }
+            if (body.share === true) await recordSpaceActivity(request, path, commitRes.metadata, 'created')
 
             const nextUrl = new URL(`/${path}`, originUrl)
             nextUrl.searchParams.set('new', '1')
@@ -1933,6 +2103,9 @@ router.post('/api/new-note', async (request) => {
         }
         return returnJSON(533, 'Could not allocate a new note path')
     } catch (e) {
+        if (e instanceof StorageAuthorityError) {
+            return returnJSON(503, e.message, { status: 503 }, { code: e.code })
+        }
         return returnJSON(500, e.message)
     }
 })
@@ -1941,17 +2114,27 @@ router.post('/api/new-note', async (request) => {
 
 router.post('/share/:shareId/auth', async request => {
     const { shareId } = request.params
-    const path = await driverQueryShare(shareId)
+    const resolved = await resolveAuthoritativeShareMetadata(shareId)
 
-    if (!!path) {
-        if (request.headers.get('Content-Type') === 'application/json') {
+    if (resolved?.status === 'burned') {
+        return returnJSON(410, 'Share has been burned and destroyed', { status: 410 })
+    }
+    if (resolved?.status === 'expired') {
+        return returnJSON(410, 'Share has expired', { status: 410 })
+    }
+    if (resolved?.status === 'active' && resolved.path) {
+        if ((request.headers.get('Content-Type') || '').toLowerCase().includes('application/json')) {
             const { passwd } = await request.json()
-            const { metadata } = await queryNote(path)
+            const { path, metadata } = resolved
 
             const role = await getPasswordRole(passwd, metadata)
             if (role) {
                 const exp = Math.floor(Date.now() / 1000) + 7 * 86400
-                const token = await jwt.sign({ path, role, exp }, getSecret())
+                const noteUid = metadata?.noteUid || undefined
+                const payload = role === 'view'
+                    ? { shareId, role: 'view', ...(noteUid ? { noteUid } : {}), exp }
+                    : { path, role, ...(noteUid ? { noteUid } : {}), exp }
+                const token = await jwt.sign(payload, getSecret())
                 return returnJSON(0, {
                     refresh: true,
                     role,
@@ -1968,7 +2151,7 @@ router.post('/share/:shareId/auth', async request => {
         }
         return returnJSON(10002, 'Password auth failed!')
     }
-    return returnJSON(404, 'Share not found')
+    return returnJSON(404, 'Share not found', { status: 404 })
 })
 
 async function renderSharePage(request, presentationMode = false, execution = {}, bookMode = false, options = {}) {
@@ -1977,80 +2160,121 @@ async function renderSharePage(request, presentationMode = false, execution = {}
     const embedMode = new URL(request.url).searchParams.get('embed') === '1'
     const cookie = Cookies.parse(request.headers.get('Cookie') || '')
     const now = Math.floor(Date.now() / 1000)
-    let path = await driverQueryShare(shareId)
+    const resolved = await resolveAuthoritativeShare(shareId, { includeContent: true, nowUnix: now })
 
-    // Fallback: If not found in shares mapping, check if shareId is directly a note path
-    if (!path) {
-        const directNote = await queryNote(shareId)
-        if (directNote && (directNote.value !== null || Object.keys(directNote.metadata || {}).length > 0)) {
-            if (directNote.metadata?.share === true) {
-                path = shareId
-                syncShareMappings(shareId, directNote.metadata).catch(() => {})
-            }
-        }
+    if (resolved.status === 'burned') {
+        const isAuthor = resolved.path
+            ? await isNoteAuthor(request, resolved.path, cookie, { noteUid: resolved.metadata?.noteUid || '' })
+            : false
+        return returnPage('ShareBurned', {
+            lang,
+            title: 'Share Destroyed',
+            shareId,
+            path: isAuthor ? resolved.path : '',
+            ext: isAuthor ? { ...sanitizePublicNoteMetadata(resolved.metadata || {}), isAuthor } : { isAuthor: false },
+        }, { status: 410 })
     }
 
-    if (!path) {
-        const tombstone = await driverGetShareStatus(shareId)
-        if (tombstone?.status === 'burned') {
-            return returnPage('ShareBurned', { lang, title: 'Share Destroyed', shareId, ext: tombstone }, { status: 410 })
+    if (resolved.status === 'expired') {
+        const isAuthor = resolved.path
+            ? await isNoteAuthor(request, resolved.path, cookie, { noteUid: resolved.metadata?.noteUid || '' })
+            : false
+        if (!isMaintenanceMode() && resolved.path && resolved.metadata?.share === true && resolved.source === 'd1') {
+            await commitAuthoritativeNoteWrite({
+                path: resolved.path,
+                content: resolved.value || '',
+                nextMetadata: { ...resolved.metadata, share: false, shareExpiredAt: now },
+                previousMetadata: resolved.metadata,
+                expectedNoteUid: resolved.noteUid || resolved.metadata?.noteUid || null,
+                expectedMetaVersion: Number(resolved.metadata?.metaVersion || 0),
+                nowUnix: now,
+            }).catch(() => {})
         }
-        if (tombstone?.status === 'expired') {
-            return returnPage('ShareExpired', { lang, title: 'Share Expired', shareId, ext: tombstone }, { status: 410 })
-        }
-        const found = await driverFindNoteByShareId(shareId)
-        if (found) {
-            const isAuthor = await isNoteAuthor(request, found.path, cookie)
-            if (found.metadata?.shareBurnedAt) {
-                return returnPage('ShareBurned', { lang, title: 'Share Destroyed', shareId, path: found.path, ext: { ...(found.metadata || {}), isAuthor } }, { status: 410 })
-            }
-            if (found.metadata?.shareExpiresAt && found.metadata.shareExpiresAt <= now) {
-                return returnPage('ShareExpired', { lang, title: 'Share Expired', shareId, path: found.path, ext: { ...(found.metadata || {}), isAuthor } }, { status: 410 })
-            }
-        }
-        return returnPage('Page404', { lang, title: '404' })
+        return returnPage('ShareExpired', {
+            lang,
+            title: 'Share Expired',
+            shareId,
+            path: isAuthor ? resolved.path : '',
+            ext: isAuthor ? { ...sanitizePublicNoteMetadata(resolved.metadata || {}), isAuthor } : { isAuthor: false },
+        }, { status: 410 })
     }
 
+    if (resolved.status !== 'active' || !resolved.path) {
+        return returnPage('Page404', { lang, title: '404' }, { status: 404 })
+    }
+
+    const path = resolved.path
+    const value = resolved.value || ''
+    const metadata = resolved.metadata || {}
+    const noteResult = { value, metadata, _source: resolved.source || 'd1' }
     const sharePath = `/share/${shareId}`
     const presentationPath = `${sharePath}/present`
     const bookPath = `${sharePath}/book`
     const authPath = `${sharePath}/auth`
     const gaMeasurementId = getGaMeasurementId()
-
-    const { value, metadata } = await queryNote(path)
     const origin = new URL(request.url).origin
-    const isAuthor = await isNoteAuthor(request, path, cookie)
+    const isAuthor = await isNoteAuthor(request, path, cookie, { noteUid: metadata?.noteUid || '' })
 
     if (metadata.share !== true) {
-        if (metadata.shareBurnedAt) {
-            return returnPage('ShareBurned', { lang, title: 'Share Destroyed', shareId, path, ext: { ...metadata, isAuthor } }, { status: 410 })
+        if (isShareBurned(metadata)) {
+            return returnPage('ShareBurned', {
+                lang,
+                title: 'Share Destroyed',
+                shareId,
+                path: isAuthor ? path : '',
+                ext: isAuthor ? { ...sanitizePublicNoteMetadata(metadata), isAuthor } : { isAuthor: false },
+            }, { status: 410 })
         }
         if (metadata.shareExpiresAt && metadata.shareExpiresAt <= now) {
-            return returnPage('ShareExpired', { lang, title: 'Share Expired', shareId, path, ext: { ...metadata, isAuthor } }, { status: 410 })
+            return returnPage('ShareExpired', {
+                lang,
+                title: 'Share Expired',
+                shareId,
+                path: isAuthor ? path : '',
+                ext: isAuthor ? { ...sanitizePublicNoteMetadata(metadata), isAuthor } : { isAuthor: false },
+            }, { status: 410 })
         }
-        return returnPage('Page404', { lang, title: '404' })
+        return returnPage('Page404', { lang, title: '404' }, { status: 404 })
+    }
+
+    if (isShareBurned(metadata) && !isAuthor) {
+        return returnPage('ShareBurned', { lang, title: 'Share Destroyed', shareId, ext: { isAuthor: false } }, { status: 410 })
     }
 
     // Check expiration
     if (metadata.shareExpiresAt && metadata.shareExpiresAt <= now) {
         metadata.share = false
         metadata.shareExpiredAt = now
-        await syncShareMappings(path, { share: false }, metadata)
-        await driverPutNote(path, value, metadata)
-        await driverSetShareStatus(shareId, 'expired', { expiredAt: now, path })
-        return returnPage('ShareExpired', { lang, title: 'Share Expired', shareId, path, ext: { ...metadata, isAuthor } }, { status: 410 })
+        if (!isMaintenanceMode()) {
+            await commitAuthoritativeNoteWrite({
+                path,
+                content: value,
+                nextMetadata: metadata,
+                previousMetadata: resolved.metadata,
+                expectedNoteUid: resolved.noteUid || metadata?.noteUid || null,
+                expectedMetaVersion: Number(metadata?.metaVersion || 0),
+                nowUnix: now,
+            }).catch(() => {})
+        }
+        return returnPage('ShareExpired', {
+            lang,
+            title: 'Share Expired',
+            shareId,
+            path: isAuthor ? path : '',
+            ext: isAuthor ? { ...sanitizePublicNoteMetadata(metadata), isAuthor } : { isAuthor: false },
+        }, { status: 410 })
     }
 
     // Check if View Password is set
     if (metadata.vpw) {
-        const { valid } = await checkAuth(cookie, path)
+        const { valid } = await checkAuth(cookie, path, { shareId, noteUid: metadata?.noteUid || '' })
 
-        if (!valid) {
+        if (!valid && !isAuthor) {
             return returnPage('NeedPasswd', {
                 lang,
                 title: 'Password Protected',
                 shareId,
-                path,
+                path: '',
                 ext: {
                     authPath,
                     sharePath,
@@ -2059,6 +2283,7 @@ async function renderSharePage(request, presentationMode = false, execution = {}
                     webtalk: getWebtalkConfig(),
                     presentationEntry: presentationMode,
                     autoPresent: false,
+                    isAuthor: false,
                 },
             })
         }
@@ -2070,7 +2295,12 @@ async function renderSharePage(request, presentationMode = false, execution = {}
             if (requestAcceptsMarkdown(request)) {
                 return new Response('This note is time-locked and cannot be viewed yet.', { status: 423 })
             }
-            return returnPage('ShareTimeLocked', { lang, title: 'Time-Locked Note', shareId, path, ext: { ...metadata, isAuthor } }, { status: 423 })
+            return returnPage('ShareTimeLocked', {
+                lang,
+                title: 'Time-Locked Note',
+                shareId,
+                ext: { shareUnlockAt: metadata.shareUnlockAt, isAuthor: false },
+            }, { status: 423 })
         }
     }
 
@@ -2078,18 +2308,38 @@ async function renderSharePage(request, presentationMode = false, execution = {}
     let deadmanReleased = false
     if (metadata.shareMode === 'deadman') {
         if (isAuthor) {
-            // Author visits: auto-pulse check-in
+            // Author visits: auto-pulse check-in (skipped during maintenance mode)
             const pulseInterval = metadata.sharePulseInterval || 7 * 86400
-            metadata.sharePulseDueAt = now + pulseInterval
-            metadata.shareLastPulseAt = now
-            await driverPutNote(path, value, metadata)
+            const nextMeta = {
+                ...metadata,
+                sharePulseDueAt: now + pulseInterval,
+                shareLastPulseAt: now,
+            }
+            if (!isMaintenanceMode()) {
+                await commitAuthoritativeNoteWrite({
+                    path,
+                    content: value,
+                    nextMetadata: nextMeta,
+                    previousMetadata: metadata,
+                    expectedNoteUid: resolved.noteUid || metadata?.noteUid || null,
+                    expectedMetaVersion: Number(metadata?.metaVersion || 0),
+                    nowUnix: now,
+                }).catch(() => {})
+            }
+            metadata.sharePulseDueAt = nextMeta.sharePulseDueAt
+            metadata.shareLastPulseAt = nextMeta.shareLastPulseAt
         } else {
             if (metadata.sharePulseDueAt && metadata.sharePulseDueAt > now) {
                 // Author active: sealed
                 if (requestAcceptsMarkdown(request)) {
                     return new Response("Dead Man's Switch is active. Vault is sealed until check-in expires.", { status: 423 })
                 }
-                return returnPage('ShareDeadmanLocked', { lang, title: "Dead Man's Switch Active", shareId, path, ext: { ...metadata, isAuthor } }, { status: 423 })
+                return returnPage('ShareDeadmanLocked', {
+                    lang,
+                    title: "Dead Man's Switch Active",
+                    shareId,
+                    ext: { sharePulseDueAt: metadata.sharePulseDueAt, isAuthor: false },
+                }, { status: 423 })
             } else {
                 deadmanReleased = true
             }
@@ -2099,27 +2349,35 @@ async function renderSharePage(request, presentationMode = false, execution = {}
     let burnUnlocked = options?.burnUnlocked === true
     let burnActiveNotice = false
 
-    if (metadata.shareBurnAfterReading === true && !isAuthor) {
+    if (isBurnProtected(metadata) && !isAuthor) {
         if (burnUnlocked) {
-            const maxViews = Number(metadata.shareMaxViews) || 1
+            if (resolved.unbackfilled || isUnbackfilledBurnNote(noteResult)) {
+                return returnJSON(409, 'Burn-after-reading share requires D1 backfill before reveal', { status: 409 })
+            }
+            const maxViews = Math.max(1, parseInt(metadata.shareMaxViews || metadata.sealMaxViews, 10) || 1)
             const burnResult = await driverRecordBurnView(shareId, path, maxViews, now)
             if (!burnResult.claimed) {
-                return returnPage('ShareBurned', { lang, title: 'Share Destroyed', shareId, path, ext: { ...metadata, isAuthor: false } }, { status: 410 })
+                if (burnResult.conflict) {
+                    return returnJSON(409, 'Burn-after-reading share could not be atomically claimed', { status: 409 })
+                }
+                return returnPage('ShareBurned', { lang, title: 'Share Destroyed', shareId, ext: { isAuthor: false } }, { status: 410 })
             }
             metadata.shareViewCount = burnResult.viewCount
             if (burnResult.burned) {
                 metadata.share = false
                 metadata.shareBurnedAt = now
-                await syncShareMappings(path, { share: false }, metadata)
                 burnActiveNotice = true
             }
         }
     }
 
-    const title = extractNoteTitle(value, metadata?.title, decodeURIComponent(path))
-    const description = extractNoteDescription(value, title)
-    const blockPageExt = getBlockPageExt(value, metadata)
-    const markdownExportContent = getMarkdownExportContent(value, metadata)
+    const isBurnInterstitial = isBurnProtected(metadata) && !isAuthor && !burnUnlocked
+    const title = isBurnInterstitial
+        ? (SUPPORTED_LANG[lang]?.burnRevealTitle || 'Confidential Share • Burn After Reading')
+        : extractNoteTitle(value, metadata?.title, isAuthor ? decodeURIComponent(path) : (lang === 'zh-TW' ? '分享筆記' : 'Shared Note'))
+    const description = isBurnInterstitial ? '' : extractNoteDescription(value, title)
+    const blockPageExt = isBurnInterstitial ? {} : getBlockPageExt(value, metadata)
+    const markdownExportContent = isBurnInterstitial ? '' : getMarkdownExportContent(value, metadata)
     const canonicalPath = presentationMode ? presentationPath : sharePath
     const canonicalUrl = `${origin}${canonicalPath}`
 
@@ -2131,7 +2389,10 @@ async function renderSharePage(request, presentationMode = false, execution = {}
         if (metadata.shareMode === 'deadman' && metadata.sharePulseDueAt && metadata.sharePulseDueAt > now && !isAuthor) {
             return new Response("Dead Man's Switch is active. Vault is sealed until check-in expires.", { status: 423 })
         }
-        if (metadata.shareBurnAfterReading === true && !isAuthor && !burnUnlocked) {
+        if (isBurnProtected(metadata) && !isAuthor && !burnUnlocked) {
+            if (resolved.unbackfilled || isUnbackfilledBurnNote(noteResult)) {
+                return new Response('Burn-after-reading share requires D1 backfill before access.', { status: 409 })
+            }
             return new Response('Burn-after-reading share requires user confirmation before access.', { status: 403 })
         }
         return createMarkdownResponse(
@@ -2141,14 +2402,13 @@ async function renderSharePage(request, presentationMode = false, execution = {}
                 canonical_url: canonicalUrl,
                 share_url: `${origin}${sharePath}`,
                 presentation_url: presentationMode ? canonicalUrl : `${origin}${presentationPath}`,
-                note_path: path,
+                ...(isAuthor ? { note_path: path } : {}),
             }),
         )
     }
 
     let viewCount = null
     let viewDeviceCookie = null
-    const isBurnInterstitial = metadata.shareBurnAfterReading === true && !isAuthor && !burnUnlocked
     if (!isAuthor && !isBurnInterstitial && shouldCountShareView({
         method: request.method,
         presentationMode,
@@ -2160,7 +2420,9 @@ async function renderSharePage(request, presentationMode = false, execution = {}
             try {
                 const { deviceId, isNew } = resolveViewDeviceId(cookie.cn_device)
                 const deviceHash = await hashViewDeviceId(deviceId)
-                const recordedView = await recordUniqueNoteView(statsDb, path, deviceHash)
+                const recordedView = await recordUniqueNoteView(statsDb, path, deviceHash, now, {
+                    noteUid: metadata?.noteUid || '',
+                })
                 viewCount = recordedView.viewCount
 
                 if (isNew) {
@@ -2183,13 +2445,15 @@ async function renderSharePage(request, presentationMode = false, execution = {}
     const tocParam = (shareReqUrl.searchParams.get('toc') || '').toLowerCase()
     const autoToc = tocParam === '1' || tocParam === 'true' || tocParam === 'pinned' || shareReqUrl.searchParams.has('toc')
 
+    const safeExtBase = isAuthor ? metadata : sanitizePublicNoteMetadata(metadata)
+
     return returnPage('Share', {
         lang,
         title,
-        content: value,
+        content: isBurnInterstitial ? '' : value,
         shareId,
         ext: {
-            ...metadata,
+            ...safeExtBase,
             ...blockPageExt,
             ...(metadata.pw || metadata.vpw ? { authPath } : {}),
             sharePath,
@@ -2208,17 +2472,22 @@ async function renderSharePage(request, presentationMode = false, execution = {}
             burnUnlocked,
             burnActiveNotice,
             deadmanReleased,
-            meta: {
-                canonicalUrl,
-                description,
-                ogImageUrl: getOgImageUrl(origin),
-                ogType: 'article',
-                robots: (metadata.shareBurnAfterReading || metadata.shareExpiresAt) ? 'noindex,nofollow' : 'index,follow',
-                siteName: 'DAVID888 WIKI',
-                twitterCard: 'summary_large_image',
-            },
+            meta: isBurnInterstitial
+                ? {
+                    robots: 'noindex,nofollow',
+                    siteName: false,
+                }
+                : {
+                    canonicalUrl,
+                    description,
+                    ogImageUrl: getOgImageUrl(origin),
+                    ogType: 'article',
+                    robots: (isBurnProtected(metadata) || metadata.shareExpiresAt) ? 'noindex,nofollow' : 'index,follow',
+                    siteName: 'DAVID888 WIKI',
+                    twitterCard: 'summary_large_image',
+                },
         },
-        path,
+        path: isAuthor ? path : '',
     }, viewDeviceCookie ? { 'Set-Cookie': viewDeviceCookie } : {})
 }
 
@@ -2241,6 +2510,7 @@ function isSameOriginPost(request) {
 }
 
 router.post('/share/:shareId/reveal', async (request, execution) => {
+    if (isMaintenanceMode()) return maintenanceModeResponse()
     if (!isSameOriginPost(request)) return returnJSON(403, 'Cross-origin reveal blocked', { status: 403 })
     return renderSharePage(request, false, execution, false, { burnUnlocked: true })
 })
@@ -2254,6 +2524,7 @@ router.head('/share/:shareId/present', async (request, execution) => {
 })
 
 router.post('/share/:shareId/present/reveal', async (request, execution) => {
+    if (isMaintenanceMode()) return maintenanceModeResponse()
     if (!isSameOriginPost(request)) return returnJSON(403, 'Cross-origin reveal blocked', { status: 403 })
     return renderSharePage(request, true, execution, false, { burnUnlocked: true })
 })
@@ -2267,23 +2538,25 @@ router.head('/share/:shareId/book', async (request, execution) => {
 })
 
 router.post('/share/:shareId/book/reveal', async (request, execution) => {
+    if (isMaintenanceMode()) return maintenanceModeResponse()
     if (!isSameOriginPost(request)) return returnJSON(403, 'Cross-origin reveal blocked', { status: 403 })
     return renderSharePage(request, false, execution, true, { burnUnlocked: true })
 })
 
 async function handlePulseRequest(request) {
+    if (isMaintenanceMode()) return maintenanceModeResponse()
     const lang = getI18n(request)
     const { shareId } = request.params
     const cookie = Cookies.parse(request.headers.get('Cookie') || '')
-    let path = await driverQueryShare(shareId)
-    if (!path) {
-        const found = await driverFindNoteByShareId(shareId)
-        if (found) path = found.path
+    const resolved = await resolveAuthoritativeShare(shareId, { includeContent: true })
+    if (resolved?.status !== 'active' || !resolved.path) {
+        if (resolved?.status === 'burned') return returnJSON(410, 'Share has been burned and destroyed', { status: 410 })
+        if (resolved?.status === 'expired') return returnJSON(410, 'Share has expired', { status: 410 })
+        return returnJSON(404, 'Share not found', { status: 404 })
     }
-    if (!path) return returnJSON(404, 'Share not found', { status: 404 })
 
-    const { value, metadata } = await queryNote(path)
-    const isAuthor = await isNoteAuthor(request, path, cookie)
+    const { path, value, metadata } = resolved
+    const isAuthor = await isNoteAuthor(request, path, cookie, { noteUid: metadata?.noteUid || '' })
     const url = new URL(request.url)
     const queryToken = url.searchParams.get('token')
     const authHeader = request.headers.get('Authorization')
@@ -2301,13 +2574,21 @@ async function handlePulseRequest(request) {
         ? rawInterval
         : (parseExpirationSeconds(rawInterval) || 7 * 86400)
     const nextDueAt = now + interval
-    metadata.sharePulseDueAt = nextDueAt
-    metadata.shareLastPulseAt = now
-    if (!metadata.sharePulseToken) {
-        metadata.sharePulseToken = genRandomStr(24)
+    const nextMeta = {
+        ...metadata,
+        sharePulseDueAt: nextDueAt,
+        shareLastPulseAt: now,
+        sharePulseToken: metadata.sharePulseToken || genRandomStr(24),
     }
-    await driverPutNote(path, value, metadata)
-    await driverSetShareStatus(shareId, null)
+    await commitAuthoritativeNoteWrite({
+        path,
+        content: value || '',
+        nextMetadata: nextMeta,
+        previousMetadata: metadata,
+        expectedNoteUid: resolved.source === 'd1' ? (metadata?.noteUid || null) : null,
+        expectedMetaVersion: resolved.source === 'd1' ? Number(metadata?.metaVersion || 0) : 0,
+        nowUnix: now,
+    })
 
     const acceptsHtml = request.headers.get('Accept')?.includes('text/html') && request.method === 'GET'
     if (acceptsHtml) {
@@ -2328,49 +2609,54 @@ router.get('/api/shares/:shareId/pulse', async request => handlePulseRequest(req
 router.post('/api/shares/:shareId/pulse', async request => handlePulseRequest(request))
 
 router.post('/api/shares/:shareId/reveal', async request => {
+    if (isMaintenanceMode()) return maintenanceModeResponse()
     const { shareId } = request.params
     const cookie = Cookies.parse(request.headers.get('Cookie') || '')
     const now = Math.floor(Date.now() / 1000)
-    let path = await driverQueryShare(shareId)
+    const resolved = await resolveAuthoritativeShare(shareId, { includeContent: true, nowUnix: now })
 
-    if (!path) {
-        const tombstone = await driverGetShareStatus(shareId)
-        if (tombstone?.status === 'burned') {
-            return returnJSON(410, 'Share has been burned and destroyed', { status: 410 })
-        }
-        if (tombstone?.status === 'expired') {
-            return returnJSON(410, 'Share has expired', { status: 410 })
-        }
-        const found = await driverFindNoteByShareId(shareId)
-        if (found?.metadata?.shareBurnedAt) {
-            return returnJSON(410, 'Share has been burned and destroyed', { status: 410 })
-        }
-        if (found?.metadata?.shareExpiresAt && found.metadata.shareExpiresAt <= now) {
-            return returnJSON(410, 'Share has expired', { status: 410 })
-        }
+    if (resolved?.status === 'burned') {
+        return returnJSON(410, 'Share has been burned and destroyed', { status: 410 })
+    }
+    if (resolved?.status === 'expired') {
+        return returnJSON(410, 'Share has expired', { status: 410 })
+    }
+    if (resolved?.status !== 'active' || !resolved.path) {
         return returnJSON(404, 'Share not found', { status: 404 })
     }
 
-    const { value, metadata } = await queryNote(path)
-    const isAuthor = await isNoteAuthor(request, path, cookie)
+    const path = resolved.path
+    const value = resolved.value || ''
+    const metadata = resolved.metadata || {}
+    const noteResult = { value, metadata, _source: resolved.source || 'd1' }
+    const isAuthor = await isNoteAuthor(request, path, cookie, { noteUid: metadata?.noteUid || '' })
 
     if (metadata.share !== true) {
-        if (metadata.shareBurnedAt) {
+        if (isShareBurned(metadata)) {
             return returnJSON(410, 'Share has been burned and destroyed', { status: 410 })
         }
         return returnJSON(404, 'Share not found', { status: 404 })
     }
 
-    if (metadata.shareBurnAfterReading !== true && !isAuthor) {
+    if (isShareBurned(metadata) && !isAuthor) {
+        return returnJSON(410, 'Share has been burned and destroyed', { status: 410 })
+    }
+
+    if (!isBurnProtected(metadata) && !isAuthor) {
         return returnJSON(400, 'Reveal endpoint is only applicable to burn-after-reading shares', { status: 400 })
     }
 
     if (metadata.shareExpiresAt && metadata.shareExpiresAt <= now) {
-        metadata.share = false
-        metadata.shareExpiredAt = now
-        await syncShareMappings(path, { share: false }, metadata)
-        await driverPutNote(path, value, metadata)
-        await driverSetShareStatus(shareId, 'expired', { expiredAt: now, path })
+        const expiredMeta = { ...metadata, share: false, shareExpiredAt: now }
+        await commitAuthoritativeNoteWrite({
+            path,
+            content: value,
+            nextMetadata: expiredMeta,
+            previousMetadata: metadata,
+            expectedNoteUid: resolved.source === 'd1' ? (metadata?.noteUid || null) : null,
+            expectedMetaVersion: resolved.source === 'd1' ? Number(metadata?.metaVersion || 0) : 0,
+            nowUnix: now,
+        }).catch(() => {})
         return returnJSON(410, 'Share has expired', { status: 410 })
     }
 
@@ -2393,7 +2679,7 @@ router.post('/api/shares/:shareId/reveal', async request => {
     const providedPw = queryPw || headerPw || bodyPw
 
     if (metadata.vpw || metadata.pw) {
-        const { valid } = await checkAuth(cookie, path)
+        const { valid } = await checkAuth(cookie, path, { shareId, noteUid: metadata?.noteUid || '' })
         const hasAccess = valid || isAuthor || (providedPw && (
             (metadata.vpw && await passwordMatches(providedPw, metadata.vpw)) ||
             (metadata.pw && await passwordMatches(providedPw, metadata.pw))
@@ -2403,31 +2689,37 @@ router.post('/api/shares/:shareId/reveal', async request => {
         }
     }
 
-    if (metadata.shareBurnAfterReading === true && !isAuthor) {
-        const maxViews = Number(metadata.shareMaxViews) || 1
+    if (isBurnProtected(metadata) && !isAuthor) {
+        if (resolved.unbackfilled || isUnbackfilledBurnNote(noteResult)) {
+            return returnJSON(409, 'Burn-after-reading share requires D1 backfill before reveal', { status: 409 })
+        }
+        const maxViews = Math.max(1, parseInt(metadata.shareMaxViews || metadata.sealMaxViews, 10) || 1)
         const burnResult = await driverRecordBurnView(shareId, path, maxViews, now)
         if (!burnResult.claimed) {
+            if (burnResult.conflict) {
+                return returnJSON(409, 'Burn-after-reading share could not be atomically claimed', { status: 409 })
+            }
             return returnJSON(410, 'Share has been burned and destroyed', { status: 410 })
         }
         metadata.shareViewCount = burnResult.viewCount
         if (burnResult.burned) {
             metadata.share = false
             metadata.shareBurnedAt = now
-            await syncShareMappings(path, { share: false }, metadata)
         }
     }
 
-    const title = extractNoteTitle(value, metadata?.title, decodeURIComponent(path))
+    const title = extractNoteTitle(value, metadata?.title, isAuthor ? decodeURIComponent(path) : '')
     const blockPageExt = getBlockPageExt(value, metadata)
+    const safeMetadata = isAuthor ? metadata : sanitizePublicNoteMetadata(metadata)
 
     return returnJSON(0, {
-        path,
+        ...(isAuthor ? { path } : {}),
         title,
         content: value,
         ...blockPageExt,
         metadata: {
-            ...metadata,
-            shareBurned: !isAuthor && metadata.shareBurnAfterReading === true,
+            ...safeMetadata,
+            shareBurned: !isAuthor && isBurnProtected(metadata),
         },
     })
 })
@@ -2435,22 +2727,27 @@ router.post('/api/shares/:shareId/reveal', async request => {
 async function handleSharePdfExport(request) {
     try {
         const { shareId } = request.params
-        const path = await driverQueryShare(shareId)
-        if (!path) return returnJSON(404, 'Share not found', { status: 404 })
+        const now = Math.floor(Date.now() / 1000)
+        const resolved = await resolveAuthoritativeShare(shareId, { includeContent: true, nowUnix: now })
+        if (resolved?.status === 'burned') return returnJSON(410, 'Share has been burned and destroyed', { status: 410 })
+        if (resolved?.status === 'expired') return returnJSON(410, 'Share has expired', { status: 410 })
+        if (resolved?.status !== 'active' || !resolved.path) return returnJSON(404, 'Share not found', { status: 404 })
 
-        const { value, metadata } = await queryNote(path)
+        const path = resolved.path
+        const value = resolved.value || ''
+        const metadata = resolved.metadata || {}
+        const noteResult = { value, metadata, _source: resolved.source || 'd1' }
         if (metadata.share !== true) return returnJSON(404, 'Share not found', { status: 404 })
 
-        const now = Math.floor(Date.now() / 1000)
         if (metadata.shareExpiresAt && metadata.shareExpiresAt <= now) {
             return returnJSON(410, 'Share has expired', { status: 410 })
         }
-        if (metadata.shareBurnedAt) {
+        if (isShareBurned(metadata)) {
             return returnJSON(410, 'Share has been burned and destroyed', { status: 410 })
         }
 
         const cookie = Cookies.parse(request.headers.get('Cookie') || '')
-        const isAuthor = await isNoteAuthor(request, path, cookie)
+        const isAuthor = await isNoteAuthor(request, path, cookie, { noteUid: metadata?.noteUid || '' })
         if (isShareTimeLocked(metadata, now) && !isAuthor) {
             return returnJSON(423, 'Share is time-locked and cannot be exported', { status: 423 })
         }
@@ -2464,7 +2761,7 @@ async function handleSharePdfExport(request) {
             const queryPw = url.searchParams.get('pw')
             const authHeader = request.headers.get('Authorization')
             const headerPw = authHeader ? authHeader.replace('Bearer ', '').trim() : null
-            const { valid } = await checkAuth(cookie, path)
+            const { valid } = await checkAuth(cookie, path, { shareId, noteUid: metadata?.noteUid || '' })
 
             const providedPw = queryPw || headerPw
             const hasViewAccess = valid || isAuthor || (providedPw && (
@@ -2476,7 +2773,11 @@ async function handleSharePdfExport(request) {
             }
         }
 
-        if (metadata.shareBurnAfterReading === true && !isAuthor) {
+        if (isBurnProtected(metadata) && !isAuthor) {
+            if (isMaintenanceMode()) return maintenanceModeResponse()
+            if (resolved.unbackfilled || isUnbackfilledBurnNote(noteResult)) {
+                return returnJSON(409, 'Burn-after-reading share requires D1 backfill before export', { status: 409 })
+            }
             const confirm = url.searchParams.get('burn_confirm') === 'true' || url.searchParams.get('burn_confirm') === '1'
             if (!confirm) {
                 return returnJSON(400, 'PDF export will permanently destroy this burn-after-reading share. Pass burn_confirm=true to confirm.', { status: 400 })
@@ -2498,14 +2799,14 @@ async function handleSharePdfExport(request) {
             markdown = whiteboardToMarkdown(parseWhiteboardDocument(value))
         }
 
-        const title = extractNoteTitle(markdown, path)
+        const title = extractNoteTitle(markdown, metadata?.title, isAuthor ? decodeURIComponent(path) : '')
         const size = url.searchParams.get('size') || 'a4'
         const landscape = url.searchParams.get('landscape') === 'true' || url.searchParams.get('landscape') === '1'
         const theme = metadata.theme || (format === 'block' ? 'ayu-light' : 'claude-canvas')
         const siteUrl = `${url.protocol}//${url.host}`
 
         const pdfBytes = await renderMarkdownToPdf(markdown, {
-            title,
+            title: title || 'Shared Document',
             size,
             landscape,
             theme,
@@ -2513,21 +2814,19 @@ async function handleSharePdfExport(request) {
         })
 
         // Claim and burn share only after PDF generation succeeds
-        if (metadata.shareBurnAfterReading === true && !isAuthor) {
-            const maxViews = Number(metadata.shareMaxViews) || 1
+        if (isBurnProtected(metadata) && !isAuthor) {
+            const maxViews = Math.max(1, parseInt(metadata.shareMaxViews || metadata.sealMaxViews, 10) || 1)
             const burnResult = await driverRecordBurnView(shareId, path, maxViews, now)
             if (!burnResult.claimed) {
+                if (burnResult.conflict) {
+                    return returnJSON(409, 'Burn-after-reading share could not be atomically claimed', { status: 409 })
+                }
                 return returnJSON(410, 'Share has been burned and destroyed', { status: 410 })
-            }
-            metadata.shareViewCount = burnResult.viewCount
-            if (burnResult.burned) {
-                metadata.share = false
-                metadata.shareBurnedAt = now
-                await syncShareMappings(path, { share: false }, metadata)
             }
         }
 
-        const filename = `${title.replace(/[\/\\:*?"<>|]/g, '_') || shareId}.pdf`
+        const safeBaseName = (title || (isAuthor ? path : shareId)).replace(/[\/\\:*?"<>|]/g, '_') || shareId
+        const filename = `${safeBaseName}.pdf`
         return createPdfResponse(pdfBytes, filename)
     } catch (e) {
         console.error('Share PDF Export Error:', e)
@@ -2541,32 +2840,43 @@ router.get('/api/shares/:shareId/pdf', async (request) => handleSharePdfExport(r
 
 router.get('/api/shares/:shareId/annotations', async request => {
     const { shareId } = request.params
-    const path = await driverQueryShare(shareId)
-    if (!path) return returnJSON(404, 'Share not found', { status: 404 })
+    const now = Math.floor(Date.now() / 1000)
+    const resolved = await resolveAuthoritativeShare(shareId, { includeContent: true, nowUnix: now })
+    if (resolved?.status === 'burned') return returnJSON(410, 'Share has been burned and destroyed', { status: 410 })
+    if (resolved?.status === 'expired') return returnJSON(410, 'Share has expired', { status: 410 })
+    if (resolved?.status !== 'active' || !resolved.path) return returnJSON(404, 'Share not found', { status: 404 })
 
-    const { value, metadata } = await queryNote(path)
+    const path = resolved.path
+    const value = resolved.value || ''
+    const metadata = resolved.metadata || {}
+    const noteResult = { value, metadata, _source: resolved.source || 'd1' }
     if (metadata.share !== true) return returnJSON(404, 'Share not found', { status: 404 })
 
-    const now = Math.floor(Date.now() / 1000)
     if (metadata.shareExpiresAt && metadata.shareExpiresAt <= now) {
         return returnJSON(410, 'Share has expired', { status: 410 })
     }
-    if (metadata.shareBurnedAt) {
+    if (isShareBurned(metadata)) {
         return returnJSON(410, 'Share has been burned and destroyed', { status: 410 })
     }
 
     const cookie = Cookies.parse(request.headers.get('Cookie') || '')
-    const isAuthor = await isNoteAuthor(request, path, cookie)
+    const isAuthor = await isNoteAuthor(request, path, cookie, { noteUid: metadata?.noteUid || '' })
     if (isShareTimeLocked(metadata, now) && !isAuthor) {
         return returnJSON(423, 'Share is time-locked', { status: 423 })
     }
     if (metadata.shareMode === 'deadman' && metadata.sharePulseDueAt && metadata.sharePulseDueAt > now && !isAuthor) {
         return returnJSON(423, "Dead Man's Switch is active. Vault is sealed until check-in expires.", { status: 423 })
     }
+    if (isBurnProtected(metadata) && !isAuthor) {
+        if (resolved.unbackfilled || isUnbackfilledBurnNote(noteResult)) {
+            return returnJSON(409, 'Burn-after-reading share requires D1 backfill', { status: 409 })
+        }
+        return returnJSON(403, 'Annotations are disabled on burn-after-reading shares', { status: 403 })
+    }
 
     if (metadata.vpw) {
-        const { valid } = await checkAuth(cookie, path)
-        if (!valid) return returnJSON(401, 'Share password required', { status: 401 })
+        const { valid } = await checkAuth(cookie, path, { shareId, noteUid: metadata?.noteUid || '' })
+        if (!valid && !isAuthor) return returnJSON(401, 'Share password required', { status: 401 })
     }
 
     if (!resolveAnnotationsEnabled(metadata)) {
@@ -2594,9 +2904,16 @@ router.get('/api/shares/:shareId/annotations', async request => {
 
     try {
         const sourceRevision = await computeSourceRevision(value)
+        const session = getSecret() ? await resolveAccountSession(request) : null
+        const registryEnabled = isNotesRegistryEnabled()
         const result = await listAnnotationThreads(db, path, {
             cursor,
             limit: requestedLimit,
+            noteUid: registryEnabled ? (metadata?.noteUid || '__unbackfilled__') : null,
+            excludeUidTagged: !registryEnabled,
+            requireNoteUid: registryEnabled,
+            viewerAccountId: session?.account_id || null,
+            isAuthor,
         })
         return returnJSON(0, {
             enabled: true,
@@ -2610,42 +2927,55 @@ router.get('/api/shares/:shareId/annotations', async request => {
 })
 
 async function getWritableAnnotationContext(request) {
-    const requestOrigin = new URL(request.url).origin
-    if (request.headers.get('Origin') !== requestOrigin) {
-        return {
-            response: returnJSON(403, 'Annotation write origin rejected', { status: 403 }),
-        }
+    if (isMaintenanceMode()) {
+        return { response: maintenanceModeResponse() }
+    }
+    try {
+        enforceAccountCsrf(request)
+        enforceJsonContentType(request)
+    } catch (error) {
+        return { response: mapAccountErrorResponse(error) }
     }
 
     const { shareId } = request.params
-    const path = await driverQueryShare(shareId)
-    if (!path) {
-        return {
-            response: returnJSON(404, 'Share not found', { status: 404 }),
-        }
+    const now = Math.floor(Date.now() / 1000)
+    const resolved = await resolveAuthoritativeShare(shareId, { includeContent: true, nowUnix: now })
+    if (resolved?.status === 'burned') {
+        return { response: returnJSON(410, 'Share has been burned and destroyed', { status: 410 }) }
+    }
+    if (resolved?.status === 'expired') {
+        return { response: returnJSON(410, 'Share has expired', { status: 410 }) }
+    }
+    if (resolved?.status !== 'active' || !resolved.path) {
+        return { response: returnJSON(404, 'Share not found', { status: 404 }) }
     }
 
-    const { value, metadata } = await queryNote(path)
+    const path = resolved.path
+    const value = resolved.value || ''
+    const metadata = resolved.metadata || {}
+    const noteResult = { value, metadata, _source: resolved.source || 'd1' }
+    if (isNotesRegistryEnabled() && !metadata.noteUid) {
+        return { response: returnJSON(409, 'Note requires D1 backfill', { status: 409 }) }
+    }
     if (metadata.share !== true) {
         return {
             response: returnJSON(404, 'Share not found', { status: 404 }),
         }
     }
 
-    const now = Math.floor(Date.now() / 1000)
     if (metadata.shareExpiresAt && metadata.shareExpiresAt <= now) {
         return {
             response: returnJSON(410, 'Share has expired', { status: 410 }),
         }
     }
-    if (metadata.shareBurnedAt) {
+    if (isShareBurned(metadata)) {
         return {
             response: returnJSON(410, 'Share has been burned and destroyed', { status: 410 }),
         }
     }
 
     const cookie = Cookies.parse(request.headers.get('Cookie') || '')
-    const isAuthor = await isNoteAuthor(request, path, cookie)
+    const isAuthor = await isNoteAuthor(request, path, cookie, { noteUid: metadata?.noteUid || '' })
     if (isShareTimeLocked(metadata, now) && !isAuthor) {
         return {
             response: returnJSON(423, 'Share is time-locked and cannot be annotated yet', { status: 423 }),
@@ -2656,10 +2986,20 @@ async function getWritableAnnotationContext(request) {
             response: returnJSON(423, "Dead Man's Switch is active. Annotations sealed until check-in expires.", { status: 423 }),
         }
     }
+    if (isBurnProtected(metadata) && !isAuthor) {
+        if (resolved.unbackfilled || isUnbackfilledBurnNote(noteResult)) {
+            return {
+                response: returnJSON(409, 'Burn-after-reading share requires D1 backfill', { status: 409 }),
+            }
+        }
+        return {
+            response: returnJSON(403, 'Annotations are disabled on burn-after-reading shares', { status: 403 }),
+        }
+    }
 
     if (metadata.vpw) {
-        const { valid } = await checkAuth(cookie, path)
-        if (!valid) {
+        const { valid } = await checkAuth(cookie, path, { shareId, noteUid: metadata?.noteUid || '' })
+        if (!valid && !isAuthor) {
             return {
                 response: returnJSON(401, 'Share password required', { status: 401 }),
             }
@@ -2679,18 +3019,31 @@ async function getWritableAnnotationContext(request) {
         }
     }
 
-    return { db, metadata, path, value }
+    return { db, metadata, path, value, isAuthor }
 }
 
 async function readAnnotationJson(request) {
-    const contentType = request.headers.get('Content-Type') || ''
-    if (!contentType.toLowerCase().startsWith('application/json')) return null
-
     try {
-        return await request.json()
+        return await readBoundedJsonBody(request, undefined, { allowEmpty: true })
     } catch {
         return null
     }
+}
+
+async function annotationIdentity(request, input) {
+    if (input?.mode == null || input.mode === 'anonymous') return { account: null }
+    if (input.mode !== 'signed') return { response: returnJSON(400, 'Invalid annotation identity', { status: 400 }) }
+    if (!isAccountFeatureEnabled() || !getSecret() || getAnnotationDb() !== getAccountDb()) {
+        return { response: returnJSON(503, 'Account annotations unavailable', { status: 503 }) }
+    }
+    try {
+        await assertAccountFeatureReady(globalThis, { write: true })
+    } catch (error) {
+        return { response: mapAccountErrorResponse(error) }
+    }
+    const session = await resolveAccountSession(request)
+    if (!session) return { response: returnJSON(401, 'Account session expired', { status: 401 }) }
+    return { account: { accountId: session.account_id, nickname: session.nickname } }
 }
 
 router.post('/api/shares/:shareId/annotations', async request => {
@@ -2698,7 +3051,9 @@ router.post('/api/shares/:shareId/annotations', async request => {
     if (context.response) return context.response
 
     const input = await readAnnotationJson(request)
-    const draft = validateAnnotationDraft(input)
+    const identity = await annotationIdentity(request, input)
+    if (identity.response) return identity.response
+    const draft = validateAnnotationDraft(input, { signedAccount: identity.account })
     if (!draft) return returnJSON(400, 'Invalid annotation', { status: 400 })
 
     const currentRevision = await computeSourceRevision(context.value)
@@ -2708,7 +3063,11 @@ router.post('/api/shares/:shareId/annotations', async request => {
 
     try {
         const secret = getSecret()
-        const thread = await createAnnotationThread(context.db, context.path, draft, { secret })
+        const registryEnabled = isNotesRegistryEnabled()
+        const thread = await createAnnotationThread(context.db, context.path, draft, {
+            secret, signedAccount: identity.account, shareId: request.params.shareId,
+            noteUid: registryEnabled ? context.metadata.noteUid : null, requireNoteUid: registryEnabled,
+        })
         if (!thread) return returnJSON(400, 'Invalid annotation', { status: 400 })
 
         return returnJSON(0, { thread }, {
@@ -2726,17 +3085,27 @@ router.post('/api/shares/:shareId/annotations/:threadId/messages', async request
     if (context.response) return context.response
 
     const input = await readAnnotationJson(request)
-    const reply = validateAnnotationMessage(input)
+    const identity = await annotationIdentity(request, input)
+    if (identity.response) return identity.response
+    const reply = validateAnnotationMessage(input, { signedAccount: identity.account })
     if (!reply) return returnJSON(400, 'Invalid annotation reply', { status: 400 })
 
     try {
         const secret = getSecret()
+        const registryEnabled = isNotesRegistryEnabled()
         const message = await addAnnotationMessage(
             context.db,
             context.path,
             request.params.threadId,
             reply,
-            { secret },
+            {
+                secret,
+                signedAccount: identity.account,
+                shareId: request.params.shareId,
+                requireNoteUid: registryEnabled,
+                noteUid: registryEnabled ? (context.metadata?.noteUid || '__unbackfilled__') : null,
+                excludeUidTagged: !registryEnabled,
+            },
         )
         if (!message) return returnJSON(404, 'Annotation thread not found', { status: 404 })
 
@@ -2760,12 +3129,9 @@ router.delete('/api/shares/:shareId/annotations/:threadId/messages/:messageId', 
     const { threadId, messageId } = request.params
     const secret = getSecret()
 
-    let authorized = false
-    const cookie = Cookies.parse(request.headers.get('Cookie') || '')
-    const { valid, role } = await checkAuth(cookie, context.path)
-    if (valid && role === 'edit') {
-        authorized = true
-    }
+    let authorized = context.isAuthor
+    let hasDeleteToken = false
+    const session = getSecret() ? await resolveAccountSession(request) : null
 
     if (!authorized) {
         const tokenFromHeader = request.headers.get('X-Annotation-Delete-Token') || request.headers.get('X-Delete-Token')
@@ -2777,17 +3143,26 @@ router.delete('/api/shares/:shareId/annotations/:threadId/messages/:messageId', 
             tokenFromBody = body?.deleteToken
         }
         const deleteToken = tokenFromHeader || tokenFromQuery || tokenFromBody
-        if (deleteToken && await verifyAnnotationDeleteToken(messageId, deleteToken, secret)) {
+        if (secret && deleteToken && await verifyAnnotationDeleteToken(messageId, deleteToken, secret)) {
             authorized = true
+            hasDeleteToken = true
         }
     }
 
-    if (!authorized) {
+    if (!authorized && !session) {
         return returnJSON(403, 'Permission denied to delete annotation', { status: 403 })
     }
 
     try {
-        const result = await deleteAnnotationMessage(context.db, context.path, threadId, messageId)
+        const registryEnabled = isNotesRegistryEnabled()
+        const result = await deleteAnnotationMessage(context.db, context.path, threadId, messageId, {
+            noteUid: registryEnabled ? (context.metadata?.noteUid || '__unbackfilled__') : null,
+            excludeUidTagged: !registryEnabled,
+            requireNoteUid: registryEnabled,
+            isAuthor: context.isAuthor,
+            hasDeleteToken,
+            signedAccountId: session?.account_id || null,
+        })
         if (!result) return returnJSON(404, 'Annotation message not found', { status: 404 })
 
         return returnJSON(0, result, { 'Cache-Control': 'no-store' })
@@ -2804,25 +3179,17 @@ router.delete('/api/shares/:shareId/annotations/:threadId', async request => {
     const { threadId } = request.params
     const secret = getSecret()
 
-    let authorized = false
-    const cookie = Cookies.parse(request.headers.get('Cookie') || '')
-    const { valid, role } = await checkAuth(cookie, context.path)
-    if (valid && role === 'edit') {
-        authorized = true
-    }
+    let authorized = context.isAuthor
+    let rootMessageId = null
+    let deleteToken = null
 
     if (!authorized) {
         const tokenFromHeader = request.headers.get('X-Annotation-Delete-Token') || request.headers.get('X-Delete-Token')
         const url = new URL(request.url)
-        const rootMessageId = url.searchParams.get('rootMessageId')
-        const tokenFromQuery = url.searchParams.get('deleteToken')
-        let tokenFromBody = null
-        if (!tokenFromHeader && !tokenFromQuery) {
-            const body = await readAnnotationJson(request)
-            tokenFromBody = body?.deleteToken
-        }
-        const deleteToken = tokenFromHeader || tokenFromQuery || tokenFromBody
-        if (rootMessageId && deleteToken && await verifyAnnotationDeleteToken(rootMessageId, deleteToken, secret)) {
+        const body = await readAnnotationJson(request)
+        rootMessageId = url.searchParams.get('rootMessageId') || body?.rootMessageId
+        deleteToken = tokenFromHeader || url.searchParams.get('deleteToken') || body?.deleteToken
+        if (secret && rootMessageId && deleteToken && await verifyAnnotationDeleteToken(rootMessageId, deleteToken, secret)) {
             authorized = true
         }
     }
@@ -2832,7 +3199,16 @@ router.delete('/api/shares/:shareId/annotations/:threadId', async request => {
     }
 
     try {
-        const result = await deleteAnnotationThread(context.db, context.path, threadId)
+        const registryEnabled = isNotesRegistryEnabled()
+        const result = await deleteAnnotationThread(context.db, context.path, threadId, {
+            noteUid: registryEnabled ? (context.metadata?.noteUid || '__unbackfilled__') : null,
+            excludeUidTagged: !registryEnabled,
+            requireNoteUid: registryEnabled,
+            isAuthor: context.isAuthor,
+            rootMessageId,
+            deleteToken,
+            secret,
+        })
         if (!result) return returnJSON(404, 'Annotation thread not found', { status: 404 })
 
         return returnJSON(0, result, { 'Cache-Control': 'no-store' })
@@ -2845,44 +3221,48 @@ router.delete('/api/shares/:shareId/annotations/:threadId', async request => {
 router.post('/api/shares/:shareId/ai-assistant', async (request, context = {}) => {
     const ai = resolveAiBinding(context?.env) || context?.env?.AI || globalThis.AI
     const shareId = decodeURIComponent(request.params.shareId)
-    let path = await driverQueryShare(shareId)
-    if (!path) {
-        const found = await driverFindNoteByShareId(shareId)
-        if (found) path = found.path
+    const now = Math.floor(Date.now() / 1000)
+    const resolved = await resolveAuthoritativeShare(shareId, { includeContent: false, nowUnix: now })
+    if (resolved?.status === 'burned') {
+        return returnJSON(410, 'Share has been burned and destroyed', { status: 410 })
     }
-    if (!path) {
-        const directNote = await queryNote(shareId)
-        if (directNote?.metadata?.share === true) {
-            path = shareId
-        }
+    if (resolved?.status === 'expired') {
+        return returnJSON(410, 'Share has expired', { status: 410 })
     }
-    if (!path) {
+    if (resolved?.status !== 'active' || !resolved.path) {
         return returnJSON(404, 'Share not found', { status: 404 })
     }
-    const { metadata } = await queryNote(path)
+    const path = resolved.path
+    const metadata = resolved.metadata || {}
+    const noteResult = { metadata, _source: resolved.source || 'd1' }
     if (!metadata || metadata.share !== true) {
         return returnJSON(404, 'Share not found or expired', { status: 404 })
     }
-    const now = Math.floor(Date.now() / 1000)
     if (metadata.shareExpiresAt && metadata.shareExpiresAt <= now) {
         return returnJSON(410, 'Share has expired', { status: 410 })
     }
-    if (metadata.shareBurnedAt) {
+    if (isShareBurned(metadata)) {
         return returnJSON(410, 'Share has been burned and destroyed', { status: 410 })
     }
 
     const cookie = Cookies.parse(request.headers.get('Cookie') || '')
-    const isAuthor = await isNoteAuthor(request, path, cookie)
+    const isAuthor = await isNoteAuthor(request, path, cookie, { noteUid: metadata?.noteUid || '' })
     if (isShareTimeLocked(metadata, now) && !isAuthor) {
         return returnJSON(423, 'Share is time-locked', { status: 423 })
     }
     if (metadata.shareMode === 'deadman' && metadata.sharePulseDueAt && metadata.sharePulseDueAt > now && !isAuthor) {
         return returnJSON(423, "Dead Man's Switch is active. Vault is sealed until check-in expires.", { status: 423 })
     }
+    if (isBurnProtected(metadata) && !isAuthor) {
+        if (isUnbackfilledBurnNote(noteResult)) {
+            return returnJSON(409, 'Burn-after-reading share requires D1 backfill', { status: 409 })
+        }
+        return returnJSON(403, 'AI assistant is disabled on burn-after-reading shares', { status: 403 })
+    }
 
     if (metadata.vpw) {
-        const { valid, role } = await checkAuth(cookie, path)
-        if (!valid || (role !== 'view' && role !== 'edit')) {
+        const { valid, role } = await checkAuth(cookie, path, { shareId, noteUid: metadata?.noteUid || '' })
+        if ((!valid || (role !== 'view' && role !== 'edit')) && !isAuthor) {
             return returnJSON(10002, 'Password authentication required', { status: 401 })
         }
     }
@@ -3074,19 +3454,136 @@ router.head(OPENAPI_PATH, async (request) => {
     )
 })
 
-router.get(API_HEALTH_PATH, () => createDiscoveryResponse(
-    JSON.stringify({
-        status: 'ok',
-    }),
-    'application/json; charset=UTF-8',
-))
+async function buildHealthReport(contextEnv = undefined) {
+    const env = contextEnv || globalThis
+    const maintenanceMode = isMaintenanceMode(env)
+    const driver = getStorageDriverName(env)
+    const notesRegistryEnabled = isNotesRegistryEnabled(env)
+    const accountEnabled = isAccountFeatureEnabled(env)
+    const authorityRequired = isAuthorityModeRequired(env)
 
-router.head(API_HEALTH_PATH, () => createDiscoveryResponse(
-    JSON.stringify({
-        status: 'ok',
-    }),
-    'application/json; charset=UTF-8',
-))
+    const notesDbHealth = await checkNotesRegistryHealth(env)
+
+    const historyEnabled = isNoteHistoryConfigured(env)
+    const historyDb = historyEnabled ? getNoteHistoryDb(env) : null
+    let historyDbHealth = { ok: true, configured: historyEnabled }
+    if (historyEnabled) {
+        if (!historyDb) {
+            historyDbHealth = { ok: false, configured: true, bound: false, code: 'STORAGE_UNAVAILABLE' }
+        } else {
+            const reqHistoryTables = notesRegistryEnabled
+                ? ['note_history', 'note_history_meta']
+                : ['note_history']
+            const tbl = await checkD1Tables(historyDb, reqHistoryTables)
+            historyDbHealth = { ...tbl, configured: true, bound: true }
+        }
+    }
+
+    const accountDb = getAccountDb(env)
+    const annotationDb = getAnnotationDb(env)
+    let accountDbHealth = {
+        ok: true,
+        bound: Boolean(accountDb),
+        alignedWithAnnotations: accountDb ? accountDb === annotationDb : true,
+    }
+    if (accountDb) {
+        if (accountDb !== annotationDb) {
+            accountDbHealth = {
+                ok: false,
+                bound: true,
+                alignedWithAnnotations: false,
+                code: 'ANNOTATION_DB_MISMATCH',
+            }
+        } else if (notesRegistryEnabled) {
+            const tbl = await checkD1Tables(accountDb, [
+                'accounts',
+                'account_passkeys',
+                'auth_challenges',
+                'stepup_grants',
+                'used_turnstile_tokens',
+                'auth_rate_limits',
+                'account_sessions',
+                'account_space_items',
+                'pending_import_finalizations',
+                'share_circles',
+                'share_circle_items',
+                'account_annotation_links',
+                'annotation_threads',
+                'annotation_messages',
+                'annotation_thread_meta',
+                'note_stats',
+                'note_view_devices',
+                'note_stats_uid',
+                'note_view_devices_uid',
+            ])
+            accountDbHealth = { ...tbl, bound: true, alignedWithAnnotations: true }
+        }
+    }
+
+    const secretConfigured = Boolean(env?.SCN_SECRET ?? getSecret())
+    const turnstile = resolveTurnstilePolicy(env)
+    const rawAdminPath = String(env?.SCN_ADMIN_PATH ?? getAdminPath() ?? '/admin').trim()
+    const normalizedAdminPath = rawAdminPath.replace(/^\/+|\/+$/g, '').toLowerCase()
+    const adminFirstSegment = normalizedAdminPath.split('/')[0]
+    const adminPathCollision = Boolean(
+        normalizedAdminPath
+        && normalizedAdminPath !== 'admin'
+        && (RESERVED_SLUGS.includes(normalizedAdminPath) || RESERVED_SLUGS.includes(adminFirstSegment))
+    )
+
+    const ok = Boolean(
+        notesDbHealth.ok
+        && historyDbHealth.ok
+        && accountDbHealth.ok
+        && turnstile !== 'misconfigured'
+        && !adminPathCollision
+        && (!accountEnabled || secretConfigured)
+    )
+
+    return {
+        status: ok ? (maintenanceMode ? 'maintenance' : 'ok') : 'degraded',
+        ok,
+        maintenanceMode,
+        storage: {
+            driver,
+            authorityRequired,
+            pinnedBinding: String(env?.SCN_NOTES_DB_BINDING ?? globalThis?.SCN_NOTES_DB_BINDING ?? '').trim() || null,
+            notesDb: notesDbHealth,
+            historyDb: historyDbHealth,
+            accountDb: accountDbHealth,
+        },
+        notesRegistryEnabled,
+        accountEnabled,
+        secretConfigured,
+        turnstile,
+        adminPath: {
+            path: rawAdminPath || '/admin',
+            collision: adminPathCollision,
+        },
+    }
+}
+
+router.get(API_HEALTH_PATH, async (request, context = {}) => {
+    const report = await buildHealthReport(context?.env)
+    return new Response(JSON.stringify(report), {
+        status: report.ok ? 200 : 503,
+        headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            'Cache-Control': 'no-store',
+        },
+    })
+})
+
+router.head(API_HEALTH_PATH, async (request, context = {}) => {
+    const report = await buildHealthReport(context?.env)
+    return new Response(null, {
+        status: report.ok ? 200 : 503,
+        headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            'Cache-Control': 'no-store',
+        },
+    })
+})
 
 // MCP (Model Context Protocol) Endpoints for WebMCP and Agent Tools
 router.options('/mcp', handleMcpRequest)
@@ -3138,10 +3635,25 @@ router.head('/.well-known/agent-skills/:skillName/:fileName', respondAgentSkillM
 router.get('/.well-known/skills/:skillName/:fileName', respondAgentSkillMarkdown)
 router.head('/.well-known/skills/:skillName/:fileName', respondAgentSkillMarkdown)
 
+router.all('*', async (request, context = {}) => {
+    const pathname = new URL(request.url).pathname
+    const env = context.env || globalThis
+    if (pathname === '/_space' || /^\/api\/(?:auth\/passkey|account|space)(?:\/|$)/.test(pathname)) {
+        return await handleAccountRoutes(request, env) || returnJSON(404, 'Not found', { status: 404, 'Cache-Control': 'no-store' })
+    }
+    if (/^\/c(?:\/|$)/.test(pathname) || /^\/api\/circles(?:\/|$)/.test(pathname)) {
+        return await handleCircleRoutes(request, env) || returnJSON(404, 'Not found', { status: 404, 'Cache-Control': 'no-store' })
+    }
+})
+
 router.get('/api/:path/history', async (request) => {
     const { path } = request.params
-    const { metadata } = await queryNote(path)
-    const auth = await requireApiEditAccess(request, metadata)
+    const noteResult = await queryNote(path)
+    const { metadata } = noteResult
+    const auth = await requireApiEditAccess(request, metadata, undefined, {
+        requireEditProofForBurn: true,
+        isUnbackfilled: isUnbackfilledBurnNote(noteResult),
+    })
     if (!auth.ok) return auth.response
 
     const historyConfig = getNoteHistoryConfig()
@@ -3153,7 +3665,9 @@ router.get('/api/:path/history', async (request) => {
     }
 
     try {
-        const versions = await listNoteHistoryVersions(historyConfig.db, path, historyConfig.limit)
+        const versions = await listNoteHistoryVersions(historyConfig.db, path, historyConfig.limit, {
+            noteUid: metadata?.noteUid || '',
+        })
         return returnJSON(0, {
             enabled: true,
             limit: historyConfig.limit,
@@ -3166,6 +3680,9 @@ router.get('/api/:path/history', async (request) => {
             })),
         })
     } catch (error) {
+        if (error instanceof StorageAuthorityError) {
+            return returnJSON(503, error.message, { status: 503 }, { code: error.code })
+        }
         console.error('History List Error:', error)
         return returnJSON(500, `History List Error: ${error.message}`)
     }
@@ -3173,8 +3690,12 @@ router.get('/api/:path/history', async (request) => {
 
 router.get('/api/:path/history/:versionId', async (request) => {
     const { path, versionId } = request.params
-    const { metadata } = await queryNote(path)
-    const auth = await requireApiEditAccess(request, metadata)
+    const noteResult = await queryNote(path)
+    const { metadata } = noteResult
+    const auth = await requireApiEditAccess(request, metadata, undefined, {
+        requireEditProofForBurn: true,
+        isUnbackfilled: isUnbackfilledBurnNote(noteResult),
+    })
     if (!auth.ok) return auth.response
 
     const historyConfig = getNoteHistoryConfig()
@@ -3186,7 +3707,9 @@ router.get('/api/:path/history/:versionId', async (request) => {
     }
 
     try {
-        const version = await getNoteHistoryVersionById(historyConfig.db, path, Number(versionId))
+        const version = await getNoteHistoryVersionById(historyConfig.db, path, Number(versionId), {
+            noteUid: metadata?.noteUid || '',
+        })
         if (!version) {
             return returnJSON(404, 'History version not found')
         }
@@ -3197,15 +3720,23 @@ router.get('/api/:path/history/:versionId', async (request) => {
             content: version.content || '',
         })
     } catch (error) {
+        if (error instanceof StorageAuthorityError) {
+            return returnJSON(503, error.message, { status: 503 }, { code: error.code })
+        }
         console.error('History Get Error:', error)
         return returnJSON(500, `History Get Error: ${error.message}`)
     }
 })
 
 router.post('/api/:path/history/:versionId/restore', async (request) => {
+    if (isMaintenanceMode()) return maintenanceModeResponse()
     const { path, versionId } = request.params
-    const { value, metadata } = await queryNote(path)
-    const auth = await requireApiEditAccess(request, metadata)
+    const noteResult = await queryNote(path)
+    const { value, metadata } = noteResult
+    const auth = await requireApiEditAccess(request, metadata, undefined, {
+        requireEditProofForBurn: true,
+        isUnbackfilled: isUnbackfilledBurnNote(noteResult),
+    })
     if (!auth.ok) return auth.response
 
     const historyConfig = getNoteHistoryConfig()
@@ -3217,7 +3748,9 @@ router.post('/api/:path/history/:versionId/restore', async (request) => {
     }
 
     try {
-        const version = await getNoteHistoryVersionById(historyConfig.db, path, Number(versionId))
+        const version = await getNoteHistoryVersionById(historyConfig.db, path, Number(versionId), {
+            noteUid: metadata?.noteUid || '',
+        })
         if (!version) {
             return returnJSON(404, 'History version not found')
         }
@@ -3225,6 +3758,7 @@ router.post('/api/:path/history/:versionId/restore', async (request) => {
         const restoredContent = version.content || ''
         await backupCurrentNoteBeforeRestore({
             path,
+            noteUid: metadata?.noteUid || '',
             currentContent: value,
             restoredContent,
         })
@@ -3234,7 +3768,14 @@ router.post('/api/:path/history/:versionId/restore', async (request) => {
             updateAt: dayjs().unix(),
         }
 
-        await driverPutNote(path, restoredContent, nextMetadata)
+        const commitResult = await commitAuthoritativeNoteWrite({
+            path,
+            content: restoredContent,
+            nextMetadata,
+            previousMetadata: metadata,
+            expectedNoteUid: noteResult._source === 'd1' ? (metadata?.noteUid || null) : null,
+            expectedMetaVersion: noteResult._source === 'd1' ? Number(metadata?.metaVersion || 0) : 0,
+        })
 
         const fullUrl = new URL(request.url)
         const responseData = {
@@ -3242,12 +3783,19 @@ router.post('/api/:path/history/:versionId/restore', async (request) => {
             url: `${fullUrl.protocol}//${fullUrl.host}/${path}`,
         }
 
-        if (nextMetadata.share) {
-            responseData.shareUrl = `${fullUrl.protocol}//${fullUrl.host}/share/${await getShareIdForPath(path, nextMetadata)}`
+        const shareId = await getCanonicalShareId(path, commitResult.metadata)
+        if (shareId) {
+            responseData.shareUrl = `${fullUrl.protocol}//${fullUrl.host}/share/${shareId}`
         }
 
         return returnJSON(0, responseData)
     } catch (error) {
+        if (error instanceof StorageConflictError) {
+            return returnJSON(409, error.message, { status: 409 }, { code: error.code })
+        }
+        if (error instanceof StorageAuthorityError) {
+            return returnJSON(503, error.message, { status: 503 }, { code: error.code })
+        }
         console.error('History Restore Error:', error)
         return returnJSON(500, `History Restore Error: ${error.message}`)
     }
@@ -3255,14 +3803,15 @@ router.post('/api/:path/history/:versionId/restore', async (request) => {
 
 router.get('/api/:path', async (request) => {
     const { path } = request.params
-    const { value, metadata } = await queryNote(path)
+    const noteResult = await queryNote(path)
+    const { value, metadata } = noteResult
     const url = new URL(request.url)
     const cookie = Cookies.parse(request.headers.get('Cookie') || '')
-    const isAuthor = await isNoteAuthor(request, path, cookie)
+    const isAuthor = await isNoteAuthor(request, path, cookie, { noteUid: metadata?.noteUid || '' })
     const now = Math.floor(Date.now() / 1000)
 
     if (!isAuthor) {
-        if (metadata.shareBurnedAt) {
+        if (isShareBurned(metadata) || metadata.shareBurnedAt) {
             return returnJSON(410, 'Share has been burned and destroyed', { status: 410 })
         }
         if (metadata.shareExpiresAt && metadata.shareExpiresAt <= now) {
@@ -3274,7 +3823,10 @@ router.get('/api/:path', async (request) => {
         if (metadata.shareMode === 'deadman' && metadata.sharePulseDueAt && metadata.sharePulseDueAt > now) {
             return returnJSON(423, "Dead Man's Switch is active. Vault is sealed until check-in expires.", { status: 423 })
         }
-        if (metadata.shareBurnAfterReading === true) {
+        if (isBurnProtected(metadata)) {
+            if (isUnbackfilledBurnNote(noteResult)) {
+                return returnJSON(409, 'Burn-after-reading share requires D1 backfill before access', { status: 409 })
+            }
             return returnJSON(400, 'Burn-after-reading shares must be revealed via /share/:shareId or /api/shares/:shareId/reveal', { status: 400 })
         }
     }
@@ -3284,7 +3836,7 @@ router.get('/api/:path', async (request) => {
         const authHeader = request.headers.get('Authorization')
         const headerPw = authHeader ? authHeader.replace('Bearer ', '').trim() : null
         const cookie = Cookies.parse(request.headers.get('Cookie') || '')
-        const { valid: cookieAuthed } = await checkAuth(cookie, path)
+        const { valid: cookieAuthed } = await checkAuth(cookie, path, { noteUid: metadata?.noteUid || '' })
 
         const providedPw = queryPw || headerPw
         if (!cookieAuthed && !providedPw) return returnJSON(401, 'Unauthorized: Password required')
@@ -3317,17 +3869,18 @@ router.get('/api/:path', async (request) => {
 async function handleNotePdfExport(request) {
     try {
         const { path } = request.params
-        const { value, metadata } = await queryNote(path)
+        const noteResult = await queryNote(path)
+        const { value, metadata } = noteResult
         if (!value && Object.keys(metadata || {}).length === 0) {
             return returnJSON(404, 'Note not found', { status: 404 })
         }
 
         const cookie = Cookies.parse(request.headers.get('Cookie') || '')
-        const isAuthor = await isNoteAuthor(request, path, cookie)
+        const isAuthor = await isNoteAuthor(request, path, cookie, { noteUid: metadata?.noteUid || '' })
         const now = Math.floor(Date.now() / 1000)
 
         if (!isAuthor) {
-            if (metadata.shareBurnedAt) {
+            if (isShareBurned(metadata) || metadata.shareBurnedAt) {
                 return returnJSON(410, 'Share has been burned and destroyed', { status: 410 })
             }
             if (metadata.shareExpiresAt && metadata.shareExpiresAt <= now) {
@@ -3339,7 +3892,10 @@ async function handleNotePdfExport(request) {
             if (metadata.shareMode === 'deadman' && metadata.sharePulseDueAt && metadata.sharePulseDueAt > now) {
                 return returnJSON(423, "Dead Man's Switch is active. Vault is sealed until check-in expires.", { status: 423 })
             }
-            if (metadata.shareBurnAfterReading === true) {
+            if (isBurnProtected(metadata)) {
+                if (isUnbackfilledBurnNote(noteResult)) {
+                    return returnJSON(409, 'Burn-after-reading share requires D1 backfill before export', { status: 409 })
+                }
                 return returnJSON(400, 'Burn-after-reading shares cannot be exported directly via path', { status: 400 })
             }
         }
@@ -3349,7 +3905,7 @@ async function handleNotePdfExport(request) {
             const queryPw = url.searchParams.get('pw')
             const authHeader = request.headers.get('Authorization')
             const headerPw = authHeader ? authHeader.replace('Bearer ', '').trim() : null
-            const { valid } = await checkAuth(cookie, path)
+            const { valid } = await checkAuth(cookie, path, { noteUid: metadata?.noteUid || '' })
 
             const providedPw = queryPw || headerPw
             const hasViewAccess = valid || isAuthor || (providedPw && (
@@ -3373,7 +3929,7 @@ async function handleNotePdfExport(request) {
             markdown = whiteboardToMarkdown(parseWhiteboardDocument(value))
         }
 
-        const title = extractNoteTitle(markdown, path)
+        const title = extractNoteTitle(markdown, metadata?.title, isAuthor ? decodeURIComponent(path) : 'Document')
         const size = url.searchParams.get('size') || 'a4'
         const landscape = url.searchParams.get('landscape') === 'true' || url.searchParams.get('landscape') === '1'
         const theme = metadata.theme || (format === 'block' ? 'ayu-light' : 'claude-canvas')
@@ -3387,7 +3943,8 @@ async function handleNotePdfExport(request) {
             siteUrl,
         })
 
-        const filename = `${title.replace(/[\/\\:*?"<>|]/g, '_') || path}.pdf`
+        const safeBaseName = (title || (isAuthor ? path : 'document')).replace(/[\/\\:*?"<>|]/g, '_') || 'document'
+        const filename = `${safeBaseName}.pdf`
         return createPdfResponse(pdfBytes, filename)
     } catch (e) {
         console.error('Note PDF Export Error:', e)
@@ -3401,8 +3958,13 @@ router.get('/api/:path/pdf', async (request) => handleNotePdfExport(request))
 router.post('/api/upload', async (request) => handleR2ImageUpload(request, { requireTurnstile: false }))
 
 router.post('/api/:path', async (request) => {
+    if (isMaintenanceMode()) return maintenanceModeResponse()
     const { path } = request.params
-    const { value, metadata } = await queryNote(path)
+    if (isReservedSlug(path)) {
+        return returnJSON(400, 'Reserved path cannot be used for notes', { status: 400 })
+    }
+    const noteResult = await queryNote(path)
+    const { value, metadata } = noteResult
     const url = new URL(request.url)
 
     let reqBody = {}
@@ -3546,7 +4108,11 @@ router.post('/api/:path', async (request) => {
     }
 
     if (reqBody.theme !== undefined) {
-        updateMetadata.theme = reqBody.theme
+        const normalizedTheme = typeof reqBody.theme === 'string' ? reqBody.theme.trim() : ''
+        if (!normalizedTheme || !ALL_PREVIEW_THEMES.includes(normalizedTheme)) {
+            return returnJSON(400, 'Invalid theme', { status: 400 })
+        }
+        updateMetadata.theme = normalizedTheme
     }
 
     const normalizedWidth = normalizePreviewWidth(reqBody.width, updateMetadata.width || DEFAULT_PREVIEW_WIDTH)
@@ -3579,7 +4145,7 @@ router.post('/api/:path', async (request) => {
     const rawMode = reqBody.shareMode || reqBody.mode
     if (rawMode !== undefined) {
         updateMetadata.shareMode = rawMode
-        if (rawMode === 'burn') {
+        if (rawMode === 'burn' || rawMode === 'burn_after_reading') {
             updateMetadata.shareBurnAfterReading = true
         } else {
             updateMetadata.shareBurnAfterReading = false
@@ -3617,12 +4183,15 @@ router.post('/api/:path', async (request) => {
     }
 
     if (updateMetadata.share === true) {
-        if (metadata.shareBurnedAt) {
+        if (isShareBurned(metadata) || metadata.shareExpiredAt) {
             delete updateMetadata.shareSlug
             delete updateMetadata.shareId
         }
         delete updateMetadata.shareBurnedAt
         delete updateMetadata.shareExpiredAt
+        delete updateMetadata.burned
+        delete updateMetadata.shareBurned
+        delete updateMetadata.shareViewCount
     }
 
     if (updateMetadata.share === true && metadata.share !== true) {
@@ -3633,13 +4202,25 @@ router.post('/api/:path', async (request) => {
         updateMetadata.publicIndex = false
         updateMetadata.annotationsEnabled = false
     }
-    updateMetadata = await ensureShareMetadata(path, updateMetadata)
+
+    const expectedNoteUid = noteResult._source === 'd1' ? (metadata?.noteUid || null) : null
+    const expectedMetaVersion = noteResult._source === 'd1' ? Number(metadata?.metaVersion || 0) : 0
+    const shareAction = (updateMetadata.share === true && (metadata.share !== true || isShareBurned(metadata) || isShareExpired(metadata)))
+        ? 'republish'
+        : 'auto'
 
     if (!canPersistNoteContent(updateMetadata)) {
         if (reqBody.share === false || reqBody.public === false) {
-            await driverPutNote(path, newContent, updateMetadata)
-            await syncShareMappings(path, updateMetadata, metadata)
-            const authorCookie = await createAuthorCookie(path)
+            const commitRes = await commitAuthoritativeNoteWrite({
+                path,
+                content: newContent,
+                nextMetadata: updateMetadata,
+                previousMetadata: metadata,
+                expectedNoteUid,
+                expectedMetaVersion,
+                shareAction,
+            })
+            const authorCookie = await createAuthorCookie(path, commitRes.noteUid || '')
             const fullUrl = new URL(request.url)
             return returnJSON(0, {
                 msg: 'Unpublished successfully',
@@ -3651,40 +4232,48 @@ router.post('/api/:path', async (request) => {
     }
 
     try {
-        await persistNoteContent({
+        const commitRes = await persistNoteContent({
             path,
             content: newContent,
             metadata: updateMetadata,
+            previousMetadata: metadata,
             previousContent: value,
+            expectedNoteUid,
+            expectedMetaVersion,
+            shareAction,
         })
-
-        await syncShareMappings(path, updateMetadata, metadata)
+        const committedMeta = commitRes.metadata
 
         const fullUrl = new URL(request.url)
         const responseData = {
             msg: 'Saved successfully',
             url: `${fullUrl.protocol}//${fullUrl.host}/${path}`
         }
-        
+
         // Always provide the share URL if it's shared, so the LLM can give a safe link to the human
-        if (updateMetadata.share) {
-            const shareId = await getShareIdForPath(path, updateMetadata)
+        if (committedMeta.share) {
+            const shareId = await getCanonicalShareId(path, committedMeta)
             if (shareId) {
-                await driverSetShareStatus(shareId, null)
+                responseData.shareUrl = `${fullUrl.protocol}//${fullUrl.host}/share/${shareId}`
             }
-            responseData.shareUrl = `${fullUrl.protocol}//${fullUrl.host}/share/${shareId}`
-            if (updateMetadata.shareExpiresAt) {
-                responseData.shareExpiresAt = updateMetadata.shareExpiresAt
-                responseData.shareExpiresIn = updateMetadata.shareExpiresIn
+            if (committedMeta.shareExpiresAt) {
+                responseData.shareExpiresAt = committedMeta.shareExpiresAt
+                responseData.shareExpiresIn = committedMeta.shareExpiresIn
             }
-            if (updateMetadata.shareBurnAfterReading) {
+            if (committedMeta.shareBurnAfterReading) {
                 responseData.shareBurnAfterReading = true
             }
         }
 
-        const authorCookie = await createAuthorCookie(path)
+        const authorCookie = await createAuthorCookie(path, commitRes.noteUid || '')
         return returnJSON(0, responseData, { 'Set-Cookie': authorCookie })
     } catch (error) {
+        if (error instanceof StorageConflictError) {
+            return returnJSON(409, error.message, { status: 409 }, { code: error.code })
+        }
+        if (error instanceof StorageAuthorityError) {
+            return returnJSON(503, error.message, { status: 503 }, { code: error.code })
+        }
         console.error('API Error:', error)
         return returnJSON(500, `API Internal Error: ${error.message}`)
     }
@@ -3695,7 +4284,8 @@ async function handleDirectNoteRequest(request, { isHead = false } = {}) {
     const { path } = request.params
 
     const cookie = Cookies.parse(request.headers.get('Cookie') || '')
-    const { value, metadata } = await queryNote(path)
+    const noteResult = await queryNote(path)
+    const { value, metadata } = noteResult
     const blockPageExt = getBlockPageExt(value, metadata)
     const markdownExportContent = getMarkdownExportContent(value, metadata)
 
@@ -3705,23 +4295,12 @@ async function handleDirectNoteRequest(request, { isHead = false } = {}) {
         : extractNoteTitle(value, metadata?.title, decodeURIComponent(path))
     const pageMetadata = newEntry ? { ...metadata, isNewEntry: true } : metadata
 
-    // Calculate shareId and auto-heal share mappings only when missing
-    let activeMetadata = metadata
-    if (metadata.share === true && !isHead) {
-        const nextMeta = await ensureShareMetadata(path, metadata)
-        if (nextMeta.shareSlug !== metadata.shareSlug) {
-            activeMetadata = nextMeta
-            await driverPutNote(path, value, nextMeta).catch(() => {})
-            await syncShareMappings(path, activeMetadata, metadata).catch(() => {})
-        }
-    }
-    const shareId = await getShareIdForPath(path, activeMetadata)
-
-    const isAuthor = await isNoteAuthor(request, path, cookie)
+    const shareId = await getCanonicalShareId(path, metadata)
+    const isAuthor = await isNoteAuthor(request, path, cookie, { noteUid: metadata?.noteUid || '' })
     const now = Math.floor(Date.now() / 1000)
 
-    if (!isAuthor && (metadata.share === true || metadata.shareMode || metadata.shareBurnAfterReading || metadata.shareBurnedAt || metadata.shareExpiresAt)) {
-        if (metadata.shareBurnedAt) {
+    if (!isAuthor && (metadata.share === true || metadata.shareMode || isBurnProtected(metadata) || isShareBurned(metadata) || metadata.shareBurnedAt || metadata.shareExpiresAt)) {
+        if (isShareBurned(metadata) || metadata.shareBurnedAt) {
             if (isHead) return new Response(null, { status: 410, headers: { 'content-type': 'text/html; charset=UTF-8' } })
             if (requestAcceptsMarkdown(request)) {
                 return new Response('Share has been burned and destroyed', { status: 410, headers: { 'content-type': 'text/plain; charset=UTF-8' } })
@@ -3740,16 +4319,24 @@ async function handleDirectNoteRequest(request, { isHead = false } = {}) {
             if (requestAcceptsMarkdown(request)) {
                 return new Response('Share is time-locked and cannot be viewed yet', { status: 423, headers: { 'content-type': 'text/plain; charset=UTF-8' } })
             }
-            return returnPage('ShareTimeLocked', { lang, title: 'Time-Locked Note', shareId, path, ext: { ...pageMetadata, ...blockPageExt, isAuthor: false } }, { status: 423 })
+            return returnPage('ShareTimeLocked', { lang, title: 'Time-Locked Note', shareId, ext: { shareUnlockAt: metadata.shareUnlockAt, isAuthor: false } }, { status: 423 })
         }
         if (metadata.shareMode === 'deadman' && metadata.sharePulseDueAt && metadata.sharePulseDueAt > now) {
             if (isHead) return new Response(null, { status: 423, headers: { 'content-type': 'text/html; charset=UTF-8' } })
             if (requestAcceptsMarkdown(request)) {
                 return new Response("Dead Man's Switch is active. Vault is sealed until check-in expires.", { status: 423, headers: { 'content-type': 'text/plain; charset=UTF-8' } })
             }
-            return returnPage('ShareDeadmanLocked', { lang, title: "Dead Man's Switch Active", shareId, path, ext: { ...pageMetadata, ...blockPageExt, isAuthor: false } }, { status: 423 })
+            return returnPage('ShareDeadmanLocked', { lang, title: "Dead Man's Switch Active", shareId, ext: { sharePulseDueAt: metadata.sharePulseDueAt, isAuthor: false } }, { status: 423 })
         }
-        if (metadata.shareBurnAfterReading === true) {
+        if (isBurnProtected(metadata)) {
+            if (isUnbackfilledBurnNote(noteResult)) {
+                if (isHead) return new Response(null, { status: 409, headers: { 'content-type': 'text/plain; charset=UTF-8' } })
+                return returnJSON(409, 'Burn-after-reading share requires D1 backfill before reveal', { status: 409 })
+            }
+            if (!shareId) {
+                if (isHead) return new Response(null, { status: 403, headers: { 'content-type': 'text/plain; charset=UTF-8' } })
+                return returnJSON(403, 'Burn-protected note cannot be accessed directly without a share link', { status: 403 })
+            }
             return Response.redirect(`${new URL(request.url).origin}/share/${shareId}`, 302)
         }
     }
@@ -3794,7 +4381,7 @@ async function handleDirectNoteRequest(request, { isHead = false } = {}) {
         })
     }
 
-    const { valid, role } = await checkAuth(cookie, path)
+    const { valid, role } = await checkAuth(cookie, path, { noteUid: metadata?.noteUid || '' })
 
     if (valid && role === 'edit') {
         if (requestAcceptsMarkdown(request)) {
@@ -3808,7 +4395,7 @@ async function handleDirectNoteRequest(request, { isHead = false } = {}) {
             )
         }
 
-        const headers = isHead ? undefined : { 'Set-Cookie': await createAuthorCookie(path) }
+        const headers = isHead ? undefined : { 'Set-Cookie': await createAuthorCookie(path, metadata?.noteUid || '') }
         return returnPage('Edit', {
             lang,
             title,
@@ -3880,7 +4467,9 @@ router.post('/:path/auth', async request => {
         const role = await getPasswordRole(passwd, metadata)
         if (role) {
             const exp = Math.floor(Date.now() / 1000) + 7 * 86400
-            const token = await jwt.sign({ path, role, exp }, getSecret())
+            const noteUid = metadata?.noteUid || undefined
+            const payload = { path, role, ...(noteUid ? { noteUid } : {}), exp }
+            const token = await jwt.sign(payload, getSecret())
             return returnJSON(0, {
                 refresh: true,
                 role,
@@ -3900,22 +4489,31 @@ router.post('/:path/auth', async request => {
 })
 
 router.post('/:path/pw', async request => {
+    if (isMaintenanceMode()) return maintenanceModeResponse()
     const { path } = request.params
     try {
         if (request.headers.get('Content-Type') === 'application/json') {
             const cookie = Cookies.parse(request.headers.get('Cookie') || '')
             const { passwd, type } = await request.json()
 
-            const { value, metadata } = await queryNote(path)
-            const { valid, role } = await checkAuth(cookie, path)
+            const noteResult = await queryNote(path)
+            const { value, metadata } = noteResult
+            const { valid, role } = await checkAuth(cookie, path, { noteUid: metadata?.noteUid || '' })
 
             if ((!metadata.pw && !metadata.vpw) || (valid && role === 'edit')) {
                 const pwField = type === 'view' ? 'vpw' : 'pw'
                 const pw = passwd ? await saltPw(passwd) : undefined
                 try {
-                    await driverPutNote(path, value, {
-                        ...metadata,
-                        [pwField]: pw,
+                    await commitAuthoritativeNoteWrite({
+                        path,
+                        content: value,
+                        nextMetadata: {
+                            ...metadata,
+                            [pwField]: pw,
+                        },
+                        previousMetadata: metadata,
+                        expectedNoteUid: noteResult._source === 'd1' ? (metadata?.noteUid || null) : null,
+                        expectedMetaVersion: noteResult._source === 'd1' ? Number(metadata?.metaVersion || 0) : 0,
                     })
 
                     return returnJSON(0, null, {
@@ -3926,6 +4524,12 @@ router.post('/:path/pw', async request => {
                         })
                     })
                 } catch (error) {
+                    if (error instanceof StorageConflictError) {
+                        return returnJSON(409, error.message, { status: 409 }, { code: error.code })
+                    }
+                    if (error instanceof StorageAuthorityError) {
+                        return returnJSON(503, error.message, { status: 503 }, { code: error.code })
+                    }
                     console.error(error)
                     throw error
                 }
@@ -3934,12 +4538,16 @@ router.post('/:path/pw', async request => {
             return returnJSON(10003, 'Password setting failed!')
         }
     } catch (error) {
+        if (error instanceof StorageAuthorityError) {
+            return returnJSON(503, error.message, { status: 503 }, { code: error.code })
+        }
         console.error('PW Error:', error)
         return returnJSON(500, `PW Internal Error: ${error.message}`)
     }
 })
 
 router.post('/:path/setting', async request => {
+    if (isMaintenanceMode()) return maintenanceModeResponse()
     const { path } = request.params
     try {
         const contentType = request.headers.get('Content-Type') || ''
@@ -3953,8 +4561,9 @@ router.post('/:path/setting', async request => {
                 share, theme, title, width, shareFont, publicIndex, content, autosave, annotationsEnabled,
             } = body
 
-            const { value, metadata } = await queryNote(path)
-            const { valid, role } = await checkAuth(cookie, path)
+            const noteResult = await queryNote(path)
+            const { value, metadata } = noteResult
+            const { valid, role } = await checkAuth(cookie, path, { noteUid: metadata?.noteUid || '' })
 
             let turnstileSetCookie = null
             if (typeof content === 'string' && isTurnstileEnabled() && !(valid && role === 'edit')) {
@@ -4005,10 +4614,18 @@ router.post('/:path/setting', async request => {
                     if (title !== undefined && (typeof title !== 'string' || title.trim().length > 200)) {
                         return returnJSON(400, 'Invalid title: use a text value up to 200 characters')
                     }
+                    let validatedTheme
+                    if (theme !== undefined) {
+                        const trimmedTheme = typeof theme === 'string' ? theme.trim() : ''
+                        if (!trimmedTheme || !ALL_PREVIEW_THEMES.includes(trimmedTheme)) {
+                            return returnJSON(400, 'Invalid theme', { status: 400 })
+                        }
+                        validatedTheme = trimmedTheme
+                    }
                     let nextMetadata = {
                         ...metadata,
                         ...share !== undefined && { share },
-                        ...theme !== undefined && { theme },
+                        ...validatedTheme !== undefined && { theme: validatedTheme },
                         ...title !== undefined && { title: title.trim() },
                         ...normalizedWidth !== undefined && { width: normalizedWidth },
                         ...shareFont !== undefined && { shareFont },
@@ -4030,7 +4647,7 @@ router.post('/:path/setting', async request => {
                         delete nextMetadata.shareMaxViews
                     } else if (effectiveMode !== undefined) {
                         nextMetadata.shareMode = effectiveMode
-                        if (effectiveMode === 'burn') {
+                        if (effectiveMode === 'burn' || effectiveMode === 'burn_after_reading') {
                             nextMetadata.shareBurnAfterReading = true
                         } else {
                             nextMetadata.shareBurnAfterReading = false
@@ -4116,12 +4733,15 @@ router.post('/:path/setting', async request => {
                     }
 
                     if (share === true) {
-                        if (metadata.shareBurnedAt) {
+                        if (isShareBurned(metadata) || metadata.shareExpiredAt) {
                             delete nextMetadata.shareSlug
                             delete nextMetadata.shareId
                         }
                         delete nextMetadata.shareBurnedAt
                         delete nextMetadata.shareExpiredAt
+                        delete nextMetadata.burned
+                        delete nextMetadata.shareBurned
+                        delete nextMetadata.shareViewCount
                     }
 
                     if (share === true && metadata.share !== true && annotationsEnabled === undefined) {
@@ -4137,37 +4757,58 @@ router.post('/:path/setting', async request => {
                     if (typeof content === 'string') {
                         nextMetadata.updateAt = dayjs().unix()
                     }
-                    nextMetadata = await ensureShareMetadata(path, nextMetadata)
 
                     const textToSave = typeof content === 'string' ? content : value
+                    const expectedNoteUid = noteResult._source === 'd1' ? (metadata?.noteUid || null) : null
+                    const expectedMetaVersion = noteResult._source === 'd1' ? Number(metadata?.metaVersion || 0) : 0
+                    const shareAction = (share === true && (metadata.share !== true || isShareBurned(metadata) || isShareExpired(metadata)))
+                        ? 'republish'
+                        : 'auto'
+
+                    let commitRes
                     if (share === true) {
-                        await persistNoteContent({
+                        commitRes = await persistNoteContent({
                             path,
                             content: textToSave,
                             metadata: nextMetadata,
+                            previousMetadata: metadata,
                             previousContent: value,
+                            expectedNoteUid,
+                            expectedMetaVersion,
+                            shareAction,
                         })
                     } else {
-                        await driverPutNote(path, textToSave, nextMetadata)
+                        commitRes = await commitAuthoritativeNoteWrite({
+                            path,
+                            content: textToSave,
+                            nextMetadata,
+                            previousMetadata: metadata,
+                            expectedNoteUid,
+                            expectedMetaVersion,
+                            shareAction,
+                        })
                     }
 
-                    const authorCookie = await createAuthorCookie(path)
+                    const committedMeta = commitRes.metadata
+                    if (share === true && metadata.share !== true) {
+                        await recordSpaceActivity(request, path, committedMeta, 'created')
+                    }
+                    const authorCookie = await createAuthorCookie(path, commitRes.noteUid || '')
                     const responseCookies = [authorCookie, turnstileSetCookie].filter(Boolean)
                     const responseHeaders = responseCookies.length > 0 ? { 'Set-Cookie': responseCookies } : {}
-                    if (nextMetadata.share === true) {
-                        await syncShareMappings(path, nextMetadata, metadata)
-                        const shareId = await getShareIdForPath(path, nextMetadata)
-                        if (shareId && (shareExpiresIn !== undefined || share === true)) {
-                            await driverSetShareStatus(shareId, null)
-                        }
+                    if (committedMeta.share === true) {
+                        const shareId = await getCanonicalShareId(path, committedMeta)
                         return returnJSON(0, shareId, responseHeaders)
-                    }
-                    if (share === false) {
-                        await syncShareMappings(path, nextMetadata, metadata)
                     }
 
                     return returnJSON(0, null, responseHeaders)
                 } catch (error) {
+                    if (error instanceof StorageConflictError) {
+                        return returnJSON(409, error.message, { status: 409 }, { code: error.code })
+                    }
+                    if (error instanceof StorageAuthorityError) {
+                        return returnJSON(503, error.message, { status: 503 }, { code: error.code })
+                    }
                     console.error(error)
                     throw error
                 }
@@ -4186,7 +4827,7 @@ router.post('/:path/transcribe', async (request, context = {}) => {
 
     const { metadata } = await queryNote(path)
     const cookie = Cookies.parse(request.headers.get('Cookie') || '')
-    const { valid, role } = await checkAuth(cookie, path)
+    const { valid, role } = await checkAuth(cookie, path, { noteUid: metadata?.noteUid || '' })
 
     if (metadata && (metadata.pw || metadata.vpw) && (!valid || role !== 'edit')) {
         return returnJSON(10002, 'Password auth failed!', { status: 401 })
@@ -4219,7 +4860,7 @@ router.post('/:path/ai-format', async (request, { env }) => {
 
     const { metadata } = await queryNote(path)
     const cookie = Cookies.parse(request.headers.get('Cookie') || '')
-    const { valid, role } = await checkAuth(cookie, path)
+    const { valid, role } = await checkAuth(cookie, path, { noteUid: metadata?.noteUid || '' })
 
     if (metadata && (metadata.pw || metadata.vpw) && (!valid || role !== 'edit')) {
         return returnJSON(10002, 'Password auth failed!', { status: 401 })
@@ -4334,11 +4975,16 @@ router.post('/:path/ai-format', async (request, { env }) => {
 })
 
 router.post('/:path', async request => {
+    if (isMaintenanceMode()) return maintenanceModeResponse()
     const { path } = request.params
-    const { value, metadata } = await queryNote(path)
+    if (isReservedSlug(path)) {
+        return returnJSON(400, 'Reserved path cannot be used for notes', { status: 400 })
+    }
+    const noteResult = await queryNote(path)
+    const { value, metadata } = noteResult
 
     const cookie = Cookies.parse(request.headers.get('Cookie') || '')
-    const { valid, role } = await checkAuth(cookie, path)
+    const { valid, role } = await checkAuth(cookie, path, { noteUid: metadata?.noteUid || '' })
 
     if ((!metadata.pw && !metadata.vpw) || (valid && role === 'edit')) {
         // OK
@@ -4346,12 +4992,12 @@ router.post('/:path', async request => {
         return returnJSON(10002, 'Password auth failed! Try refreshing this page if you had just set a password.')
     }
 
-    if (!canPersistNoteContent(metadata)) {
+    const formData = await request.formData()
+    const content = formData.get('t')
+    const publish = formData.get('share') === 'true'
+    if (!canPersistNoteContent(metadata) && !publish) {
         return returnJSON(10005, getSaveBlockedMessage(getI18n(request)))
     }
-
-    const formData = await request.formData();
-    const content = formData.get('t')
 
     let turnstileSetCookie = null
     if (isTurnstileEnabled() && !(valid && role === 'edit')) {
@@ -4392,6 +5038,7 @@ router.post('/:path', async request => {
     try {
         const nextMeta = {
             ...metadata,
+            ...(publish && metadata.share !== true ? { share: true, annotationsEnabled: true } : {}),
             ...(editorFormat !== 'markdown' && !metadata.editorFormat ? { editorFormat } : {}),
             updateAt: dayjs().unix(),
         }
@@ -4400,19 +5047,27 @@ router.post('/:path', async request => {
             nextMeta.sharePulseDueAt = dayjs().unix() + pulseInterval
             nextMeta.shareLastPulseAt = dayjs().unix()
         }
-        await persistNoteContent({
+        const commitRes = await persistNoteContent({
             path,
             content,
             metadata: nextMeta,
+            previousMetadata: metadata,
             previousContent: value,
+            expectedNoteUid: noteResult._source === 'd1' ? (metadata?.noteUid || null) : null,
+            expectedMetaVersion: noteResult._source === 'd1' ? Number(metadata?.metaVersion || 0) : 0,
+            shareAction: publish && metadata.share !== true ? 'republish' : 'auto',
         })
-        if (nextMeta.share === true) {
-            await syncShareMappings(path, nextMeta, metadata).catch(() => {})
-        }
+        await recordSpaceActivity(request, path, commitRes.metadata, publish && metadata.share !== true ? 'created' : 'edited')
 
         const responseHeaders = turnstileSetCookie ? { 'Set-Cookie': turnstileSetCookie } : {}
         return returnJSON(0, null, responseHeaders)
     } catch (error) {
+        if (error instanceof StorageConflictError) {
+            return returnJSON(409, error.message, { status: 409 }, { code: error.code })
+        }
+        if (error instanceof StorageAuthorityError) {
+            return returnJSON(503, error.message, { status: 503 }, { code: error.code })
+        }
         console.error('Save Error:', error)
         return returnJSON(10001, `KV insert fail: ${error.message}`)
     }
@@ -4420,16 +5075,177 @@ router.post('/:path', async request => {
 
 router.all('*', (request) => {
     const lang = getI18n(request)
-    return returnPage('Page404', { lang, title: '404' })
+    return returnPage('Page404', { lang, title: '404' }, { status: 404 })
 })
 
+let runtimeEnvKeys = new Set()
 function bindRuntimeEnv(env = {}) {
+    for (const key of runtimeEnvKeys) {
+        if (!Object.prototype.hasOwnProperty.call(env, key)) delete globalThis[key]
+    }
+    runtimeEnvKeys = new Set(Object.keys(env))
     Object.assign(globalThis, env)
+}
+
+
+export async function runScheduledCleanup(env = globalThis, { nowSeconds } = {}) {
+    const targetEnv = env || globalThis
+    if (isMaintenanceMode(targetEnv)) {
+        return { skipped: true, reason: 'maintenance_mode', deletedEmpty: 0, errors: [] }
+    }
+
+    const now = nowSeconds ?? Math.floor(Date.now() / 1000)
+    const errors = []
+    if (targetEnv !== globalThis) bindRuntimeEnv(targetEnv)
+    let deletedEmpty = 0
+
+    try {
+        const emptyRes = await deleteEmptyPages()
+        deletedEmpty = emptyRes.deleted || 0
+        if (Array.isArray(emptyRes.errors) && emptyRes.errors.length > 0) {
+            errors.push(...emptyRes.errors)
+        }
+    } catch (err) {
+        errors.push(`deleteEmptyPages failed: ${err?.message || err}`)
+    }
+
+    const registryEnabled = isNotesRegistryEnabled(targetEnv)
+    const notesDb = registryEnabled ? getStorageDb(targetEnv) : null
+    const accountDb = getAccountDb(targetEnv)
+    const historyDb = getNoteHistoryDb(targetEnv)
+    const statsDb = getNoteStatsDb(targetEnv)
+
+    // 1. Account DB expiry cleanup + unlocked stale pending_import reclamation + abandoned finalizations
+    if (accountDb && typeof accountDb.prepare === 'function') {
+        try {
+            const tableRes = await checkD1Tables(accountDb, [
+                'auth_challenges',
+                'stepup_grants',
+                'used_turnstile_tokens',
+                'auth_rate_limits',
+                'account_sessions',
+                'account_space_items',
+                'pending_import_finalizations',
+            ])
+            const present = new Set(tableRes.presentTables || [])
+
+            const cleanup = []
+            if (present.has('auth_challenges')) cleanup.push(accountDb.prepare('DELETE FROM auth_challenges WHERE expires_at <= ?').bind(now))
+            if (present.has('stepup_grants')) cleanup.push(accountDb.prepare('DELETE FROM stepup_grants WHERE expires_at <= ?').bind(now))
+            if (present.has('used_turnstile_tokens')) cleanup.push(accountDb.prepare('DELETE FROM used_turnstile_tokens WHERE expires_at <= ?').bind(now))
+            if (present.has('auth_rate_limits')) cleanup.push(accountDb.prepare('DELETE FROM auth_rate_limits WHERE reset_at <= ?').bind(now))
+            if (present.has('account_sessions')) cleanup.push(accountDb.prepare('DELETE FROM account_sessions WHERE expires_at <= ? OR revoked_at IS NOT NULL').bind(now))
+            if (present.has('account_space_items')) cleanup.push(accountDb.prepare(`
+                DELETE FROM account_space_items
+                WHERE status = 'pending_import' AND pending_import_commit_id IS NULL AND created_at < ?
+            `).bind(now - 120))
+            if (cleanup.length) await accountDb.batch(cleanup)
+
+            if (present.has('pending_import_finalizations') && present.has('account_space_items') && notesDb && typeof accountDb.batch === 'function') {
+                const result = await reconcilePendingImportFinalizations(targetEnv, { maxBatches: 50, nowUnix: now })
+                if (result.deferred) errors.push(`pending import finalizations deferred: ${result.deferred}`)
+            }
+        } catch (err) {
+            errors.push(`accountDb cleanup failed: ${err?.message || err}`)
+        }
+    }
+
+    // 2. Reconcile orphaned UID stats & delayed cross-DB history against permanent note_tombstones
+    let tombstonedPairs = []
+    if (registryEnabled && notesDb) {
+        try {
+            const tombRes = await notesDb.prepare(`
+                SELECT path, deleted_note_uid
+                FROM note_tombstones
+                WHERE deleted_note_uid != '__legacy__'
+            `).all()
+            tombstonedPairs = (tombRes?.results || []).filter(r => r?.path && r?.deleted_note_uid)
+        } catch (err) {
+            errors.push(`note_tombstones read failed: ${err?.message || err}`)
+        }
+    }
+
+    if (tombstonedPairs.length > 0 && statsDb && typeof statsDb.prepare === 'function') {
+        try {
+            const statsTables = await checkD1Tables(statsDb, ['note_stats_uid', 'note_view_devices_uid'])
+            const presentStats = new Set(statsTables.presentTables || [])
+            for (let i = 0; i < tombstonedPairs.length; i += 40) {
+                const chunk = tombstonedPairs.slice(i, i + 40)
+                const cond = chunk.map(() => '(path = ? AND note_uid = ?)').join(' OR ')
+                const bindings = chunk.flatMap(p => [p.path, p.deleted_note_uid])
+                if (presentStats.has('note_stats_uid')) {
+                    await statsDb.prepare(`DELETE FROM note_stats_uid WHERE (${cond})`).bind(...bindings).run()
+                }
+                if (presentStats.has('note_view_devices_uid')) {
+                    await statsDb.prepare(`DELETE FROM note_view_devices_uid WHERE (${cond})`).bind(...bindings).run()
+                }
+            }
+        } catch (err) {
+            errors.push(`statsDb orphan cleanup failed: ${err?.message || err}`)
+        }
+    }
+
+    if (historyDb && typeof historyDb.prepare === 'function') {
+        try {
+            const hasMeta = await hasNoteHistoryMetaTable(historyDb)
+            if (registryEnabled && hasMeta && tombstonedPairs.length > 0) {
+                for (let i = 0; i < tombstonedPairs.length; i += 40) {
+                    const chunk = tombstonedPairs.slice(i, i + 40)
+                    const cond = chunk.map(() => '(path = ? AND note_uid = ?)').join(' OR ')
+                    const bindings = chunk.flatMap(p => [p.path, p.deleted_note_uid])
+                    await historyDb.batch([
+                        historyDb.prepare(`
+                            DELETE FROM note_history
+                            WHERE id IN (SELECT history_id FROM note_history_meta WHERE (${cond}))
+                        `).bind(...bindings),
+                        historyDb.prepare(`
+                            DELETE FROM note_history_meta WHERE (${cond})
+                        `).bind(...bindings),
+                    ])
+                }
+            }
+
+            // 3. Optional untagged legacy note_history retention cleanup (ONLY in registry mode with verified note_history_meta & days > 0)
+            const retentionDays = getLegacyHistoryRetentionDays(targetEnv)
+            if (registryEnabled && hasMeta && retentionDays > 0) {
+                const cutoff = now - retentionDays * 86400
+                await historyDb.prepare(`
+                    DELETE FROM note_history
+                    WHERE created_at < ?
+                      AND NOT EXISTS (
+                          SELECT 1 FROM note_history_meta m WHERE m.history_id = note_history.id
+                      )
+                `).bind(cutoff).run()
+            }
+        } catch (err) {
+            errors.push(`historyDb cleanup failed: ${err?.message || err}`)
+        }
+    }
+
+    return {
+        skipped: false,
+        deletedEmpty,
+        errors,
+    }
 }
 
 export default {
     async fetch(request, env, ctx) {
         bindRuntimeEnv(env)
+        const requestPath = new URL(request.url).pathname
+        const isRead = request.method === 'GET' || request.method === 'HEAD'
+        const noteRead = isRead && (
+            (/^\/[^/]+\/?$/.test(requestPath) && !MAINTENANCE_STATIC_ROOT_PATHS.has(requestPath) && requestPath !== '/mcp') ||
+            (/^\/api\//.test(requestPath) && requestPath !== '/api/health') ||
+            /^\/[^/]+\/export\/pdf\/?$/.test(requestPath)
+        )
+        const sharedAccess = /^\/(?:share|c)(?:\/|$)/.test(requestPath) ||
+            /^\/api\/(?:shares|space|circles)(?:\/|$)/.test(requestPath) || requestPath === '/_space' ||
+            /^\/[^/]+\/(?:auth|transcribe|ai-format)\/?$/.test(requestPath)
+        if (isMaintenanceMode(env) && (noteRead || sharedAccess)) {
+            const response = maintenanceModeResponse()
+            return request.method === 'HEAD' ? new Response(null, { status: response.status, headers: response.headers }) : response
+        }
 
         try {
             const dispatchRoute = Object.prototype.hasOwnProperty.call(router, 'handle')
@@ -4440,7 +5256,6 @@ export default {
                 env,
                 waitUntil: promise => ctx.waitUntil(promise),
             })
-            const requestPath = new URL(request.url).pathname
             let finalResponse = response
 
             if (requestPath === '/') {
@@ -4463,21 +5278,23 @@ export default {
 
             return finalResponse
         } catch (err) {
+            if (err instanceof StorageAuthorityError || err?.name === 'StorageAuthorityError') {
+                return returnJSON(503, err.message, { status: 503, 'Cache-Control': 'no-store' }, { code: err.code || 'STORAGE_UNAVAILABLE' })
+            }
+            if (err instanceof StorageConflictError || err?.name === 'StorageConflictError') {
+                return returnJSON(409, err.message, { status: 409, 'Cache-Control': 'no-store' }, { code: err.code || 'WRITE_CONFLICT' })
+            }
             console.error('Fetch Event Error:', err)
             return new Response(`Worker Error: ${err.message}`, { status: 500 })
         }
     },
 
-    // Cron job: Delete empty pages daily at 9 AM Taiwan time (1 AM UTC)
+    // Cron job: Lifecycle cleanup
     async scheduled(event, env) {
         bindRuntimeEnv(env)
-        console.log('Cron triggered at:', new Date().toISOString())
-
         try {
-            const result = await deleteEmptyPages()
-            console.log(`Cron cleanup completed: ${result.deleted} pages deleted`)
-
-            if (result.errors.length > 0) {
+            const result = await runScheduledCleanup(env)
+            if (result.errors && result.errors.length > 0) {
                 console.error('Cron cleanup errors:', result.errors)
             }
         } catch (e) {

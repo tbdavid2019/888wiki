@@ -9,6 +9,7 @@ import { extractRawPublicKeyFromCose, verifyFidoAssertion, verifyFidoRegistratio
 import { createTurnstileClearanceToken, verifyTurnstileClearanceCookie, TURNSTILE_CLEARANCE_COOKIE_NAME } from '../src/turnstile.mjs'
 import { listAnnotationThreads } from '../src/annotation_data.mjs'
 import { driverRecordBurnView } from '../src/storage_driver.mjs'
+import { planDbInitTargets, parseWranglerToml } from '../scripts/db-init.mjs'
 
 const crypto = webcrypto
 
@@ -31,9 +32,12 @@ test('EGM P0: offline_page.js named imports all exist in static/js/markdown-exte
     assert.match(offlineSource, /fetch\('\/api\/' \+ encodeURIComponent\(targetPath\)\)/)
 })
 
-test('EGM P0: package.json db:init includes schema/notes_d1.sql', () => {
+test('EGM P0: db:init plans the notes D1 schema', () => {
     const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
-    assert.match(pkg.scripts['db:init'], /notes_d1\.sql/)
+    assert.match(pkg.scripts['db:init'], /node scripts\/db-init\.mjs/)
+    const config = parseWranglerToml(readFileSync(new URL('../wrangler.toml', import.meta.url), 'utf8'))
+    const plan = planDbInitTargets(config)
+    assert.ok(plan.targets.some(target => target.files.includes('schema/notes_d1.sql')))
 })
 
 test('EGM P0: MCP batch > 20 returns 400 JSON without ReferenceError and missing notes return not found', async () => {

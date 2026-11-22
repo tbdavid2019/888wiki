@@ -1,4 +1,4 @@
-const CACHE_NAME = 'david888-wiki-shell-v8'
+const CACHE_NAME = 'david888-wiki-shell-v9'
 const IMAGE_CACHE_NAME = 'david888-wiki-images-v1'
 const MAX_IMAGE_CACHE_ITEMS = 60
 const OFFLINE_URL = '/_pwa-offline'
@@ -58,6 +58,23 @@ self.addEventListener('fetch', event => {
     if (request.method !== 'GET') return
 
     const url = new URL(request.url)
+
+    // 0. Bypass Cache Storage completely for Personal Space, Share Circles, and Account/Auth APIs
+    if (url.origin === self.location.origin) {
+        const { pathname } = url
+        if (
+            pathname === '/_space' ||
+            pathname.startsWith('/_space/') ||
+            pathname === '/c' ||
+            pathname.startsWith('/c/') ||
+            pathname.startsWith('/api/auth/') ||
+            pathname.startsWith('/api/account/') ||
+            pathname.startsWith('/api/space/') ||
+            pathname.startsWith('/api/circles/')
+        ) {
+            return
+        }
+    }
 
     // 1. Navigation requests fallback to offline workspace if network fails
     if (request.mode === 'navigate') {

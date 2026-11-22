@@ -28,6 +28,10 @@ SCN_WEBTALK_SITE_ID = ""
 SCN_ENABLE_NOTE_HISTORY = "1"
 SCN_NOTE_HISTORY_LIMIT = "10"
 SCN_NOTE_HISTORY_MIN_INTERVAL_SECONDS = "300"
+SCN_ENABLE_TURNSTILE = "0"
+SCN_TURNSTILE_SITE_KEY = ""
+SCN_TURNSTILE_FAIL_OPEN = "1"
+SCN_LEGACY_HISTORY_RETENTION_DAYS = "0"
 SCN_AIURL_LLM_BASE_URL = "https://llm.aiurl.tw/v1"
 SCN_AIURL_LLM_API_KEY = ""
 SCN_AIURL_LLM_MODEL = "group/talk"
@@ -44,8 +48,7 @@ bucket_name = "888wiki-images"
 binding = "NOTE_HISTORY_DB"
 database_name = "888wiki-history"
 database_id = "demo"
-# The same D1 binding can store note history, share view counts, and annotations.
-# Apply schema/note_history.sql, schema/note_stats.sql, and schema/note_annotations.sql as needed.
+# Run npm run db:init to initialize all schemas for the configured bindings.
 
 # Cron trigger: Daily cleanup at 9 AM Taiwan time (1 AM UTC)
 [triggers]

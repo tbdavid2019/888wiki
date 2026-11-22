@@ -11,6 +11,9 @@ const loadScript = src => new Promise((resolve, reject) => {
 async function renderMermaid() {
     const nodes = document.querySelectorAll('.mermaid-block-container .mermaid')
     if (!nodes.length) return
+    const purify = typeof globalThis.DOMPurify !== 'undefined' && typeof globalThis.DOMPurify.sanitize === 'function'
+        ? globalThis.DOMPurify
+        : null
     try {
         let pele = null
         try {
@@ -26,7 +29,12 @@ async function renderMermaid() {
                 try {
                     const res = pele.render(code, { responsive: true })
                     if (res && res.svg) {
-                        node.innerHTML = res.svg
+                        if (!purify) {
+                            node.textContent = 'Diagram Sanitizer Unavailable: DOMPurify is required to render SVG.'
+                            node.setAttribute('data-diagram-error', 'sanitizer-missing')
+                            return
+                        }
+                        node.innerHTML = purify.sanitize(res.svg, { USE_PROFILES: { svg: true, svgFilters: true } })
                         node.setAttribute('data-diagram-engine', 'pele')
                         return
                     }
@@ -39,9 +47,23 @@ async function renderMermaid() {
             unrendered.push(...nodes)
         }
         if (unrendered.length > 0) {
+            if (!purify) {
+                unrendered.forEach(node => {
+                    node.textContent = 'Diagram Sanitizer Unavailable: DOMPurify is required to render SVG.'
+                    node.setAttribute('data-diagram-error', 'sanitizer-missing')
+                })
+                return
+            }
             const mermaid = (await import('https://cdn.jsdelivr.net/npm/mermaid@12/dist/mermaid.esm.min.mjs')).default
             mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' })
-            await mermaid.run({ nodes: unrendered })
+            for (let i = 0; i < unrendered.length; i++) {
+                const node = unrendered[i]
+                const code = (node.textContent || '').trim()
+                if (!code) continue
+                const { svg } = await mermaid.render(`block-mermaid-${Date.now()}-${i}`, code)
+                node.innerHTML = purify.sanitize(svg, { USE_PROFILES: { svg: true, svgFilters: true } })
+                node.setAttribute('data-diagram-engine', 'mermaid')
+            }
         }
     } catch (error) {
         console.error('Mermaid block render failed', error)

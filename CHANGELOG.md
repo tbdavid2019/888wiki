@@ -2,6 +2,12 @@
 
 ## [2026-11-22]
 
+- **環境與 View Lock 安全修復（Environment and View Lock safety）**：指定 Wrangler 環境時不繼承根 KV、R2、D1 綁定或 vars；僅設定 View Lock 的筆記須有編輯證明才能升級收藏，否則維持遮罩。
+- **維護及資料庫安全（Maintenance and database safety）**：維護期間封鎖筆記與分享讀取、匯出、批註及 MCP 讀取並保留健康檢查；要求或固定 D1 登錄時，刪除 KV 前先確認權威儲存可用。`db:init --env` 不再繼承根 vars 或 D1 綁定。
+- **帳號與儲存安全修復（Account and storage review fixes）**：隔離各用戶端的 Passkey 挑戰限制；防止空間連結指向替換筆記並支援移除僅含批註的項目；維護模式禁止公開讀取與遷移寫入、拒絕過期 KV 分享映射，分享圈排除所有 Seal 模式。資料庫初始化轉發環境並為帳號建立批註資料表。
+- **Passkey 帳號、個人空間與分享圈（Passkey accounts, My Space and Share Circles）**：新增跨裝置私人索引、經確認的訪客歷史匯入、具名或匿名批註，以及預設關閉、可旋轉連結的公開分享圈；未發布瀏覽器草稿仍保留在本機，帳號不會繞過筆記密碼或 Seal。
+- **部署與分享安全**：新增 D1 登錄與單向舊資料遷移說明、分離資料庫綁定、Passkey 網域與備援限制、Turnstile 配對設定及密鑰輪替指引；強化分享連結、存取控制和私密頁面保護。
+
 - **🧹 移除誤加的 1.5 秒首頁導向延遲與進度條（Restore Immediate Redirect on Remembered Home Preference）**：
   - 於 [static/js/editor-preference.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/js/editor-preference.mjs) 與 [src/templates/pages.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/pages.js) 移除先前誤會加入的 `1500ms` 緩衝計時器、`home-progress-track` 進度條與略過按鈕，恢復已記憶偏好的即時導向行為，同時保留暖色 Aurora 舞台與已修正的 `4.2s` 平順載入環。
 - **🩹 修復首頁 Spinner 在 `prefers-reduced-motion` 下以 `0.01ms` 瘋狂狂轉的 Bug**：

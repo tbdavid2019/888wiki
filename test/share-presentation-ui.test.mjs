@@ -74,14 +74,15 @@ test('presentation engine supports KaTeX, Mermaid, ECharts, and Slidev layouts',
 test('all script tags in rendered HTML have zero syntax errors across all page configurations', async () => {
     const { HTML } = await import('../src/templates/base.js')
     const configs = [
-        { isEdit: true, title: 'Edit Mode', content: '# Hello\nworld' },
-        { isEdit: false, shareId: 'share-123', title: 'Share Mode', content: '# Slide 1\n---\n# Slide 2' },
+        { isEdit: true, title: 'Edit Mode', content: '# Hello\nworld', ext: { accountEnabled: true } },
+        { isEdit: false, shareId: 'share-123', title: 'Share Mode', content: '# Slide 1\n---\n# Slide 2', ext: { accountEnabled: true } },
         { isEdit: false, shareId: 'share-123', autoPresent: true, presentationEntry: true, title: 'Present Mode', content: '# Presentation' },
-        { isEdit: true, isBlockDocument: true, title: 'Block Edit', content: '[]' },
-        { isEdit: false, isBlockDocument: true, shareId: 'share-456', title: 'Block View', content: '[]' },
-        { isEdit: true, title: 'Canvas Edit', content: '{"nodes":[],"edges":[]}', ext: { editorFormat: 'canvas' } },
-        { isEdit: true, title: 'Whiteboard Edit', content: '{"type":"excalidraw","elements":[]}', ext: { editorFormat: 'whiteboard' } },
-        { isEdit: false, shareId: 'share-789', title: 'Whiteboard View', content: '{"type":"excalidraw","elements":[]}', ext: { editorFormat: 'whiteboard' } }
+        { isEdit: true, title: 'Block Edit', content: '[]', ext: { editorFormat: 'block', accountEnabled: true } },
+        { isEdit: false, shareId: 'share-456', title: 'Block View', content: '[]', ext: { editorFormat: 'block', accountEnabled: true } },
+        { isEdit: true, title: 'Canvas Edit', content: '{"nodes":[],"edges":[]}', ext: { editorFormat: 'canvas', accountEnabled: true } },
+        { isEdit: false, shareId: 'share-456', title: 'Canvas View', content: '{"nodes":[],"edges":[]}', ext: { editorFormat: 'canvas', accountEnabled: true } },
+        { isEdit: true, title: 'Whiteboard Edit', content: '{"type":"excalidraw","elements":[]}', ext: { editorFormat: 'whiteboard', accountEnabled: true } },
+        { isEdit: false, shareId: 'share-789', title: 'Whiteboard View', content: '{"type":"excalidraw","elements":[]}', ext: { editorFormat: 'whiteboard', accountEnabled: true } }
     ]
 
     for (const cfg of configs) {
@@ -126,6 +127,26 @@ test('all script tags in rendered HTML have zero syntax errors across all page c
             }
         }
     }
+})
+
+test('account entry points are gated and available across editor formats', async () => {
+    const { HTML, Home, Space, Circle } = await import('../src/template.js')
+    assert.equal(typeof Space, 'function')
+    assert.equal(typeof Circle, 'function')
+    for (const editorFormat of ['markdown', 'block', 'canvas', 'whiteboard']) {
+        for (const isEdit of [true, false]) {
+            const render = accountEnabled => HTML({ lang: 'en-US', title: 'Note', content: '', isEdit, path: 'private-path', shareId: 'opaque-share', ext: { editorFormat, accountEnabled, share: true } })
+            const enabled = render(true)
+            assert.match(enabled, /id="circle-picker-btn"/)
+            assert.match(enabled, /href="\/_space"/)
+            assert.match(enabled, /openCirclePicker/)
+            const disabled = render(false)
+            assert.doesNotMatch(disabled, /id="circle-picker-btn"|href="\/_space"|openCirclePicker/)
+            if (!isEdit) assert.doesNotMatch(enabled, /private-path/)
+        }
+    }
+    assert.match(Home({ lang: 'en-US', accountEnabled: true }), /href="\/_space"/)
+    assert.doesNotMatch(Home({ lang: 'en-US', accountEnabled: false }), /href="\/_space"/)
 })
 
 test('presentation engine disambiguates YAML frontmatter from slide separators', () => {

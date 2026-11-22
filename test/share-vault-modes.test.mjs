@@ -416,7 +416,7 @@ test('index.js: security hardening patterns are implemented', () => {
     assert.doesNotMatch(indexSource, /'author-secret'/)
 
     // 2. Reveal endpoint verifies password and restricts to burn mode
-    assert.match(indexSource, /metadata\.shareBurnAfterReading !== true && !isAuthor/)
+    assert.match(indexSource, /!isBurnProtected\(metadata\) && !isAuthor/)
     assert.match(indexSource, /Password required to reveal this note/)
 
     // 3. PDF export requires confirmation for burn shares
@@ -449,7 +449,7 @@ test('storage_driver: driverFindNoteByShareId queries content column and maps to
                 bind() {
                     return {
                         async first() {
-                            return { path: 'secret-test', metadata: JSON.stringify({ shareSlug: 'abc12345' }), content: 'Top Secret Body' }
+                            return { path: 'secret-test', metadata: JSON.stringify({ shareSlug: 'abc123' }), content: 'Top Secret Body' }
                         }
                     }
                 }
@@ -457,7 +457,7 @@ test('storage_driver: driverFindNoteByShareId queries content column and maps to
         }
     }
     const { driverFindNoteByShareId } = await import('../src/storage_driver.mjs')
-    const res = await driverFindNoteByShareId('abc12345')
+    const res = await driverFindNoteByShareId('abc123')
     assert.match(capturedSql, /SELECT path, metadata, content FROM notes/i)
     assert.equal(res?.path, 'secret-test')
     assert.equal(res?.value, 'Top Secret Body')
@@ -532,8 +532,8 @@ test('index.js and base.js: direct path vault enforcement and batched preset upd
     const baseSource = fs.readFileSync('src/templates/base.js', 'utf-8')
 
     // Direct path GET /:path and HEAD /:path delegate to handleDirectNoteRequest checking isAuthor and vault status
-    const directHandlerBlock = indexSource.substring(indexSource.indexOf('async function handleDirectNoteRequest'), indexSource.indexOf("router.all('*'"))
-    assert.match(directHandlerBlock, /isAuthor = await isNoteAuthor\(request, path, cookie\)/)
+    const directHandlerBlock = indexSource.substring(indexSource.indexOf('async function handleDirectNoteRequest'), indexSource.indexOf("router.get('/:path'"))
+    assert.match(directHandlerBlock, /isAuthor = await isNoteAuthor\(request, path, cookie/)
     assert.match(directHandlerBlock, /metadata\.shareBurnedAt/)
     assert.match(directHandlerBlock, /Response\.redirect\(`\$\{new URL\(request\.url\)\.origin\}\/share\/\$\{shareId\}`/)
 
@@ -541,11 +541,11 @@ test('index.js and base.js: direct path vault enforcement and batched preset upd
     assert.match(indexSource, /router\.head\('\/:path', async \(request\) => handleDirectNoteRequest\(request, \{ isHead: true \}\)\)/)
 
     // Preset button click handler batches settings updates into a single persistSetting call
-    const presetClickBlock = baseSource.substring(baseSource.indexOf('const presetBtn = e.target.closest'), baseSource.indexOf('const unpublishBtn'))
+    const presetClickBlock = baseSource.substring(baseSource.indexOf("const presetBtn = e.target.closest('.vault-preset-btn')"), baseSource.indexOf("const unpublishBtn = e.target.closest('.unpublish-btn')"))
     assert.match(presetClickBlock, /await persistSetting\(settingPayload\)/)
     assert.ok(!presetClickBlock.includes("modeSelect.dispatchEvent(new Event('change'))"), 'Must not dispatch separate change events that cause racing requests')
     assert.ok(!presetClickBlock.includes('editArea.value'), 'Presets must never overwrite or modify note content')
-    assert.match(presetClickBlock, /#seal-mode-select/, 'Must update seal mode select')
+    assert.match(presetClickBlock, /getElementById\('seal-mode-select'\)/, 'Must update seal mode select')
     assert.match(presetClickBlock, /mode === 'expires' \|\| mode === 'burn'[\s\S]*?settingPayload\.shareExpiresIn = expires/, 'Burn presets must persist their configured expiration')
 
     const saveSealBlock = baseSource.substring(baseSource.indexOf("const saveSealBtn = e.target.closest('#seal-save-btn')"), baseSource.indexOf("const removeSealBtn = e.target.closest('#seal-remove-btn')"))
@@ -555,7 +555,7 @@ test('index.js and base.js: direct path vault enforcement and batched preset upd
 test('index.js: direct-path Seal locks dispatch to exported visitor templates', () => {
     const directPathBlock = indexSource.substring(
         indexSource.indexOf('async function handleDirectNoteRequest'),
-        indexSource.indexOf("router.all('*'"),
+        indexSource.indexOf("router.get('/:path'"),
     )
 
     assert.match(directPathBlock, /returnPage\('ShareTimeLocked'/)

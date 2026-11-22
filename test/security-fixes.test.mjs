@@ -16,13 +16,15 @@ test('VULN-01: base.js escapes content in bot-accessible-content and textarea', 
     assert.match(baseSource, /id="bot-accessible-content">\$\{accessibleContent\}<\/article>/)
     assert.match(baseSource, /const textareaContent = (?:isBurnInterstitial\s*\?\s*''\s*:\s*)?escapeHtml\(content\)/)
     assert.match(baseSource, /placeholder="\$\{SUPPORTED_LANG\[lang\]\.emptyPH\}">\$\{escapeHtml\(content\)\}<\/textarea>/)
-    assert.match(baseSource, /APP_STATE = \$\{JSON\.stringify\([\s\S]*?\)\.replace\(\/<\//)
+    assert.match(baseSource, /APP_STATE = \$\{safeJsonForInlineScript\(/)
 })
 
 test('VULN-02: base.js initializes Mermaid strictly and sanitizes diagram SVGs with DOMPurify', () => {
     assert.match(baseSource, /securityLevel:\s*'strict'/)
-    assert.match(baseSource, /renderNode\.innerHTML = typeof DOMPurify !== 'undefined' \? DOMPurify\.sanitize\(svg, \{ USE_PROFILES: \{ svg: true, svgFilters: true \} \}\) : svg;/)
-    assert.match(baseSource, /el\.innerHTML = typeof DOMPurify !== 'undefined' \? DOMPurify\.sanitize\(graphvizSvg, \{ USE_PROFILES: \{ svg: true, svgFilters: true \} \}\) : graphvizSvg;/)
+    assert.match(baseSource, /DOMPurify\.sanitize\(rawSvg, \{ USE_PROFILES: \{ svg: true, svgFilters: true \} \}\)/)
+    assert.match(baseSource, /DOMPurify\.sanitize\(graphvizSvg, \{ USE_PROFILES: \{ svg: true, svgFilters: true \} \}\)/)
+    assert.doesNotMatch(baseSource, /:\s*svg;/)
+    assert.doesNotMatch(baseSource, /:\s*graphvizSvg;/)
 })
 
 test('VULN-03: password_policy returns view role for vpw match even if pw is unset', async () => {
@@ -49,10 +51,10 @@ test('VULN-06: index.js creates signed admin session token and verifies cryptogr
     assert.match(indexSource, /sameSite: 'Strict'/)
 })
 
-test('VULN-07: storage_driver.mjs uses path column instead of name in driverQueryShare', () => {
-    assert.match(storageSource, /SELECT path FROM notes/)
+test('VULN-07: storage_driver.mjs uses path column instead of name in share lookup', () => {
+    assert.match(storageSource, /SELECT path.*FROM notes/)
     assert.doesNotMatch(storageSource, /SELECT name FROM notes/)
-    assert.match(storageSource, /if \(noteRow && noteRow\.path\)/)
+    assert.match(storageSource, /if \(row && row\.path\)/)
 })
 
 test('VULN-08: helper.js deleteEmptyPages uses driverDeleteNote and leaves non-empty/locked notes intact', () => {
@@ -69,7 +71,8 @@ test('VULN-09: helper.js uses constant-time comparison for password checking', a
 
 test('VULN-10: index.js sets exp claim on JWT auth cookies', () => {
     assert.match(indexSource, /const exp = Math\.floor\(Date\.now\(\) \/ 1000\) \+ 7 \* 86400/)
-    assert.match(indexSource, /jwt\.sign\(\{ path, role, exp \}, getSecret\(\)\)/)
+    assert.match(indexSource, /const payload = \{ path, role, \.\.\.\(noteUid \? \{ noteUid \} : \{\}\), exp \}/)
+    assert.match(indexSource, /jwt\.sign\(payload, getSecret\(\)\)/)
 })
 
 test('VULN-11: index.js validates upload MIME types and size limits', () => {

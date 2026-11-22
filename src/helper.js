@@ -4,7 +4,19 @@ import * as TEMPL from './template.js'
 import { SUPPORTED_LANG, getGaMeasurementId, getSalt, getSecret, getTurnstileSiteKey, isTurnstileEnabled } from './constant.js'
 import { resolvePasswordRole } from './password_policy.mjs'
 import { getNoteHistoryConfig, deleteNoteHistoryVersions } from './note_history.mjs'
-import { driverQueryNote, driverDeleteNote, getStorageDb, getStorageDriverName } from './storage_driver.mjs'
+import {
+    assertNotesAuthorityReady,
+    driverQueryNote,
+    driverDeleteNote,
+    generateShareToken,
+    getStorageDb,
+    getStorageDriverName,
+    isMaintenanceMode,
+    isAccountFeatureEnabled,
+    isNotesRegistryEnabled,
+} from './storage_driver.mjs'
+
+export { generateShareToken }
 
 const getNotesNamespace = () => globalThis.NOTES
 const getShareNamespace = () => globalThis.SHARE
@@ -29,21 +41,46 @@ export const genRandomStr = (n = 4) => {
         .join('')
 }
 
-export function returnPage(type, data, headers = {}) {
+export function returnPage(type, data, headersOrOptions = {}, statusCode = undefined) {
+    const rawOptions = headersOrOptions && typeof headersOrOptions === 'object' ? headersOrOptions : {}
+    const { status: requestedStatus, headers: nestedHeaders, ...flatHeaders } = rawOptions
+    const headerEntries = nestedHeaders && typeof nestedHeaders === 'object' ? nestedHeaders : flatHeaders
+    const defaultStatus = type === 'Page404' ? 404 : 200
+    const candidateStatus = statusCode !== undefined ? statusCode : requestedStatus
+    const responseStatus = Number.isInteger(candidateStatus) && candidateStatus >= 200 && candidateStatus <= 599
+        ? candidateStatus
+        : defaultStatus
+
     const ext = {
         ...(data?.ext || {}),
         gaMeasurementId: data?.ext?.gaMeasurementId ?? getGaMeasurementId(),
+        accountEnabled: data?.ext?.accountEnabled ?? isAccountFeatureEnabled(),
         noteHistoryEnabled: data?.ext?.noteHistoryEnabled ?? getNoteHistoryConfig().enabled,
         turnstileSiteKey: isTurnstileEnabled() ? (data?.ext?.turnstileSiteKey ?? getTurnstileSiteKey()) : '',
         turnstileEnabled: data?.ext?.turnstileEnabled ?? isTurnstileEnabled(),
     }
 
+    const finalHeaders = new Headers({
+        'content-type': 'text/html;charset=UTF-8',
+        'Cache-Control': 'no-store',
+    })
+    for (const [key, value] of Object.entries(headerEntries)) {
+        if (key.toLowerCase() === 'set-cookie') {
+            if (Array.isArray(value)) {
+                for (const cookie of value) {
+                    if (cookie) finalHeaders.append('Set-Cookie', cookie)
+                }
+            } else if (value) {
+                finalHeaders.append('Set-Cookie', value)
+            }
+        } else if (value !== undefined && value !== null) {
+            finalHeaders.set(key, String(value))
+        }
+    }
+
     return new Response(TEMPL[type]({ ...data, ext }), {
-        headers: {
-            'content-type': 'text/html;charset=UTF-8',
-            'Cache-Control': 'no-store',
-            ...headers,
-        },
+        status: responseStatus,
+        headers: finalHeaders,
     });
 }
 
@@ -162,14 +199,31 @@ export async function verifyJwtPayload(token, secret) {
     return decoded?.payload || decoded || null
 }
 
-export async function checkAuth(cookie, path) {
-    if (cookie.auth) {
+export async function checkAuth(cookie, path, options = {}) {
+    if (cookie?.auth) {
         try {
-            const payload = await verifyJwtPayload(cookie.auth, getSecret())
+            const secret = getSecret()
+            if (typeof secret !== 'string' || !secret) {
+                return { valid: false, role: null }
+            }
+            const payload = await verifyJwtPayload(cookie.auth, secret)
             if (payload) {
                 // Backward compatibility: if no role, assume 'edit' (old tokens)
                 const role = payload.role || 'edit'
-                if (payload.path === path) {
+                const expectedNoteUid = options?.noteUid !== undefined
+                    ? (options.noteUid || '')
+                    : (options?.metadata?.noteUid !== undefined ? (options.metadata.noteUid || '') : undefined)
+                const payloadNoteUid = payload.noteUid || ''
+                if (expectedNoteUid !== undefined && (expectedNoteUid || payloadNoteUid) && payloadNoteUid !== expectedNoteUid) {
+                    return { valid: false, role: null }
+                }
+                if (role === 'view' && payload.shareId) {
+                    if (options?.shareId && payload.shareId === options.shareId) {
+                        return { valid: true, role: 'view' }
+                    }
+                    return { valid: false, role: null }
+                }
+                if (path && payload.path === path) {
                     return { valid: true, role }
                 }
             }
@@ -184,10 +238,11 @@ export async function queryNote(key) {
     return await driverQueryNote(key)
 }
 
-export async function deleteNoteHistoryForPath(path) {
+export async function deleteNoteHistoryForPath(path, options = {}) {
     const { enabled, db } = getNoteHistoryConfig()
     if (!enabled || !db || !path) return
-    await deleteNoteHistoryVersions(db, path)
+    const opts = typeof options === 'string' ? { noteUid: options } : (options || {})
+    await deleteNoteHistoryVersions(db, path, opts)
 }
 
 export function getI18n(request) {
@@ -217,49 +272,65 @@ export function getI18n(request) {
  * @returns {Promise<{deleted: number, errors: string[]}>}
  */
 export async function deleteEmptyPages() {
+    if (isMaintenanceMode()) {
+        return { deleted: 0, skipped: true, reason: 'maintenance_mode', errors: [] }
+    }
+
     const deleted = []
     const deletedSet = new Set()
     const errors = []
     const kv = getNotesNamespace()
     const db = getStorageDb()
     const driver = getStorageDriverName()
+    const registryEnabled = isNotesRegistryEnabled()
+
+    if (registryEnabled) {
+        await assertNotesAuthorityReady()
+    }
     if (!kv && !db) return { deleted: 0, errors: ['Notes storage is not configured'] }
 
-    const processPath = async (notePath) => {
-        if (!notePath || deletedSet.has(notePath)) return
+    if (registryEnabled && db) {
         try {
-            const { value, metadata } = await driverQueryNote(notePath)
-
-            // Only delete truly empty pages (length 0) with no passwords attached
-            const isContentEmpty = !value || String(value).trim().length === 0
-            const hasPassword = Boolean(metadata?.pw || metadata?.vpw)
-
-            if (isContentEmpty && !hasPassword) {
-                await driverDeleteNote(notePath)
-                const md5 = await MD5(notePath)
-                const shareKv = getShareNamespace()
-                if (shareKv) await shareKv.delete(md5)
-                await deleteNoteHistoryForPath(notePath)
-                deletedSet.add(notePath)
-                deleted.push(notePath)
-            }
-        } catch (e) {
-            errors.push(`Failed to process ${notePath}: ${e.message}`)
-        }
-    }
-
-    if ((driver === 'd1' || driver === 'auto') && db) {
-        try {
-            const rows = await db.prepare("SELECT path FROM notes WHERE length(trim(content)) = 0").all()
+            const rows = await db.prepare("SELECT path, content, metadata FROM notes WHERE length(trim(content)) = 0").all()
             for (const row of (rows?.results || [])) {
-                if (row?.path) await processPath(row.path)
+                const notePath = row?.path
+                if (!notePath || deletedSet.has(notePath)) continue
+                try {
+                    let metadata = {}
+                    try {
+                        metadata = typeof row.metadata === 'string' ? JSON.parse(row.metadata) : (row.metadata || {})
+                    } catch {
+                        metadata = {}
+                    }
+                    const isContentEmpty = !row.content || String(row.content).trim().length === 0
+                    const hasPassword = Boolean(metadata?.pw || metadata?.vpw)
+                    if (!isContentEmpty || hasPassword) continue
+
+                    const noteUid = metadata?.noteUid || '__legacy__'
+                    const metaVersion = Number(metadata?.metaVersion || 0)
+                    const delRes = await driverDeleteNote(notePath, {
+                        noteUid,
+                        metaVersion,
+                        requireEmpty: true,
+                        expectedD1Row: true,
+                    })
+                    if (delRes?.deleted) {
+                        if (noteUid && noteUid !== '__legacy__') {
+                            await deleteNoteHistoryForPath(notePath, { noteUid })
+                        }
+                        deletedSet.add(notePath)
+                        deleted.push(notePath)
+                    }
+                } catch (e) {
+                    errors.push(`Failed to process ${notePath}: ${e.message}`)
+                }
             }
         } catch (e) {
-            if (driver === 'd1') errors.push(`Failed to list D1 notes: ${e.message}`)
+            errors.push(`Failed to list D1 notes: ${e.message}`)
         }
     }
 
-    if (kv) {
+    if (kv && (driver === 'kv' || driver === 'auto')) {
         try {
             let cursor = undefined
             let listComplete = false
@@ -273,20 +344,35 @@ export async function deleteEmptyPages() {
                     const notePath = note.name
                     if (!notePath || deletedSet.has(notePath)) continue
                     try {
-                        const { value, metadata } = await driverQueryNote(notePath)
+                        const queried = await driverQueryNote(notePath)
+                        if (registryEnabled && queried?._source !== 'kv') {
+                            continue
+                        }
+                        const { value, metadata } = queried
 
                         // Only delete truly empty pages (length 0) with no passwords attached
                         const isContentEmpty = !value || String(value).trim().length === 0
                         const hasPassword = Boolean(metadata?.pw || metadata?.vpw)
 
                         if (isContentEmpty && !hasPassword) {
-                            await driverDeleteNote(note.name)
-                            const md5 = await MD5(notePath)
-                            const shareKv = getShareNamespace()
-                            if (shareKv) await shareKv.delete(md5)
-                            await deleteNoteHistoryForPath(notePath)
-                            deletedSet.add(notePath)
-                            deleted.push(notePath)
+                            if (registryEnabled) {
+                                const delRes = await driverDeleteNote(notePath, {
+                                    noteUid: metadata?.noteUid || '__legacy__',
+                                    expectedD1Row: false,
+                                })
+                                if (delRes?.deleted) {
+                                    if (metadata?.noteUid) {
+                                        await deleteNoteHistoryForPath(notePath, { noteUid: metadata.noteUid })
+                                    }
+                                    deletedSet.add(notePath)
+                                    deleted.push(notePath)
+                                }
+                            } else {
+                                await driverDeleteNote(note.name)
+                                await deleteNoteHistoryForPath(notePath)
+                                deletedSet.add(notePath)
+                                deleted.push(notePath)
+                            }
                         }
                     } catch (e) {
                         errors.push(`Failed to process ${notePath}: ${e.message}`)

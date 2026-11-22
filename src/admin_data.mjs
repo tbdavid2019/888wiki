@@ -117,6 +117,25 @@ export function summarizeAdminNotes(notes = []) {
     })
 }
 
+export function normalizeAdminDeleteSelection(body = {}) {
+    if (Array.isArray(body?.items)) {
+        return body.items.map(item => ({
+            path: typeof item?.path === 'string' ? item.path : '',
+            noteUid: typeof item?.noteUid === 'string' && item.noteUid ? item.noteUid : undefined,
+        }))
+    }
+    if (Array.isArray(body?.paths)) {
+        const uidMap = body?.noteUids && typeof body.noteUids === 'object' ? body.noteUids : null
+        return body.paths.map(path => ({
+            path: typeof path === 'string' ? path : '',
+            noteUid: (uidMap && typeof path === 'string' && typeof uidMap[path] === 'string' && uidMap[path])
+                ? uidMap[path]
+                : undefined,
+        }))
+    }
+    return null
+}
+
 export {
     PAGE_SIZE_DEFAULT,
     PAGE_SIZE_MAX,
