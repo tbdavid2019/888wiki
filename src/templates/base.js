@@ -586,7 +586,7 @@ ${getMarkdownCss()}
         import rehypeKatex from 'https://esm.sh/rehype-katex@7.0.1?bundle';
         import rehypeStringify from 'https://esm.sh/rehype-stringify@10.0.1?bundle';
         import remarkBreaks from 'https://esm.sh/remark-breaks@4.0.0?bundle';
-        import { decorateColumnLayouts, expandHackmdImageSizes, expandPandocCitations, expandTextHighlights, expandCustomColors, expandMarkdownExtensions, decorateFootnoteAndCitationPopovers, decorateCodeBlocks, parseBookToc, htmlOrTsvToMarkdownTable, expandInlineFootnotes, protectCurrencyDollarSigns, extractEditorScrollTokens, computeAnchorMappedScrollTop } from '/js/markdown-extensions.mjs';
+        import { decorateColumnLayouts, expandHackmdImageSizes, expandPandocCitations, expandTextHighlights, expandCustomColors, expandMarkdownExtensions, decorateFootnoteAndCitationPopovers, decorateCodeBlocks, parseBookToc, htmlOrTsvToMarkdownTable, expandInlineFootnotes, protectCurrencyDollarSigns, extractEditorScrollTokens, computeAnchorMappedScrollTop } from '/js/markdown-extensions.mjs?v=20261122e';
         import { visit } from 'https://esm.sh/unist-util-visit@5.2.0?bundle';
         import { decorateMediaPreviews } from '/js/media-preview.mjs';
         window.extractEditorScrollTokens = extractEditorScrollTokens;
@@ -1264,6 +1264,7 @@ ${getMarkdownCss()}
                          }
                      }
                  }
+                 window.__invalidateScrollAnchorCache?.();
             }
             
             if (document.querySelectorAll('.diagram-flow-render').length > 0) {
@@ -4658,7 +4659,7 @@ ${getMarkdownCss()}
             const anchors = [{ src: 0, dst: 0 }];
 
             if ($right === $previewMd && typeof window.extractEditorScrollTokens === 'function') {
-                const tokens = window.extractEditorScrollTokens($left.value || '');
+                const tokens = window.extractEditorScrollTokens($left.value || '', { includeBlocks: true });
                 if (tokens.length > 0) {
                     const gutter = document.getElementById('editor-line-numbers');
                     const gutterChildren = gutter ? gutter.children : null;
@@ -4671,13 +4672,19 @@ ${getMarkdownCss()}
                     const rightComputed = window.getComputedStyle ? window.getComputedStyle($right) : null;
                     const rightPadTop = rightComputed ? (parseFloat(rightComputed.paddingTop) || 0) : 20;
 
+                    const isMainBodyEl = el => !el.closest('.markdown-toc, .footnotes, [data-footnotes]') &&
+                        !el.classList.contains('sr-only') &&
+                        !el.classList.contains('visually-hidden') &&
+                        el.getAttribute('aria-hidden') !== 'true';
+
                     const tocEls = Array.from($right.querySelectorAll('nav.markdown-toc'));
-                    const headingEls = Array.from($right.querySelectorAll('h1, h2, h3, h4, h5, h6')).filter(h =>
-                        !h.closest('.markdown-toc, .footnotes, [data-footnotes]') &&
-                        !h.classList.contains('sr-only') &&
-                        !h.classList.contains('visually-hidden') &&
-                        h.getAttribute('aria-hidden') !== 'true'
-                    );
+                    const headingEls = Array.from($right.querySelectorAll('h1, h2, h3, h4, h5, h6')).filter(isMainBodyEl);
+                    const fenceEls = Array.from($right.querySelectorAll('.diagram-block-wrapper, .code-block-wrapper, pre')).filter(el => {
+                        if (el.tagName === 'PRE' && el.closest('.diagram-block-wrapper, .code-block-wrapper')) return false;
+                        return isMainBodyEl(el);
+                    });
+                    const tableEls = Array.from($right.querySelectorAll('table')).filter(isMainBodyEl);
+                    const hrEls = Array.from($right.querySelectorAll('hr')).filter(isMainBodyEl);
 
                     const getLineTop = (lineIndex) => {
                         if (gutterChildren && gutterRect && gutterChildren[lineIndex]) {
@@ -4695,31 +4702,45 @@ ${getMarkdownCss()}
                         return Math.max(0, Math.min(maxLeft, (lineIndex + 1) * rowHeight));
                     };
 
+                    const pushRangeAnchor = (startLine, endLine, el) => {
+                        if (!el) return;
+                        const rect = el.getBoundingClientRect();
+                        const top = Math.max(0, Math.min(maxRight, rect.top - rightRect.top + $right.scrollTop - rightPadTop));
+                        const bottom = Math.max(top, Math.min(maxRight, rect.bottom - rightRect.top + $right.scrollTop - rightPadTop));
+                        const prevDst = anchors[anchors.length - 1].dst;
+                        const safeTop = Math.max(prevDst, top);
+                        const safeBottom = Math.max(safeTop, bottom);
+                        anchors.push({ src: getLineTop(startLine), dst: safeTop });
+                        anchors.push({ src: getLineBottom(endLine), dst: safeBottom });
+                    };
+
+                    const pushPointAnchor = (line, el) => {
+                        if (!el) return;
+                        const rect = el.getBoundingClientRect();
+                        const top = Math.max(0, Math.min(maxRight, rect.top - rightRect.top + $right.scrollTop - rightPadTop));
+                        const lastAnchor = anchors[anchors.length - 1];
+                        if (lastAnchor && lastAnchor.dst > top) {
+                            lastAnchor.dst = Math.max(anchors.length > 1 ? anchors[anchors.length - 2].dst : 0, top);
+                        }
+                        anchors.push({ src: getLineTop(line), dst: Math.max(anchors[anchors.length - 1].dst, top) });
+                    };
+
                     let tocCursor = 0;
                     let headingCursor = 0;
+                    let fenceCursor = 0;
+                    let tableCursor = 0;
+                    let hrCursor = 0;
                     for (const token of tokens) {
                         if (token.kind === 'toc') {
-                            const tocEl = tocEls[tocCursor++];
-                            if (!tocEl) continue;
-                            const tocRect = tocEl.getBoundingClientRect();
-                            const tocTop = Math.max(0, Math.min(maxRight, tocRect.top - rightRect.top + $right.scrollTop - rightPadTop));
-                            const tocBottom = Math.max(tocTop, Math.min(maxRight, tocRect.bottom - rightRect.top + $right.scrollTop - rightPadTop));
-                            const prevDst = anchors[anchors.length - 1].dst;
-                            const safeTocTop = Math.max(prevDst, tocTop);
-                            const safeTocBottom = Math.max(safeTocTop, tocBottom);
-                            anchors.push({ src: getLineTop(token.line), dst: safeTocTop });
-                            anchors.push({ src: getLineBottom(token.line), dst: safeTocBottom });
+                            pushRangeAnchor(token.line, token.line, tocEls[tocCursor++]);
                         } else if (token.kind === 'heading') {
-                            const hEl = headingEls[headingCursor++];
-                            if (!hEl) continue;
-                            const hRect = hEl.getBoundingClientRect();
-                            const hTop = Math.max(0, Math.min(maxRight, hRect.top - rightRect.top + $right.scrollTop - rightPadTop));
-                            // Keep tocBottom <= hTop when tight/collapsed margins make them cross so reverse scroll never drops the heading anchor
-                            const lastAnchor = anchors[anchors.length - 1];
-                            if (lastAnchor && lastAnchor.dst > hTop) {
-                                lastAnchor.dst = Math.max(anchors.length > 1 ? anchors[anchors.length - 2].dst : 0, hTop);
-                            }
-                            anchors.push({ src: getLineTop(token.line), dst: Math.max(anchors[anchors.length - 1].dst, hTop) });
+                            pushPointAnchor(token.line, headingEls[headingCursor++]);
+                        } else if (token.kind === 'fence') {
+                            pushRangeAnchor(token.line, token.endLine ?? token.line, fenceEls[fenceCursor++]);
+                        } else if (token.kind === 'table') {
+                            pushRangeAnchor(token.line, token.endLine ?? token.line, tableEls[tableCursor++]);
+                        } else if (token.kind === 'hr') {
+                            pushPointAnchor(token.line, hrEls[hrCursor++]);
                         }
                     }
                 }

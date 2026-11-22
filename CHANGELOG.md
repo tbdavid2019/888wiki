@@ -2,6 +2,9 @@
 
 ## [2026-11-22]
 
+- **🎯 強化雙欄同步捲動區塊錨點對齊（`[toc]` + 圍欄程式碼／Mermaid 圖表／表格／分隔線精準對映）**：
+  - 於 [static/js/markdown-extensions.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/js/markdown-extensions.mjs) `extractEditorScrollTokens(source, { includeBlocks: true })` 新增 `fence`（圍欄程式碼／Mermaid／ECharts 區塊起訖行號）、`table`（GFM 表格起訖行號）與 `hr`（分隔線 `---`）區塊錨點提取，並與 [src/templates/base.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/base.js) 中對應 `.diagram-block-wrapper` / `.code-block-wrapper` / `pre`、`table` 與 `<hr>` DOM 範圍一對一對映。
+  - 加入 `markdown-extensions.mjs?v=20261122e` 模組快取清除與 Mermaid 非同步繪圖完成後主動呼叫 `__invalidateScrollAnchorCache()`，消除長段 Mermaid 原始碼或 `[toc]` 展開後與後方標題產生數百像素視窗錯位。
 - **🎬 預設開啟簡報 Aurora 動態背景、修復過場動畫並放慢首頁 Landing 節奏**：
   - 於 [src/templates/base.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/base.js) 將簡報模式預設背景改為 **`aurora`（極光循環）預設開啟**（仍支援 YAML `motionLoop: off` 與工具列即時切換），並同步開啟 `.transition-user-override`；於點擊 **`✨ 淡入 / 滑動 / 立體 / 縮放`** 按鈕時立刻同步 `.reveal` 類別與於當前投影片播放即時過場預覽動畫（`ptbPreviewFade` / `Slide` / `Convex` / `Zoom`）。
   - 於 [src/styles/base.css.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/styles/base.css.js) 為 `.reveal.convex .slides` 與 `.reveal.zoom .slides` 解除 `overflow: hidden` 3D 壓平與縮放裁切，並強化 `prefers-reduced-motion` 下之過場與預覽動畫時長還原。

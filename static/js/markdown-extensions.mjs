@@ -885,13 +885,16 @@ export function decorateHeadingAnchors(rootNode) {
 }
 
 /**
- * Extracts line indices of [toc] markers and ATX headings from Markdown source
- * (skipping YAML frontmatter and fenced code blocks) for anchor-mapped scroll sync.
+ * Extracts line indices of [toc] markers, ATX headings, and optionally fenced blocks,
+ * tables, and horizontal rules (skipping YAML frontmatter and nested fence interiors)
+ * for anchor-mapped scroll sync.
  * @param {string} source
- * @returns {Array<{ kind: 'toc' | 'heading', line: number }>}
+ * @param {{ includeBlocks?: boolean }} [options]
+ * @returns {Array<{ kind: 'toc' | 'heading' | 'fence' | 'table' | 'hr', line: number, endLine?: number }>}
  */
-export function extractEditorScrollTokens(source = '') {
+export function extractEditorScrollTokens(source = '', options = {}) {
     if (!source || typeof source !== 'string') return []
+    const includeBlocks = Boolean(options && options.includeBlocks)
     const lines = source.split(/\r?\n/)
     const tokens = []
     let startLine = 0
@@ -909,17 +912,32 @@ export function extractEditorScrollTokens(source = '') {
         }
     }
 
-    let fence = ''
+    let fenceMarker = ''
+    let fenceMinLen = 0
+    let fenceStartLine = -1
     for (let i = startLine; i < lines.length; i++) {
         const trimmed = lines[i].trim()
-        const fenceMatch = trimmed.match(/^(`{3,}|~{3,})/)
+        const fenceMatch = trimmed.match(/^(`{3,}|~{3,})(.*)$/)
         if (fenceMatch) {
-            const marker = fenceMatch[1][0]
-            if (!fence) fence = marker
-            else if (fence === marker) fence = ''
-            continue
+            const markerChar = fenceMatch[1][0]
+            const markerLen = fenceMatch[1].length
+            const rest = fenceMatch[2].trim()
+            if (!fenceMarker) {
+                fenceMarker = markerChar
+                fenceMinLen = markerLen
+                fenceStartLine = i
+                continue
+            } else if (fenceMarker === markerChar && markerLen >= fenceMinLen && !rest) {
+                if (includeBlocks && fenceStartLine >= 0) {
+                    tokens.push({ kind: 'fence', line: fenceStartLine, endLine: i })
+                }
+                fenceMarker = ''
+                fenceMinLen = 0
+                fenceStartLine = -1
+                continue
+            }
         }
-        if (fence) continue
+        if (fenceMarker) continue
 
         if (/^\[toc\]$/i.test(trimmed) || /^\{:toc\}$/i.test(trimmed)) {
             tokens.push({ kind: 'toc', line: i })
@@ -927,6 +945,29 @@ export function extractEditorScrollTokens(source = '') {
         }
         if (/^#{1,6}\s+.+/.test(trimmed)) {
             tokens.push({ kind: 'heading', line: i })
+            continue
+        }
+        if (includeBlocks) {
+            const prevTrimmed = i > startLine ? lines[i - 1].trim() : ''
+            if (/^(?:---+|\*\*\*+|___+)\s*$/.test(trimmed) && !prevTrimmed) {
+                tokens.push({ kind: 'hr', line: i })
+                continue
+            }
+            if (
+                trimmed.includes('|') &&
+                i + 1 < lines.length &&
+                /^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(lines[i + 1])
+            ) {
+                const tableStart = i
+                let tableEnd = i + 1
+                while (tableEnd + 1 < lines.length) {
+                    const nextTrim = lines[tableEnd + 1].trim()
+                    if (!nextTrim || !nextTrim.includes('|')) break
+                    tableEnd += 1
+                }
+                tokens.push({ kind: 'table', line: tableStart, endLine: tableEnd })
+                i = tableEnd
+            }
         }
     }
     return tokens
