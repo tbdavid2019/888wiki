@@ -3,7 +3,7 @@
 ## [2026-11-22]
 
 - **✨ 升級簡報 Motion Loops 視覺可見度與 `wiki.david888.com` 首頁 Loading／Landing 動態舞台**：
-  - 於 [static/js/presentation-motion.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/js/presentation-motion.mjs) 全面強化 `aurora`（雙層極光帶＋柔和多諧波雲光）、`mesh`（3D 動態波動連線網格＋脈動節點）、`orbits`（星盤同心軌道＋掃掠弧光＋尾焰衛星）在亮／暗色主題與 `warm` 暖白背景下的視覺對比與即時首幀渲染，解決透明簡報底層特效過淡不明顯的問題。
+  - 於 [static/js/presentation-motion.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/js/presentation-motion.mjs) 全面強化 `aurora`（雙層極光帶＋柔和多諧波雲光）、`mesh`（3D 動態波動連線網格＋脈動節點）、`orbits`（星盤同心軌道＋掃掠弧光＋尾焰衛星）在亮／暗色主題與 `warm` 暖白背景下的視覺對比與即時首幀渲染（含簡易 Canvas Mock 安全防護），並於 [src/templates/base.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/base.js) 加入 ES 模組版本快取清除參數 `?v=20261122c`、解除 `prefers-reduced-motion` 手動切換過場時間鎖定（`.transition-user-override`）與 `.reveal .slides` 去模糊銳利透視，徹底解決 `mesh`/`orbits` 被毛玻璃模糊與過場時間歸零之問題。
   - 於 [src/styles/base.css.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/styles/base.css.js) 為淺色簡報主題（`notion-clean`、`ayu-light`、`newsprint`、`retro`、`green-simple`）啟用 `.has-motion-loop` 時配置亮面舞台底色與低遮蔽毛玻璃 `.reveal .slides`，讓動態效果能同時自投影片四周與後方玻璃透出。
   - 於 [src/templates/pages.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/pages.js) `Home` 著陸／載入頁整合全螢幕 `#home-motion-canvas` 暖色調 `aurora` 動態背景（附右下角 `Aurora / Orbits / Mesh` 快速切換鈕與半透明毛玻璃品牌載入卡），讓造訪 `https://wiki.david888.com/` 時即享流暢動態體驗。
 - **🌊 修復簡報背景動態手動切換、Toast 堆疊、導出圖示缺字與簡報 Mermaid 競態（Presentation Motion Manual Opt-in & UI Fixes）**：

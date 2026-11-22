@@ -419,7 +419,7 @@ export const Home = ({ lang = 'zh-TW', canonicalUrl, ogImageUrl }) => `
     ${EDITOR_PREFERENCE_MODAL(lang, { autoOpen: true })}
     <script type="module" src="/js/editor-preference.mjs"></script>
     <script type="module">
-        import { createPresentationMotionController } from '/js/presentation-motion.mjs';
+        import { createPresentationMotionController } from '/js/presentation-motion.mjs?v=20261122c';
         const canvas = document.getElementById('home-motion-canvas');
         const switcher = document.getElementById('home-motion-switcher');
         const presets = ['aurora', 'orbits', 'mesh'];

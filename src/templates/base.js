@@ -8523,11 +8523,15 @@ themeCss + '\\n' +
                 return Promise.resolve(_motionController);
             }
             if (!_motionControllerPromise) {
-                _motionControllerPromise = import('/js/presentation-motion.mjs').then(function(motionMod) {
+                _motionControllerPromise = import('/js/presentation-motion.mjs?v=20261122c').then(function(motionMod) {
                     var canvas = container.querySelector('#presentation-motion-canvas');
-                    if (!canvas || !container.classList.contains('active')) return null;
+                    if (!canvas || !container.classList.contains('active')) {
+                        _motionControllerPromise = null;
+                        return null;
+                    }
                     var effectivePreset = (!_motionUserOverride && isReducedMotionPreferred()) ? 'off' : _desiredMotionPreset;
                     if (effectivePreset === 'off') {
+                        _motionControllerPromise = null;
                         stopActiveMotionLoop(container);
                         return null;
                     }
@@ -8915,6 +8919,7 @@ themeCss + '\\n' +
                 transitionBtn.onclick = function() {
                     var idx = (transitions.indexOf(activeTransition) + 1) % transitions.length;
                     activeTransition = transitions[idx];
+                    container.classList.add('transition-user-override');
                     if (typeof reveal.configure === 'function') {
                         reveal.configure({ transition: activeTransition });
                     }
@@ -8944,7 +8949,10 @@ themeCss + '\\n' +
                     try {
                         await ensureMotionController(container, _desiredMotionPreset, _presentationThemeName);
                     } catch (err) {
-                        console.warn('Motion loop failed:', err);
+                        console.error('Motion loop failed:', err);
+                        if (typeof window.showToast === 'function') {
+                            window.showToast('Motion error: ' + (err && err.message ? err.message : err), 3000);
+                        }
                     }
                 };
             }

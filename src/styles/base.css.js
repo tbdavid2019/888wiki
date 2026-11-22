@@ -5812,6 +5812,10 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
     #presentation-container:not(.motion-user-override) #presentation-motion-canvas {
         display: none !important;
     }
+    #presentation-container.transition-user-override .reveal .slides section,
+    #presentation-container.has-motion-loop .reveal .slides section {
+        transition-duration: 0.55s !important;
+    }
 }
 #presentation-close-btn {
     position: fixed;
@@ -6139,7 +6143,7 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
 #presentation-container.has-motion-loop[data-presentation-theme="notion-clean"],
 #presentation-container.has-motion-loop[data-presentation-theme="ayu-light"],
 #presentation-container.has-motion-loop[data-presentation-theme="newsprint"] {
-    background: linear-gradient(145deg, #f3f7fc 0%, #e7eff8 100%);
+    background: linear-gradient(145deg, #edf3fc 0%, #e1ecf9 100%);
 }
 #presentation-container.has-motion-loop[data-presentation-theme="retro"] {
     background: linear-gradient(145deg, #f6f0e4 0%, #ebe1ce 100%);
@@ -6148,23 +6152,21 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
     background: linear-gradient(145deg, #ebf7f0 0%, #ddf1e6 100%);
 }
 #presentation-container.has-motion-loop .reveal .slides {
-    background: linear-gradient(145deg, rgba(23, 34, 54, 0.56) 0%, rgba(17, 26, 44, 0.62) 100%);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: linear-gradient(145deg, rgba(23, 34, 54, 0.64) 0%, rgba(17, 26, 44, 0.70) 100%);
 }
 #presentation-container.has-motion-loop[data-presentation-theme="tokyo-night"] .reveal .slides {
-    background: rgba(26, 27, 38, 0.58);
+    background: rgba(26, 27, 38, 0.66);
 }
 #presentation-container.has-motion-loop[data-presentation-theme="retro"] .reveal .slides {
-    background: rgba(251, 247, 238, 0.58);
+    background: rgba(251, 247, 238, 0.68);
 }
 #presentation-container.has-motion-loop[data-presentation-theme="notion-clean"] .reveal .slides,
 #presentation-container.has-motion-loop[data-presentation-theme="ayu-light"] .reveal .slides,
 #presentation-container.has-motion-loop[data-presentation-theme="newsprint"] .reveal .slides {
-    background: rgba(255, 255, 255, 0.56);
+    background: rgba(255, 255, 255, 0.68);
 }
 #presentation-container.has-motion-loop[data-presentation-theme="green-simple"] .reveal .slides {
-    background: rgba(244, 251, 247, 0.58);
+    background: rgba(244, 251, 247, 0.68);
 }
 
 /* Layouts: Two Columns, Three Columns, and Cover */

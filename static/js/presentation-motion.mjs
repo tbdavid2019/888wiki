@@ -87,28 +87,28 @@ export function createPresentationMotionController(canvas, options = {}) {
         }
         : (isLight
             ? {
-                bgA: 'rgba(56, 189, 248, 0.44)',
-                bgB: 'rgba(139, 92, 246, 0.38)',
-                bgC: 'rgba(16, 185, 129, 0.36)',
-                ribbonA: 'rgba(59, 130, 246, 0.24)',
-                ribbonB: 'rgba(168, 85, 247, 0.22)',
-                dot: 'rgba(37, 99, 235, 0.52)',
-                line: 'rgba(59, 130, 246, 0.24)',
-                stroke: 'rgba(37, 99, 235, 0.34)',
-                arc: 'rgba(14, 165, 233, 0.68)',
-                node: 'rgba(2, 132, 199, 0.88)',
+                bgA: 'rgba(56, 189, 248, 0.52)',
+                bgB: 'rgba(139, 92, 246, 0.46)',
+                bgC: 'rgba(16, 185, 129, 0.44)',
+                ribbonA: 'rgba(59, 130, 246, 0.30)',
+                ribbonB: 'rgba(168, 85, 247, 0.26)',
+                dot: 'rgba(37, 99, 235, 0.64)',
+                line: 'rgba(59, 130, 246, 0.34)',
+                stroke: 'rgba(37, 99, 235, 0.46)',
+                arc: 'rgba(14, 165, 233, 0.82)',
+                node: 'rgba(2, 132, 199, 0.94)',
             }
             : {
-                bgA: 'rgba(56, 189, 248, 0.48)',
-                bgB: 'rgba(139, 92, 246, 0.44)',
-                bgC: 'rgba(20, 184, 166, 0.40)',
-                ribbonA: 'rgba(34, 211, 238, 0.24)',
-                ribbonB: 'rgba(167, 139, 250, 0.22)',
-                dot: 'rgba(103, 232, 249, 0.60)',
-                line: 'rgba(56, 189, 248, 0.26)',
-                stroke: 'rgba(103, 232, 249, 0.36)',
-                arc: 'rgba(56, 189, 248, 0.75)',
-                node: 'rgba(103, 232, 249, 0.92)',
+                bgA: 'rgba(56, 189, 248, 0.52)',
+                bgB: 'rgba(139, 92, 246, 0.48)',
+                bgC: 'rgba(20, 184, 166, 0.44)',
+                ribbonA: 'rgba(34, 211, 238, 0.28)',
+                ribbonB: 'rgba(167, 139, 250, 0.26)',
+                dot: 'rgba(103, 232, 249, 0.68)',
+                line: 'rgba(56, 189, 248, 0.34)',
+                stroke: 'rgba(103, 232, 249, 0.46)',
+                arc: 'rgba(56, 189, 248, 0.85)',
+                node: 'rgba(103, 232, 249, 0.95)',
             })
 
     function syncSize() {
@@ -160,28 +160,30 @@ export function createPresentationMotionController(canvas, options = {}) {
         }
 
         // Flowing aurora ribbons (2 seamless periodic waves)
-        const ribbons = [
-            { yBase: height * 0.34, amp: height * 0.10, freq: 1, color: palette.ribbonA },
-            { yBase: height * 0.64, amp: height * 0.12, freq: 2, color: palette.ribbonB },
-        ]
-        for (const rb of ribbons) {
-            ctx.save()
-            ctx.fillStyle = rb.color
-            ctx.beginPath()
-            ctx.moveTo(0, height)
-            const steps = 24
-            for (let s = 0; s <= steps; s++) {
-                const u = s / steps
-                const x = u * width
-                const y = rb.yBase
-                    + Math.sin(phase * rb.freq + u * Math.PI * 2) * rb.amp
-                    + Math.cos(phase - u * Math.PI * 2) * (rb.amp * 0.45)
-                ctx.lineTo(x, y)
+        if (typeof ctx.moveTo === 'function' && typeof ctx.lineTo === 'function') {
+            const ribbons = [
+                { yBase: height * 0.34, amp: height * 0.10, freq: 1, color: palette.ribbonA },
+                { yBase: height * 0.64, amp: height * 0.12, freq: 2, color: palette.ribbonB },
+            ]
+            for (const rb of ribbons) {
+                ctx.save()
+                ctx.fillStyle = rb.color
+                ctx.beginPath()
+                ctx.moveTo(0, height)
+                const steps = 24
+                for (let s = 0; s <= steps; s++) {
+                    const u = s / steps
+                    const x = u * width
+                    const y = rb.yBase
+                        + Math.sin(phase * rb.freq + u * Math.PI * 2) * rb.amp
+                        + Math.cos(phase - u * Math.PI * 2) * (rb.amp * 0.45)
+                    ctx.lineTo(x, y)
+                }
+                ctx.lineTo(width, height)
+                if (typeof ctx.closePath === 'function') ctx.closePath()
+                ctx.fill()
+                ctx.restore()
             }
-            ctx.lineTo(width, height)
-            ctx.closePath()
-            ctx.fill()
-            ctx.restore()
         }
     }
 
@@ -205,25 +207,27 @@ export function createPresentationMotionController(canvas, options = {}) {
         }
 
         ctx.save()
-        ctx.strokeStyle = palette.line
-        ctx.lineWidth = 1.1
-        for (let row = 0; row < rows; row++) {
-            ctx.beginPath()
-            for (let col = 0; col < cols; col++) {
-                const pt = grid[row][col]
-                if (col === 0) ctx.moveTo(pt.x, pt.y)
-                else ctx.lineTo(pt.x, pt.y)
-            }
-            ctx.stroke()
-        }
-        for (let col = 0; col < cols; col++) {
-            ctx.beginPath()
+        if (typeof ctx.moveTo === 'function' && typeof ctx.lineTo === 'function') {
+            ctx.strokeStyle = palette.line
+            ctx.lineWidth = 1.15
             for (let row = 0; row < rows; row++) {
-                const pt = grid[row][col]
-                if (row === 0) ctx.moveTo(pt.x, pt.y)
-                else ctx.lineTo(pt.x, pt.y)
+                ctx.beginPath()
+                for (let col = 0; col < cols; col++) {
+                    const pt = grid[row][col]
+                    if (col === 0) ctx.moveTo(pt.x, pt.y)
+                    else ctx.lineTo(pt.x, pt.y)
+                }
+                ctx.stroke()
             }
-            ctx.stroke()
+            for (let col = 0; col < cols; col++) {
+                ctx.beginPath()
+                for (let row = 0; row < rows; row++) {
+                    const pt = grid[row][col]
+                    if (row === 0) ctx.moveTo(pt.x, pt.y)
+                    else ctx.lineTo(pt.x, pt.y)
+                }
+                ctx.stroke()
+            }
         }
 
         ctx.fillStyle = palette.dot
