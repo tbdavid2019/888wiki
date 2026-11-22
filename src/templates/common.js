@@ -1163,7 +1163,7 @@ export const FOOTER = ({ lang, isEdit, isAuthor, isBurnInterstitial = false, upd
                             <kbd class="ide-kbd" aria-hidden="true">⌘⇧P</kbd>
                         </button>
                         ${LANGUAGE_SELECTOR_CONTROL(lang, t)}
-                        ${accountEnabled ? `<a href="/_space" target="_blank" rel="noopener noreferrer" id="footer-passkey-btn" class="toolbar-icon-button footer-passkey-btn" style="text-decoration:none;" data-tooltip="${lang === 'zh-TW' ? 'Passkey · 我的空間' : 'Passkey · My Space'}" title="${lang === 'zh-TW' ? 'Passkey · 我的空間' : 'Passkey · My Space'}" aria-label="${lang === 'zh-TW' ? 'Passkey · 我的空間' : 'Passkey · My Space'}">${SVG_ICONS.passkey}<span class="toolbar-button-label">Passkey</span></a>` : ''}
+                        ${accountEnabled ? `<a href="/_space" target="_blank" rel="noopener noreferrer" id="footer-passkey-btn" class="toolbar-icon-button footer-passkey-btn" style="text-decoration:none;" data-tooltip="${lang === 'zh-TW' ? 'Passkey · 我的空間' : 'Passkey · My Space'}" title="${lang === 'zh-TW' ? 'Passkey · 我的空間' : 'Passkey · My Space'}" aria-label="${lang === 'zh-TW' ? 'Passkey · 我的空間' : 'Passkey · My Space'}">${SVG_ICONS.passkey}</a>` : ''}
                         ${MORE_DROPDOWN_MENU(lang, { isEdit })}
                     ` : `
                         ${sharePath ? `
@@ -1211,7 +1211,7 @@ export const FOOTER = ({ lang, isEdit, isAuthor, isBurnInterstitial = false, upd
             <div class="footer-section footer-section-info">
                 <div class="footer-section-body">
                     ${DEV_INFO_DROPDOWN_MENU(lang, t)}
-                    ${accountEnabled && !isBurnInterstitial ? `<a href="/_space" target="_blank" rel="noopener noreferrer" id="footer-passkey-btn" class="toolbar-icon-button footer-passkey-btn" style="text-decoration:none;" data-tooltip="${lang === 'zh-TW' ? 'Passkey · 我的空間' : 'Passkey · My Space'}" title="${lang === 'zh-TW' ? 'Passkey · 我的空間' : 'Passkey · My Space'}" aria-label="${lang === 'zh-TW' ? 'Passkey · 我的空間' : 'Passkey · My Space'}">${SVG_ICONS.passkey}<span class="toolbar-button-label">Passkey</span></a>` : ''}
+                    ${accountEnabled && !isBurnInterstitial ? `<a href="/_space" target="_blank" rel="noopener noreferrer" id="footer-passkey-btn" class="toolbar-icon-button footer-passkey-btn" style="text-decoration:none;" data-tooltip="${lang === 'zh-TW' ? 'Passkey · 我的空間' : 'Passkey · My Space'}" title="${lang === 'zh-TW' ? 'Passkey · 我的空間' : 'Passkey · My Space'}" aria-label="${lang === 'zh-TW' ? 'Passkey · 我的空間' : 'Passkey · My Space'}">${SVG_ICONS.passkey}</a>` : ''}
                 </div>
             </div>
             ` : ''}
