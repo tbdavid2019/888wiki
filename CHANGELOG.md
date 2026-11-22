@@ -2,6 +2,9 @@
 
 ## [2026-11-22]
 
+- **🧹 修復前端 Console 語法錯誤與 Service Worker 舊模組快取錯位（Fix `safeBookUrl` Regex & `sw.js` v8 Network-First `.mjs`）**：
+  - 於 [src/templates/base.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/base.js) 將 `safeBookUrl()` 的樣板字面量跳脫異常正則改為明確安全前綴檢查（`#`、單 `/`、`./`、`../`），修復瀏覽器 Console 報錯 `Invalid regular expression: /^(?:/: Unterminated group`。
+  - 於 [static/sw.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/sw.js)（同步 [src/templates/base.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/base.js) 與 [test/book-mode-offline-export.test.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/test/book-mode-offline-export.test.mjs)）將 `CACHE_NAME` 升級至 `david888-wiki-shell-v8`，並對 `/js/*.mjs` 改為 Network-First 策略（離線才回退快取），徹底杜絕新版 HTML 載入舊快取 ES 模組造成 `does not provide an export named ...` 錯誤。
 - **🛠️ 修復 Worker 路由掛起 (Error 1101) 與 JWT 相容層（`itty-router` v2/v5 & `cloudflare-worker-jwt` v1/v3 Dual-Version Compat）**：
   - 於 [src/index.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/index.js) 支援自動偵測 `router.handle` / `router.fetch`，避免 `itty-router@2.x` 將 `.fetch` 與 `await` 的 `.then` 誤判為路由註冊而造成請求無限掛起（1101）。
   - 於 [src/helper.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/helper.js) 抽出共用 `verifyJwtPayload()`（並同步套用於 [src/index.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/index.js) 與 [src/turnstile.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/turnstile.mjs)），同時相容 `@tsndr/cloudflare-worker-jwt` v1/v2（布林回傳）與 v3+（`{ payload }` 物件回傳）。

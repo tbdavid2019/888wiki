@@ -9466,7 +9466,7 @@ themeCss + '\\n' +
             var safeBookUrl = function(raw) {
                 var s = String(raw == null ? '' : raw).trim();
                 if (!s) return '#';
-                if (/^(?:\/(?!\/)|\.\/|\.\.\/|#)/.test(s)) return s;
+                if (s.startsWith('#') || (s.startsWith('/') && !s.startsWith('//')) || s.startsWith('./') || s.startsWith('../')) return s;
                 try {
                     var u = new URL(s, window.location.origin);
                     if (u.protocol === 'http:' || u.protocol === 'https:') return s;
@@ -9704,7 +9704,7 @@ themeCss + '\\n' +
                 var total = bookData.chapters.length;
                 if (btnTxt) btnTxt.textContent = (isZh ? '快取中 ' : 'Caching ') + '0/' + total;
                 try {
-                    var cache = ('caches' in window) ? await caches.open('david888-wiki-shell-v7') : null;
+                    var cache = ('caches' in window) ? await caches.open('david888-wiki-shell-v8') : null;
                     var imgCache = ('caches' in window) ? await caches.open('david888-wiki-images-v1') : null;
                     
                     if (cache) {

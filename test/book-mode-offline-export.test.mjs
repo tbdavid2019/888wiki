@@ -27,7 +27,7 @@ test('book mode renders offline cache button and export menu with all options', 
     assert.ok(html.includes('book-print-container'), 'Includes book-print-container element for PDF printing')
     assert.ok(html.includes('cf-notepad:book-offline:'), 'Includes localStorage key for offline book caching')
     assert.ok(html.includes('cf-notepad:book-last-idx:'), 'Includes localStorage key for reading progress')
-    assert.ok(html.includes('david888-wiki-shell-v7'), 'Pre-caches to shell cache')
+    assert.ok(html.includes('david888-wiki-shell-v8'), 'Pre-caches to shell cache')
     assert.ok(html.includes('david888-wiki-images-v1'), 'Pre-caches images')
 })
 

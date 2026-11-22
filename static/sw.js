@@ -1,4 +1,4 @@
-const CACHE_NAME = 'david888-wiki-shell-v7'
+const CACHE_NAME = 'david888-wiki-shell-v8'
 const IMAGE_CACHE_NAME = 'david888-wiki-images-v1'
 const MAX_IMAGE_CACHE_ITEMS = 60
 const OFFLINE_URL = '/_pwa-offline'
@@ -157,7 +157,26 @@ self.addEventListener('fetch', event => {
 
     if (url.origin !== self.location.origin) return
 
-    // 5. Stale-While-Revalidate for local JS, CSS, Fonts, and Precached Assets
+    // 5. Network-First for local ES modules (/js/*.mjs) to prevent HTML/module version skew,
+    //    Stale-While-Revalidate for other local static assets.
+    if (url.pathname.startsWith('/js/') && url.pathname.endsWith('.mjs')) {
+        event.respondWith(
+            caches.open(CACHE_NAME).then(async cache => {
+                try {
+                    const networkResponse = await fetch(request)
+                    if (networkResponse && networkResponse.status === 200) {
+                        cache.put(request, networkResponse.clone())
+                    }
+                    return networkResponse
+                } catch {
+                    const cachedResponse = await cache.match(request)
+                    return cachedResponse || Response.error()
+                }
+            }),
+        )
+        return
+    }
+
     const isStaticAsset = (
         PRECACHE_URLS.includes(url.pathname) ||
         url.pathname.startsWith('/js/') ||
