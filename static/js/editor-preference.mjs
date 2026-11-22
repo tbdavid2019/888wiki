@@ -235,8 +235,36 @@ export function initializeEditorPreference(documentRef = document, windowRef = w
 
     if (autoOpen) {
         const preference = currentPreference()
-        if (preference.remembered) goToNewNote(preference.format)
-        else open({ opener: null })
+        if (preference.remembered) {
+            const hasLandingStage = Boolean(documentRef.getElementById?.('home-motion-canvas')) && !navigate
+            if (hasLandingStage) {
+                const skipBtn = documentRef.getElementById('home-landing-skip')
+                const fillBar = documentRef.getElementById('home-progress-fill')
+                if (fillBar) {
+                    windowRef.requestAnimationFrame?.(() => {
+                        fillBar.style.width = '100%'
+                    })
+                }
+                let navigated = false
+                const finish = () => {
+                    if (navigated) return
+                    navigated = true
+                    goToNewNote(preference.format)
+                }
+                const timer = windowRef.setTimeout(finish, 1500)
+                if (skipBtn) {
+                    skipBtn.hidden = false
+                    skipBtn.addEventListener('click', () => {
+                        windowRef.clearTimeout(timer)
+                        finish()
+                    }, { once: true })
+                }
+            } else {
+                goToNewNote(preference.format)
+            }
+        } else {
+            open({ opener: null })
+        }
     }
 
     return { open, close, getPreference: currentPreference }

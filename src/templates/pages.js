@@ -353,11 +353,15 @@ export const Home = ({ lang = 'zh-TW', canonicalUrl, ogImageUrl }) => `
         body { min-height: 100vh; margin: 0; background: radial-gradient(circle at 28% 32%, rgba(200, 101, 75, 0.12), transparent 52%), radial-gradient(circle at 75% 64%, rgba(56, 189, 248, 0.12), transparent 55%), #f8f7f3; color: #2c2a29; overflow-x: hidden; }
         .home-motion-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; opacity: 1; }
         .home-shell { position: relative; z-index: 1; display: grid; min-height: 100vh; place-items: center; padding: 24px; box-sizing: border-box; }
-        .home-brand-card { display: inline-flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px 30px; border-radius: 18px; border: 1px solid rgba(200, 101, 75, 0.18); background: rgba(255, 255, 255, 0.68); box-shadow: 0 18px 48px rgba(37, 35, 32, 0.10); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        .home-brand-card { display: inline-flex; flex-direction: column; align-items: center; gap: 10px; padding: 24px 34px; border-radius: 20px; border: 1px solid rgba(200, 101, 75, 0.22); background: rgba(255, 255, 255, 0.72); box-shadow: 0 22px 56px rgba(37, 35, 32, 0.12); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); min-width: min(280px, calc(100vw - 48px)); }
         .home-brand-spinner { width: 26px; height: 26px; border-radius: 999px; border: 2px solid rgba(200, 101, 75, 0.18); border-top-color: #c8654b; animation: homeSpin 3.6s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; opacity: 0.78; }
         @keyframes homeSpin { to { transform: rotate(360deg); } }
         .home-brand { margin: 0; text-align: center; color: #3c3733; font-size: 15px; font-weight: 700; letter-spacing: .12em; }
         .home-brand-sub { margin: 0; text-align: center; color: #716c65; font-size: 12px; letter-spacing: .02em; }
+        .home-progress-track { width: 148px; height: 3px; border-radius: 999px; background: rgba(200, 101, 75, 0.16); overflow: hidden; margin-top: 2px; }
+        .home-progress-fill { width: 0%; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #c8654b 0%, #38bdf8 100%); transition: width 1.45s cubic-bezier(0.22, 1, 0.36, 1); }
+        .home-landing-skip { margin-top: 4px; border: 0; background: transparent; color: #c8654b; font-size: 12px; font-weight: 600; cursor: pointer; padding: 4px 10px; border-radius: 999px; transition: background 0.15s ease; }
+        .home-landing-skip:hover { background: rgba(200, 101, 75, 0.10); }
         .home-motion-switcher { position: fixed; right: 16px; bottom: 16px; z-index: 1002; display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border: 1px solid rgba(200, 101, 75, 0.28); border-radius: 999px; background: rgba(255, 255, 255, 0.82); color: #3c3733; font-size: 12px; font-weight: 600; cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 6px 20px rgba(37, 35, 32, 0.12); transition: transform 0.15s ease, border-color 0.15s ease; }
         .home-motion-switcher:hover { transform: translateY(-1px); border-color: #c8654b; }
         .modal { display: none; }
@@ -413,13 +417,14 @@ export const Home = ({ lang = 'zh-TW', canonicalUrl, ogImageUrl }) => `
             <div class="home-brand-spinner" aria-hidden="true"></div>
             <p class="home-brand">DAVID888 WIKI</p>
             <p class="home-brand-sub">${lang === 'zh-TW' ? '正在開啟雲端協作筆記工作區...' : 'Preparing your workspace...'}</p>
+            <div class="home-progress-track" aria-hidden="true"><div id="home-progress-fill" class="home-progress-fill"></div></div>
+            <button type="button" id="home-landing-skip" class="home-landing-skip" hidden>${lang === 'zh-TW' ? '立即進入工作區 →' : 'Enter workspace now →'}</button>
         </div>
     </main>
     <button type="button" id="home-motion-switcher" class="home-motion-switcher" title="${lang === 'zh-TW' ? '切換首頁動態背景' : 'Switch ambient motion'}">🌊 Aurora</button>
     ${EDITOR_PREFERENCE_MODAL(lang, { autoOpen: true })}
-    <script type="module" src="/js/editor-preference.mjs"></script>
     <script type="module">
-        import { createPresentationMotionController } from '/js/presentation-motion.mjs?v=20261122d';
+        import { createPresentationMotionController } from '/js/presentation-motion.mjs?v=20261122f';
         const canvas = document.getElementById('home-motion-canvas');
         const switcher = document.getElementById('home-motion-switcher');
         const presets = ['aurora', 'orbits', 'mesh'];
@@ -430,7 +435,7 @@ export const Home = ({ lang = 'zh-TW', canonicalUrl, ogImageUrl }) => `
                 preset: presets[presetIdx],
                 isLight: true,
                 variant: 'warm',
-                periodMs: 36000,
+                periodMs: 28000,
             });
             if (switcher) {
                 switcher.addEventListener('click', () => {
@@ -442,6 +447,7 @@ export const Home = ({ lang = 'zh-TW', canonicalUrl, ogImageUrl }) => `
             }
         }
     </script>
+    <script type="module" src="/js/editor-preference.mjs?v=20261122f"></script>
     <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {})</script>
 </body>
 </html>

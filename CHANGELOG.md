@@ -2,6 +2,9 @@
 
 ## [2026-11-22]
 
+- **⏳ 首頁 `wiki.david888.com` Landing 歡迎動畫展示窗口（1.5 秒緩衝＋一鍵略過＋增強暖色 Aurora）**：
+  - 於 [static/js/editor-preference.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/js/editor-preference.mjs) 與 [src/templates/pages.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/pages.js) 針對真實首頁著陸環境（`#home-motion-canvas` 存在時）將已記住偏好的自動導向調整為 **`1500ms` 柔和過渡窗口**，先立即渲染 `#home-motion-canvas` 強化暖色 Aurora 極光動畫與 1.45 秒漸進進度條（並附「立即進入工作區 →」按鈕可直接點擊略過），避免一打開 `wiki.david888.com` 就在數毫秒內瞬跳看不到任何動畫；同時保持測試環境呼叫 `initializeEditorPreference(..., { navigate })` 的同步導向契約。
+  - 於 [static/js/presentation-motion.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/js/presentation-motion.mjs) 適度提高 `variant: 'warm'` 極光與波紋對比（`0.46 / 0.40 / 0.36`）並統一版號至 `?v=20261122f`。
 - **🎯 強化雙欄同步捲動區塊錨點對齊（`[toc]` + 圍欄程式碼／Mermaid 圖表／表格／分隔線精準對映）**：
   - 於 [static/js/markdown-extensions.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/js/markdown-extensions.mjs) `extractEditorScrollTokens(source, { includeBlocks: true })` 新增 `fence`（圍欄程式碼／Mermaid／ECharts 區塊起訖行號）、`table`（GFM 表格起訖行號）與 `hr`（分隔線 `---`）區塊錨點提取，並與 [src/templates/base.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/base.js) 中對應 `.diagram-block-wrapper` / `.code-block-wrapper` / `pre`、`table` 與 `<hr>` DOM 範圍一對一對映。
   - 加入 `markdown-extensions.mjs?v=20261122e` 模組快取清除與 Mermaid 非同步繪圖完成後主動呼叫 `__invalidateScrollAnchorCache()`，消除長段 Mermaid 原始碼或 `[toc]` 展開後與後方標題產生數百像素視窗錯位。

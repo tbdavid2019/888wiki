@@ -8544,7 +8544,7 @@ themeCss + '\\n' +
                 return Promise.resolve(_motionController);
             }
             if (!_motionControllerPromise) {
-                _motionControllerPromise = import('/js/presentation-motion.mjs?v=20261122d').then(function(motionMod) {
+                _motionControllerPromise = import('/js/presentation-motion.mjs?v=20261122f').then(function(motionMod) {
                     var canvas = container.querySelector('#presentation-motion-canvas');
                     if (!canvas || !container.classList.contains('active')) {
                         _motionControllerPromise = null;

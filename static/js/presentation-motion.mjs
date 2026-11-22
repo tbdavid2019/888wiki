@@ -77,16 +77,16 @@ export function createPresentationMotionController(canvas, options = {}) {
 
     const palette = variant === 'warm'
         ? {
-            bgA: 'rgba(200, 101, 75, 0.36)',
-            bgB: 'rgba(56, 189, 248, 0.30)',
-            bgC: 'rgba(245, 158, 11, 0.28)',
-            ribbonA: 'rgba(200, 101, 75, 0.22)',
-            ribbonB: 'rgba(20, 184, 166, 0.20)',
-            dot: 'rgba(200, 101, 75, 0.55)',
-            line: 'rgba(200, 101, 75, 0.24)',
-            stroke: 'rgba(200, 101, 75, 0.40)',
-            arc: 'rgba(200, 101, 75, 0.65)',
-            node: 'rgba(200, 101, 75, 0.85)',
+            bgA: 'rgba(200, 101, 75, 0.46)',
+            bgB: 'rgba(56, 189, 248, 0.40)',
+            bgC: 'rgba(245, 158, 11, 0.36)',
+            ribbonA: 'rgba(200, 101, 75, 0.28)',
+            ribbonB: 'rgba(20, 184, 166, 0.24)',
+            dot: 'rgba(200, 101, 75, 0.62)',
+            line: 'rgba(200, 101, 75, 0.30)',
+            stroke: 'rgba(200, 101, 75, 0.46)',
+            arc: 'rgba(200, 101, 75, 0.78)',
+            node: 'rgba(200, 101, 75, 0.90)',
         }
         : (isLight
             ? {
