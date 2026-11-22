@@ -158,6 +158,7 @@ export const SVG_ICONS = {
     graduationCap: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"></path><path d="M22 10v6"></path><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"></path></svg>`,
     lifeBuoy: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle><line x1="4.93" y1="4.93" x2="9.17" y2="9.17"></line><line x1="14.83" y1="14.83" x2="19.07" y2="19.07"></line><line x1="14.83" y1="9.17" x2="19.07" y2="4.93"></line><line x1="4.93" y1="19.07" x2="9.17" y2="14.83"></line></svg>`,
     key: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"></path><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"></circle></svg>`,
+    passkey: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 11v6"></path><path d="M19 13h2"></path><path d="M2 21a8 8 0 0 1 12.868-6.349"></path><circle cx="10" cy="8" r="5"></circle><circle cx="19" cy="19" r="2"></circle></svg>`,
     math: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><path d="M9 17c2 0 2.8-1 2.8-2.8V10c0-2 1-3.3 3.2-3"></path><path d="M9 11.2h5.7"></path></svg>`,
     pulse: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.48 12H2"></path></svg>`,
     dictate: `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line><path d="M8 22h8"></path><path d="m18 8 3-1"></path><path d="m18 12 3 1"></path></svg>`,
@@ -968,7 +969,7 @@ export const FOOTER = ({ lang, isEdit, isAuthor, isBurnInterstitial = false, upd
                                                 </span>
                                                 <span class="sr-only">${t.recentSharesTitle}</span>
                                             </button>
-                                            ${accountEnabled ? `<a href="/_space" class="dropdown-item dropdown-item-rich">${SVG_ICONS.shareHistory}<span class="dropdown-item-copy"><strong>${lang === 'zh-TW' ? '我的空間' : 'My Space'}</strong><small>${lang === 'zh-TW' ? '跨裝置管理筆記與分享圈' : 'Manage notes and circles across devices'}</small></span></a>` : ''}
+                                            ${accountEnabled ? `<a href="/_space" target="_blank" rel="noopener noreferrer" class="dropdown-item dropdown-item-rich">${SVG_ICONS.passkey}<span class="dropdown-item-copy"><strong>${lang === 'zh-TW' ? '我的空間' : 'My Space'}</strong><small>${lang === 'zh-TW' ? '跨裝置管理筆記與分享圈' : 'Manage notes and circles across devices'}</small></span></a>` : ''}
                                         </div>
                                         ${SECURITY_CONTROLS_RENDER({ lang, pw, vpw, suffix: '' })}
                                         <div class="dropdown-menu-label">${lang === 'zh-TW' ? '分享設定' : 'Share Settings'}</div>
@@ -1016,7 +1017,7 @@ export const FOOTER = ({ lang, isEdit, isAuthor, isBurnInterstitial = false, upd
                                                 </span>
                                                 <span class="sr-only">${t.recentSharesTitle}</span>
                                             </button>
-                                            ${accountEnabled ? `<a href="/_space" class="dropdown-item dropdown-item-rich">${SVG_ICONS.shareHistory}<span class="dropdown-item-copy"><strong>${lang === 'zh-TW' ? '我的空間' : 'My Space'}</strong><small>${lang === 'zh-TW' ? '跨裝置管理筆記與分享圈' : 'Manage notes and circles across devices'}</small></span></a>` : ''}
+                                            ${accountEnabled ? `<a href="/_space" target="_blank" rel="noopener noreferrer" class="dropdown-item dropdown-item-rich">${SVG_ICONS.passkey}<span class="dropdown-item-copy"><strong>${lang === 'zh-TW' ? '我的空間' : 'My Space'}</strong><small>${lang === 'zh-TW' ? '跨裝置管理筆記與分享圈' : 'Manage notes and circles across devices'}</small></span></a>` : ''}
                                         </div>
                                         ${SECURITY_CONTROLS_RENDER({ lang, pw, vpw, suffix: '-draft' })}
                                         <div class="dropdown-menu-label">${lang === 'zh-TW' ? '發布預設設定' : 'Publish Default Settings'}</div>
@@ -1087,7 +1088,7 @@ export const FOOTER = ({ lang, isEdit, isAuthor, isBurnInterstitial = false, upd
                             ${SVG_ICONS.shareHistory}
                             <span class="toolbar-button-label">${lang === 'zh-TW' ? '紀錄' : 'Recent'}</span>
                         </button>
-                        ${accountEnabled ? `<a href="/_space" class="toolbar-icon-button" title="${lang === 'zh-TW' ? '我的空間' : 'My Space'}">${SVG_ICONS.shareHistory}<span class="toolbar-button-label">${lang === 'zh-TW' ? '我的空間' : 'My Space'}</span></a>` : ''}
+                        ${accountEnabled ? `<a href="/_space" target="_blank" rel="noopener noreferrer" class="toolbar-icon-button" title="${lang === 'zh-TW' ? 'Passkey · 我的空間' : 'Passkey · My Space'}">${SVG_ICONS.passkey}<span class="toolbar-button-label">${lang === 'zh-TW' ? '我的空間' : 'My Space'}</span></a>` : ''}
                     ` : '')}
                     ${!isEdit ? MORE_DROPDOWN_MENU(lang, { isEdit }) : ''}
                     ${accountEnabled && !isBurnInterstitial && (isEdit || shareId) ? `<button type="button" id="circle-picker-btn" class="toolbar-icon-button" title="${lang === 'zh-TW' ? '收藏至我的空間' : 'Save to My Space'}">${SVG_ICONS.shareHistory}<span class="toolbar-button-label">${lang === 'zh-TW' ? '收藏' : 'Save'}</span></button>` : ''}
@@ -1162,6 +1163,7 @@ export const FOOTER = ({ lang, isEdit, isAuthor, isBurnInterstitial = false, upd
                             <kbd class="ide-kbd" aria-hidden="true">⌘⇧P</kbd>
                         </button>
                         ${LANGUAGE_SELECTOR_CONTROL(lang, t)}
+                        ${accountEnabled ? `<a href="/_space" target="_blank" rel="noopener noreferrer" id="footer-passkey-btn" class="toolbar-icon-button footer-passkey-btn" style="text-decoration:none;" data-tooltip="${lang === 'zh-TW' ? 'Passkey · 我的空間' : 'Passkey · My Space'}" title="${lang === 'zh-TW' ? 'Passkey · 我的空間' : 'Passkey · My Space'}" aria-label="${lang === 'zh-TW' ? 'Passkey · 我的空間' : 'Passkey · My Space'}">${SVG_ICONS.passkey}<span class="toolbar-button-label">Passkey</span></a>` : ''}
                         ${MORE_DROPDOWN_MENU(lang, { isEdit })}
                     ` : `
                         ${sharePath ? `
@@ -1209,6 +1211,7 @@ export const FOOTER = ({ lang, isEdit, isAuthor, isBurnInterstitial = false, upd
             <div class="footer-section footer-section-info">
                 <div class="footer-section-body">
                     ${DEV_INFO_DROPDOWN_MENU(lang, t)}
+                    ${accountEnabled && !isBurnInterstitial ? `<a href="/_space" target="_blank" rel="noopener noreferrer" id="footer-passkey-btn" class="toolbar-icon-button footer-passkey-btn" style="text-decoration:none;" data-tooltip="${lang === 'zh-TW' ? 'Passkey · 我的空間' : 'Passkey · My Space'}" title="${lang === 'zh-TW' ? 'Passkey · 我的空間' : 'Passkey · My Space'}" aria-label="${lang === 'zh-TW' ? 'Passkey · 我的空間' : 'Passkey · My Space'}">${SVG_ICONS.passkey}<span class="toolbar-button-label">Passkey</span></a>` : ''}
                 </div>
             </div>
             ` : ''}

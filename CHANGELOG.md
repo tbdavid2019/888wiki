@@ -2,6 +2,7 @@
 
 ## [2026-11-22]
 
+- **底部右下角統一 Passkey 我的空間快捷入口（Bottom-Right Footer Passkey Launcher）**：於 [src/templates/common.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/common.js) 新增 Lucide `user-round-key` 圖示並於全編輯器／分享頁底部工具列右側（「中 / EN」旁）加入輕量 `Passkey` 連結按鈕，點擊以新分頁（`target="_blank" rel="noopener noreferrer"`）直達 `/_space`；帳號功能停用時自動隱藏。
 - **環境與 View Lock 安全修復（Environment and View Lock safety）**：指定 Wrangler 環境時不繼承根 KV、R2、D1 綁定或 vars；僅設定 View Lock 的筆記須有編輯證明才能升級收藏，否則維持遮罩。
 - **維護及資料庫安全（Maintenance and database safety）**：維護期間封鎖筆記與分享讀取、匯出、批註及 MCP 讀取並保留健康檢查；要求或固定 D1 登錄時，刪除 KV 前先確認權威儲存可用。`db:init --env` 不再繼承根 vars 或 D1 綁定。
 - **帳號與儲存安全修復（Account and storage review fixes）**：隔離各用戶端的 Passkey 挑戰限制；防止空間連結指向替換筆記並支援移除僅含批註的項目；維護模式禁止公開讀取與遷移寫入、拒絕過期 KV 分享映射，分享圈排除所有 Seal 模式。資料庫初始化轉發環境並為帳號建立批註資料表。
