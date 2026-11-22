@@ -2,6 +2,13 @@
 
 ## [2026-11-22]
 
+- **🔍 端側 OCR 增強升級與 Dual Code Review 修復（Auto-OCR Toggle, PP-OCRv6 Small Model Switch, Mutex Queue & Review Fixes）**：
+  - **端側 OCR 自動化、模型切換與互斥鎖並發保護**：於 [static/js/ocr-client.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/js/ocr-client.mjs) 新增內部串行互斥鎖 `runWithOcrMutex()`（保護多圖同時辨識排隊執行）、支援 `PP-OCRv6 tiny`（預設輕量）與 `PP-OCRv6 small`（高精度增強模型，約 30 MB）動態切換並自動釋放舊 Worker；於 [src/templates/common.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/common.js)、[src/templates/base.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/base.js) 與 [static/js/markdown-toolbar.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/js/markdown-toolbar.mjs) 新增 `Cmd/Ctrl + Shift + P` 工具面板「匯入圖片時自動啟用端側 OCR」與「使用增強 OCR 模型（約 30 MB）」開關，支援貼上／多圖拖曳／工具列選圖不上傳遠端直接辨識插入。
+  - **Dual Code Review（Codex + OpenCode）問題修復**：
+    - 修復 `window.showAppConfirm` 未定義導致覆蓋範本未跳出確認視窗的問題（改用 `window.showAppDialog`）；
+    - 為 `.has-motion-loop` 簡報舞台套用半透明毛玻璃背景，確保 Canvas 動態背景可見，並於 `prefers-reduced-motion: reduce` 下阻擋工具列啟動背景迴圈且修正非同步載入競態；
+    - 強化 [static/js/pptx-export.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/js/pptx-export.mjs) 忽略圍欄程式碼區塊內的 `---` / `--` 並為投影片內文加上 `<a:normAutofit/>` 防裁切；
+    - 為 [src/templates/base.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/base.js) `[toc]` 捲動錨點加入快取與單調邊界夾緊，避免每次捲動重複觸發 Layout 查詢與反向捲動掉錨點。
 - **🩹 編輯器頂部空白過多修正（Tighten Editor Top Padding）**：
   - 於 [src/styles/editor.css.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/styles/editor.css.js) 將 `.editor-code-shell > textarea.contents` 與 `.editor-line-numbers`（含 `@media (max-width: 640px)` 行動版）的 `padding-top` 由 `20px` 收斂為 `8px`，消除工具列底線與第 1 行文字之間過大的空白帶，並維持行號槽與編輯區 1:1 垂直對齊。
 - **🌊 簡報模式無縫動態背景與過場動畫控制（Presentation Motion Loops & Transitions）**：

@@ -5862,6 +5862,7 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
     box-shadow:
         0 28px 70px rgba(0, 0, 0, 0.38),
         0 0 0 1px rgba(255, 255, 255, 0.025) inset;
+    transition: background 0.35s ease;
 }
 
 #presentation-container .reveal .slides section {
@@ -6128,6 +6129,27 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
 #presentation-container[data-presentation-theme="tokyo-night"] .reveal h2,
 #presentation-container[data-presentation-theme="tokyo-night"] .reveal h3 {
     color: #7aa2f7;
+}
+
+/* Motion Loop Backdrop Glassmorphism (placed after theme overrides so theme rules don't obscure canvas) */
+#presentation-container.has-motion-loop .reveal .slides {
+    background: linear-gradient(145deg, rgba(23, 34, 54, 0.72) 0%, rgba(17, 26, 44, 0.78) 100%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+#presentation-container.has-motion-loop[data-presentation-theme="tokyo-night"] .reveal .slides {
+    background: rgba(26, 27, 38, 0.74);
+}
+#presentation-container.has-motion-loop[data-presentation-theme="retro"] .reveal .slides {
+    background: rgba(251, 247, 238, 0.78);
+}
+#presentation-container.has-motion-loop[data-presentation-theme="notion-clean"] .reveal .slides,
+#presentation-container.has-motion-loop[data-presentation-theme="ayu-light"] .reveal .slides,
+#presentation-container.has-motion-loop[data-presentation-theme="newsprint"] .reveal .slides {
+    background: rgba(255, 255, 255, 0.78);
+}
+#presentation-container.has-motion-loop[data-presentation-theme="green-simple"] .reveal .slides {
+    background: rgba(244, 251, 247, 0.78);
 }
 
 /* Layouts: Two Columns, Three Columns, and Cover */

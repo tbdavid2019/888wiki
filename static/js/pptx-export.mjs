@@ -62,6 +62,56 @@ function stripInlineMarkdown(line) {
         .trim()
 }
 
+function matchFenceLine(rawLine) {
+    // CommonMark allows at most 3 leading spaces on opening/closing fences
+    const m = String(rawLine || '').match(/^ {0,3}(`{3,}|~{3,})(.*)$/)
+    if (!m) return null
+    const marker = m[1][0]
+    const length = m[1].length
+    const rest = m[2]
+    // CommonMark: backtick info strings cannot contain backticks
+    if (marker === '`' && rest.includes('`')) return null
+    return { marker, length, hasInfo: rest.trim().length > 0 }
+}
+
+/**
+ * Splits Markdown into slide chunks on --- and -- lines while ignoring fenced code blocks.
+ * Respects CommonMark fence indentation (<= 3 spaces), marker, minimum closing length, and no closing info string.
+ * @param {string} source
+ * @returns {string[]}
+ */
+export function splitSlidesOutsideFences(source) {
+    const lines = String(source || '').split('\n')
+    const chunks = []
+    let current = []
+    let fence = null
+
+    for (const line of lines) {
+        const trimmed = line.trim()
+        const f = matchFenceLine(line)
+        if (f) {
+            if (!fence) {
+                fence = { marker: f.marker, length: f.length }
+            } else if (f.marker === fence.marker && f.length >= fence.length && !f.hasInfo) {
+                fence = null
+            }
+            current.push(line)
+            continue
+        }
+        if (!fence && (trimmed === '---' || trimmed === '--')) {
+            const joined = current.join('\n').trim()
+            if (joined) chunks.push(joined)
+            current = []
+            continue
+        }
+        current.push(line)
+    }
+
+    const tail = current.join('\n').trim()
+    if (tail) chunks.push(tail)
+    return chunks
+}
+
 /**
  * Parses Markdown (including YAML frontmatter and --- / -- slide separators)
  * into structured slide objects ready for OOXML rendering.
@@ -86,15 +136,8 @@ export function parseMarkdownToSlides(markdown, options = {}) {
     }
     source = source.replace(/^\s*---\s*\n/, '')
 
-    // Split into horizontal and vertical chunks
-    const rawChunks = []
-    const hChunks = source.split(/\n\s*---\s*\n/)
-    for (const h of hChunks) {
-        const vChunks = h.split(/\n\s*--\s*\n/)
-        for (const v of vChunks) {
-            if (v.trim()) rawChunks.push(v.trim())
-        }
-    }
+    // Split into horizontal and vertical chunks outside fenced code blocks
+    const rawChunks = splitSlidesOutsideFences(source)
 
     if (rawChunks.length === 0) {
         return [{
@@ -116,24 +159,26 @@ export function parseMarkdownToSlides(markdown, options = {}) {
         let title = ''
         let subtitle = ''
         const blocks = []
-        let inCode = false
+        let inFence = null
         let codeLines = []
 
         for (const rawLine of lines) {
             const trimmed = rawLine.trim()
-            if (trimmed.startsWith('```') || trimmed.startsWith('~~~')) {
-                if (!inCode) {
-                    inCode = true
+            const f = matchFenceLine(rawLine)
+            if (f) {
+                if (!inFence) {
+                    inFence = { marker: f.marker, length: f.length }
                     codeLines = []
-                } else {
-                    inCode = false
+                    continue
+                } else if (f.marker === inFence.marker && f.length >= inFence.length && !f.hasInfo) {
+                    inFence = null
                     if (codeLines.length > 0) {
                         blocks.push({ kind: 'code', text: codeLines.join('\n') })
                     }
+                    continue
                 }
-                continue
             }
-            if (inCode) {
+            if (inFence) {
                 codeLines.push(rawLine)
                 continue
             }
@@ -185,7 +230,7 @@ export function parseMarkdownToSlides(markdown, options = {}) {
             }
         }
 
-        if (inCode && codeLines.length > 0) {
+        if (inFence && codeLines.length > 0) {
             blocks.push({ kind: 'code', text: codeLines.join('\n') })
         }
 
@@ -386,7 +431,7 @@ function buildSlideXml(slide, slideIndex, palette) {
         shapes.push(`<p:sp>
             <p:nvSpPr><p:cNvPr id="${nextId++}" name="SlideBody"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>
             <p:spPr><a:xfrm><a:off x="762000" y="1600000"/><a:ext cx="10668000" cy="4650000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr>
-            <p:txBody><a:bodyPr wrap="square" anchor="t"/><a:lstStyle/>${bodyXml}</p:txBody>
+            <p:txBody><a:bodyPr wrap="square" anchor="t"><a:normAutofit/></a:bodyPr><a:lstStyle/>${bodyXml}</p:txBody>
         </p:sp>`)
     }
 

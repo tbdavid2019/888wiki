@@ -1393,6 +1393,8 @@ ${getMarkdownCss()}
                 decorateMediaPreviews(node);
                 openShareContentLinksInNewTab(node);
                 initDiagrams();
+                window.__previewRenderVersion = (window.__previewRenderVersion || 0) + 1;
+                window.__invalidateScrollAnchorCache?.();
                 scheduleHashScroll();
             } catch (e) {
                 console.error('Markdown rendering error:', e);
@@ -4636,11 +4638,23 @@ ${getMarkdownCss()}
             });
         }
 
-        // Scroll Sync (Anchor-mapped for [toc], headings & variable-height blocks)
+        // Scroll Sync (Anchor-mapped & cached for [toc], headings & variable-height blocks)
         let isSyncingLeft = false, isSyncingRight = false, syncTimeout = null;
+        let cachedScrollSig = '';
+        let cachedScrollAnchors = null;
+        const invalidateScrollAnchorCache = () => {
+            cachedScrollSig = '';
+            cachedScrollAnchors = null;
+        };
+        window.__invalidateScrollAnchorCache = invalidateScrollAnchorCache;
         const buildScrollAnchors = ($left, $right) => {
             const maxLeft = Math.max(0, $left.scrollHeight - $left.clientHeight);
             const maxRight = Math.max(0, $right.scrollHeight - $right.clientHeight);
+            const renderVer = window.__previewRenderVersion || 0;
+            const sig = [renderVer, maxLeft, maxRight, $left.clientWidth, $right.clientWidth, ($left.value || '').length].join('|');
+            if (cachedScrollAnchors && cachedScrollSig === sig) {
+                return cachedScrollAnchors;
+            }
             const anchors = [{ src: 0, dst: 0 }];
 
             if ($right === $previewMd && typeof window.extractEditorScrollTokens === 'function') {
@@ -4650,7 +4664,6 @@ ${getMarkdownCss()}
                     const gutterChildren = gutter ? gutter.children : null;
                     const gutterRect = gutter ? gutter.getBoundingClientRect() : null;
                     const leftComputed = window.getComputedStyle ? window.getComputedStyle($left) : null;
-                    const leftPadTop = leftComputed ? (parseFloat(leftComputed.paddingTop) || 0) : 8;
                     const gutterPadTop = (gutter && window.getComputedStyle) ? (parseFloat(window.getComputedStyle(gutter).paddingTop) || 0) : 8;
                     const rowHeight = leftComputed ? (parseFloat(leftComputed.lineHeight) || 25.6) : 25.6;
 
@@ -4671,7 +4684,7 @@ ${getMarkdownCss()}
                             const lineRect = gutterChildren[lineIndex].getBoundingClientRect();
                             return Math.max(0, Math.min(maxLeft, lineRect.top - gutterRect.top + gutter.scrollTop - gutterPadTop));
                         }
-                        return Math.max(0, Math.min(maxLeft, leftPadTop + lineIndex * rowHeight - leftPadTop));
+                        return Math.max(0, Math.min(maxLeft, lineIndex * rowHeight));
                     };
 
                     const getLineBottom = (lineIndex) => {
@@ -4691,20 +4704,31 @@ ${getMarkdownCss()}
                             const tocRect = tocEl.getBoundingClientRect();
                             const tocTop = Math.max(0, Math.min(maxRight, tocRect.top - rightRect.top + $right.scrollTop - rightPadTop));
                             const tocBottom = Math.max(tocTop, Math.min(maxRight, tocRect.bottom - rightRect.top + $right.scrollTop - rightPadTop));
-                            anchors.push({ src: getLineTop(token.line), dst: tocTop });
-                            anchors.push({ src: getLineBottom(token.line), dst: tocBottom });
+                            const prevDst = anchors[anchors.length - 1].dst;
+                            const safeTocTop = Math.max(prevDst, tocTop);
+                            const safeTocBottom = Math.max(safeTocTop, tocBottom);
+                            anchors.push({ src: getLineTop(token.line), dst: safeTocTop });
+                            anchors.push({ src: getLineBottom(token.line), dst: safeTocBottom });
                         } else if (token.kind === 'heading') {
                             const hEl = headingEls[headingCursor++];
                             if (!hEl) continue;
                             const hRect = hEl.getBoundingClientRect();
                             const hTop = Math.max(0, Math.min(maxRight, hRect.top - rightRect.top + $right.scrollTop - rightPadTop));
-                            anchors.push({ src: getLineTop(token.line), dst: hTop });
+                            // Keep tocBottom <= hTop when tight/collapsed margins make them cross so reverse scroll never drops the heading anchor
+                            const lastAnchor = anchors[anchors.length - 1];
+                            if (lastAnchor && lastAnchor.dst > hTop) {
+                                lastAnchor.dst = Math.max(anchors.length > 1 ? anchors[anchors.length - 2].dst : 0, hTop);
+                            }
+                            anchors.push({ src: getLineTop(token.line), dst: Math.max(anchors[anchors.length - 1].dst, hTop) });
                         }
                     }
                 }
             }
 
-            anchors.push({ src: maxLeft, dst: maxRight });
+            const finalPrevDst = anchors[anchors.length - 1].dst;
+            anchors.push({ src: maxLeft, dst: Math.max(finalPrevDst, maxRight) });
+            cachedScrollSig = sig;
+            cachedScrollAnchors = anchors;
             return anchors;
         };
 
@@ -5200,64 +5224,89 @@ ${getMarkdownCss()}
             return window.cfNotepadOcr;
         };
 
-        const processImageInput = async (file, { start, end, block = false } = {}) => {
-            const choice = await showImageActionDialog(file);
-            if (choice === 'cancel') return;
-            if (choice === 'ocr') {
-                await ensureOcrClient();
-                if (!window.cfNotepadOcr?.recognizeImage) throw new Error(APP_STATE.lang === 'zh-TW' ? 'OCR 模組載入失敗，請確認網路連線或重新整理頁面後再試。' : 'The OCR module failed to load. Check your network or refresh.');
-                const isReady = window.cfNotepadOcr.getStatus?.().ready === true;
-                setOcrStatus(isReady
-                    ? (APP_STATE.lang === 'zh-TW' ? '正在本機辨識圖片…' : 'Recognizing image locally…')
-                    : (APP_STATE.lang === 'zh-TW' ? '正在下載 OCR 模型與執行元件（首次使用）…' : 'Downloading the OCR model and runtime (first use)…'));
-                try {
-                    const result = await window.cfNotepadOcr.recognizeImage(file);
-                    if (block) {
-                        if (typeof window.__insertBlockEditorMarkdown !== 'function') throw new Error(APP_STATE.lang === 'zh-TW' ? 'Block 編輯器尚未準備完成。' : 'The block editor is not ready.');
-                        window.__insertBlockEditorMarkdown(result.text);
-                    } else {
-                        insertOcrText(result.text, start, end);
+        let imageInputQueue = Promise.resolve();
+        const processImageInput = (file, { start, end, block = false, forcePrompt = false } = {}) => {
+            const snapshotLen = $textarea ? $textarea.value.length : 0;
+            const runTask = async () => {
+                // Re-resolve live cursor if queued work or concurrent edits changed the document
+                const initialText = $textarea ? $textarea.value : '';
+                const resolveRange = () => {
+                    if (!$textarea) return [start, end];
+                    if ($textarea.value.length !== snapshotLen || $textarea.value !== initialText) {
+                        return [$textarea.selectionStart, $textarea.selectionEnd];
                     }
-                    window.showToast?.(APP_STATE.lang === 'zh-TW' ? 'OCR 完成，文字已插入。' : 'OCR complete. Text inserted.');
-                } finally {
-                    setOcrStatus('');
-                }
-                return;
-            }
-            if (choice === 'table') {
-                await ensureOcrClient();
-                if (!window.cfNotepadOcr?.recognizeTableImage) throw new Error(APP_STATE.lang === 'zh-TW' ? '表格 OCR 模組載入失敗，請確認網路連線或重新整理頁面後再試。' : 'The table OCR module failed to load. Check your network or refresh.');
-                const isReady = window.cfNotepadOcr.getStatus?.().ready === true;
-                setOcrStatus(isReady
-                    ? (APP_STATE.lang === 'zh-TW' ? '正在辨識表格（本地優先，必要時後端容錯）…' : 'Recognizing table (local-first with fallback)…')
-                    : (APP_STATE.lang === 'zh-TW' ? '正在準備表格 OCR 引擎（本地優先，必要時後端容錯）…' : 'Preparing table OCR engine (local-first with fallback)…'));
+                    return [start, end];
+                };
+
+                let autoOcr = false;
                 try {
-                    const result = await window.cfNotepadOcr.recognizeTableImage(file);
-                    if (block) {
-                        if (typeof window.__insertBlockEditorMarkdown !== 'function') throw new Error(APP_STATE.lang === 'zh-TW' ? 'Block 編輯器尚未準備完成。' : 'The block editor is not ready.');
-                        window.__insertBlockEditorMarkdown(result.markdown);
-                    } else {
-                        insertOcrText(result.markdown, start, end);
+                    autoOcr = !forcePrompt && localStorage.getItem('cf-notepad:ocr-auto') === '1';
+                } catch {}
+                const choice = autoOcr ? 'ocr' : await showImageActionDialog(file);
+                if (choice === 'cancel') return;
+                if (choice === 'ocr') {
+                    await ensureOcrClient();
+                    if (!window.cfNotepadOcr?.recognizeImage) throw new Error(APP_STATE.lang === 'zh-TW' ? 'OCR 模組載入失敗，請確認網路連線或重新整理頁面後再試。' : 'The OCR module failed to load. Check your network or refresh.');
+                    const isReady = window.cfNotepadOcr.getStatus?.().ready === true;
+                    setOcrStatus(isReady
+                        ? (APP_STATE.lang === 'zh-TW' ? '正在本機辨識圖片…' : 'Recognizing image locally…')
+                        : (APP_STATE.lang === 'zh-TW' ? '正在下載 OCR 模型與執行元件（首次使用）…' : 'Downloading the OCR model and runtime (first use)…'));
+                    try {
+                        const result = await window.cfNotepadOcr.recognizeImage(file);
+                        if (block) {
+                            if (typeof window.__insertBlockEditorMarkdown !== 'function') throw new Error(APP_STATE.lang === 'zh-TW' ? 'Block 編輯器尚未準備完成。' : 'The block editor is not ready.');
+                            window.__insertBlockEditorMarkdown(result.text);
+                        } else {
+                            const [insStart, insEnd] = resolveRange();
+                            insertOcrText(result.text, insStart, insEnd);
+                        }
+                        window.showToast?.(APP_STATE.lang === 'zh-TW' ? 'OCR 完成，文字已插入。' : 'OCR complete. Text inserted.');
+                    } finally {
+                        setOcrStatus('');
                     }
-                    const toastMsg = result?.isLocal
-                        ? (APP_STATE.lang === 'zh-TW' ? '表格 OCR 完成（本地二維幾何重構），表格已插入。' : 'Table OCR complete (local 2D reconstruction). Table inserted.')
-                        : (APP_STATE.lang === 'zh-TW' ? '表格 OCR 完成，表格已插入。' : 'Table OCR complete. Table inserted.');
-                    window.showToast?.(toastMsg);
-                } finally {
-                    setOcrStatus('');
+                    return;
                 }
-                return;
-            }
-            const url = await uploadImageToR2(file);
-            const fileName = file?.name || (APP_STATE.lang === 'zh-TW' ? '圖片' : 'image');
-            if (block) {
-                if (typeof window.__insertBlockEditorImage !== 'function') throw new Error(APP_STATE.lang === 'zh-TW' ? 'Block 編輯器尚未準備完成。' : 'The block editor is not ready.');
-                window.__insertBlockEditorImage({ url, name: fileName });
-            } else {
-                const alt = fileName.replace(/\\.[^.]+$/, '').replace(/[\\[\\](){}<>]/g, ' ').trim() || 'image';
-                insertOcrText('![' + alt + '](' + url + ')', start, end);
-            }
-            window.showToast?.(APP_STATE.lang === 'zh-TW' ? '圖片已上傳並插入。' : 'Image uploaded and inserted.');
+                if (choice === 'table') {
+                    await ensureOcrClient();
+                    if (!window.cfNotepadOcr?.recognizeTableImage) throw new Error(APP_STATE.lang === 'zh-TW' ? '表格 OCR 模組載入失敗，請確認網路連線或重新整理頁面後再試。' : 'The table OCR module failed to load. Check your network or refresh.');
+                    const isReady = window.cfNotepadOcr.getStatus?.().ready === true;
+                    setOcrStatus(isReady
+                        ? (APP_STATE.lang === 'zh-TW' ? '正在辨識表格（本地優先，必要時後端容錯）…' : 'Recognizing table (local-first with fallback)…')
+                        : (APP_STATE.lang === 'zh-TW' ? '正在準備表格 OCR 引擎（本地優先，必要時後端容錯）…' : 'Preparing table OCR engine (local-first with fallback)…'));
+                    try {
+                        const result = await window.cfNotepadOcr.recognizeTableImage(file);
+                        if (block) {
+                            if (typeof window.__insertBlockEditorMarkdown !== 'function') throw new Error(APP_STATE.lang === 'zh-TW' ? 'Block 編輯器尚未準備完成。' : 'The block editor is not ready.');
+                            window.__insertBlockEditorMarkdown(result.markdown);
+                        } else {
+                            const [insStart, insEnd] = resolveRange();
+                            insertOcrText(result.markdown, insStart, insEnd);
+                        }
+                        const toastMsg = result?.isLocal
+                            ? (APP_STATE.lang === 'zh-TW' ? '表格 OCR 完成（本地二維幾何重構），表格已插入。' : 'Table OCR complete (local 2D reconstruction). Table inserted.')
+                            : (APP_STATE.lang === 'zh-TW' ? '表格 OCR 完成，表格已插入。' : 'Table OCR complete. Table inserted.');
+                        window.showToast?.(toastMsg);
+                    } finally {
+                        setOcrStatus('');
+                    }
+                    return;
+                }
+                const url = await uploadImageToR2(file);
+                if (!url) return;
+                const fileName = file?.name || (APP_STATE.lang === 'zh-TW' ? '圖片' : 'image');
+                if (block) {
+                    if (typeof window.__insertBlockEditorImage !== 'function') throw new Error(APP_STATE.lang === 'zh-TW' ? 'Block 編輯器尚未準備完成。' : 'The block editor is not ready.');
+                    window.__insertBlockEditorImage({ url, name: fileName });
+                } else {
+                    const alt = fileName.replace(/\\.[^.]+$/, '').replace(/[\\[\\](){}<>]/g, ' ').trim() || 'image';
+                    const [insStart, insEnd] = resolveRange();
+                    insertOcrText('![' + alt + '](' + url + ')', insStart, insEnd);
+                }
+                window.showToast?.(APP_STATE.lang === 'zh-TW' ? '圖片已上傳並插入。' : 'Image uploaded and inserted.');
+            };
+            const chained = imageInputQueue.then(runTask, runTask);
+            imageInputQueue = chained.catch(() => {});
+            return chained;
         };
 
         window.__handleImageInput = processImageInput;
@@ -5503,7 +5552,18 @@ ${getMarkdownCss()}
                 const dt = e.dataTransfer;
                 const files = dt && dt.files;
                 if (!files || files.length === 0) return;
-                await handleDroppedFile(files[0]);
+                const allFiles = Array.from(files);
+                const allImages = allFiles.every(f => {
+                    const ext = (f.name && f.name.includes('.') ? f.name.split('.').pop() : '').toLowerCase();
+                    return (f.type && f.type.startsWith('image/')) || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext);
+                });
+                if (allImages && allFiles.length > 1) {
+                    for (const imgFile of allFiles) {
+                        await handleDroppedFile(imgFile);
+                    }
+                    return;
+                }
+                await handleDroppedFile(allFiles[0]);
             });
 
             // Paste Handler (Images & Excel/Sheets Table Auto-Conversion)
@@ -5570,6 +5630,7 @@ ${getMarkdownCss()}
             }
 
             $textarea.addEventListener('input', () => {
+                invalidateScrollAnchorCache();
                 schedulePublishNudge()
                 if (!APP_STATE.isBlock) triggerRender($previewMd, $textarea.value)
             })
@@ -6939,6 +7000,21 @@ ${getMarkdownCss()}
                 btn.classList.toggle('is-active', active);
                 btn.disabled = isMobilePreview;
             });
+            let ocrAutoOn = false;
+            let ocrEnhancedOn = false;
+            try {
+                ocrAutoOn = localStorage.getItem('cf-notepad:ocr-auto') === '1';
+                ocrEnhancedOn = localStorage.getItem('cf-notepad:ocr-enhanced') === '1';
+            } catch {}
+            const isZh = (APP_STATE.lang || 'zh-TW') === 'zh-TW';
+            const $ocrAutoBtn = document.getElementById('cp-ocr-auto-toggle');
+            const $ocrAutoBadge = document.getElementById('cp-ocr-auto-badge');
+            if ($ocrAutoBtn) $ocrAutoBtn.classList.toggle('is-active', ocrAutoOn);
+            if ($ocrAutoBadge) $ocrAutoBadge.textContent = ocrAutoOn ? (isZh ? '已開啟' : 'ON') : (isZh ? '關閉' : 'OFF');
+            const $ocrEnhBtn = document.getElementById('cp-ocr-enhanced-toggle');
+            const $ocrEnhBadge = document.getElementById('cp-ocr-enhanced-badge');
+            if ($ocrEnhBtn) $ocrEnhBtn.classList.toggle('is-active', ocrEnhancedOn);
+            if ($ocrEnhBadge) $ocrEnhBadge.textContent = ocrEnhancedOn ? (isZh ? '已開啟 (small)' : 'ON (small)') : (isZh ? '關閉 (tiny)' : 'OFF (tiny)');
         };
         window.__syncCommandPaletteQuickStates = syncCommandPaletteQuickStates;
         window.__syncAppearanceStates = syncCommandPaletteQuickStates;
@@ -7074,12 +7150,12 @@ ${getMarkdownCss()}
                         const mod = await import('/js/paper-templates.mjs');
                         const nextText = mod.getPaperTemplate(tplId, APP_STATE.lang || 'zh-TW');
                         if (!nextText) return;
-                        if (editorEl.value && editorEl.value.trim().length > 0 && typeof window.showAppConfirm === 'function') {
-                            const ok = await window.showAppConfirm({
+                        if (editorEl.value && editorEl.value.trim().length > 0 && typeof window.showAppDialog === 'function') {
+                            const ok = await window.showAppDialog({
                                 title: APP_STATE.lang === 'zh-TW' ? '套用排版範本' : 'Apply Document Template',
                                 message: APP_STATE.lang === 'zh-TW' ? '目前編輯區已有內容，是否以範本內容覆蓋？' : 'The editor already has content. Replace it with this template?',
-                                confirmText: APP_STATE.lang === 'zh-TW' ? '套用覆蓋' : 'Replace',
-                                cancelText: APP_STATE.lang === 'zh-TW' ? '取消' : 'Cancel'
+                                kind: 'confirm',
+                                confirm: true
                             });
                             if (!ok) return;
                         }
@@ -7102,6 +7178,29 @@ ${getMarkdownCss()}
                     window.__openCiteModal?.(actionItem);
                 } else if (action === 'math-format') {
                     window.__openMathFormatModal?.({ currentTarget: actionItem });
+                } else if (action === 'toggle-ocr-auto') {
+                    let nextAuto = false;
+                    try {
+                        nextAuto = localStorage.getItem('cf-notepad:ocr-auto') !== '1';
+                        localStorage.setItem('cf-notepad:ocr-auto', nextAuto ? '1' : '0');
+                    } catch {}
+                    syncCommandPaletteQuickStates();
+                    window.showToast?.(APP_STATE.lang === 'zh-TW'
+                        ? (nextAuto ? '✅ 已開啟「匯入圖片自動端側 OCR」（不上傳遠端）' : '已關閉自動 OCR（匯入圖片將恢復彈窗選擇）')
+                        : (nextAuto ? '✅ Auto-OCR on image import enabled (local only)' : 'Auto-OCR disabled (prompt restored)'));
+                } else if (action === 'toggle-ocr-enhanced') {
+                    let nextEnhanced = false;
+                    try {
+                        nextEnhanced = localStorage.getItem('cf-notepad:ocr-enhanced') !== '1';
+                        localStorage.setItem('cf-notepad:ocr-enhanced', nextEnhanced ? '1' : '0');
+                    } catch {}
+                    if (window.cfNotepadOcr?.setOcrModelTier) {
+                        window.cfNotepadOcr.setOcrModelTier(nextEnhanced ? 'small' : 'tiny').catch(() => {});
+                    }
+                    syncCommandPaletteQuickStates();
+                    window.showToast?.(APP_STATE.lang === 'zh-TW'
+                        ? (nextEnhanced ? '✨ 已切換至增強 OCR 模型 (PP-OCRv6 small，約 30 MB)' : '⚡ 已切回輕量 OCR 模型 (PP-OCRv6 tiny)')
+                        : (nextEnhanced ? '✨ Switched to enhanced OCR model (PP-OCRv6 small, ~30 MB)' : '⚡ Switched to lightweight OCR model (PP-OCRv6 tiny)'));
                 } else if (action === 'copy-skill-cmd') {
                     const cmd = 'npx --yes 888wiki-skill update --global -y';
                     clipboardCopy(cmd).then(() => {
@@ -8371,8 +8470,67 @@ themeCss + '\\n' +
         var _tableResizeHandler = null;
         var _echartsInstances = [];
         var _motionController = null;
+        var _motionControllerPromise = null;
+        var _desiredMotionPreset = 'off';
+        var _reducedMotionMediaQuery = null;
+        var _reducedMotionListener = null;
         var _presentationSourceMarkdown = '';
         var _presentationThemeName = 'tokyo-night';
+
+        function isReducedMotionPreferred() {
+            return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        }
+
+        function stopActiveMotionLoop(container) {
+            _desiredMotionPreset = 'off';
+            if (_motionController) {
+                try { _motionController.setPreset('off'); } catch(e) {}
+            }
+            if (container) {
+                container.classList.remove('has-motion-loop');
+                var mb = container.querySelector('#ptb-motion');
+                if (mb) {
+                    mb.classList.remove('active');
+                    mb.textContent = (APP_STATE.lang === 'zh-TW') ? '🌊 背景關' : '🌊 Loop Off';
+                }
+            }
+        }
+
+        function isLightPresentationTheme(themeName) {
+            return ['retro', 'notion-clean', 'ayu-light', 'newsprint', 'green-simple'].indexOf(String(themeName || '').toLowerCase()) !== -1;
+        }
+
+        function ensureMotionController(container, preset, themeName) {
+            if (_motionController) {
+                _motionController.setPreset(preset);
+                return Promise.resolve(_motionController);
+            }
+            if (!_motionControllerPromise) {
+                _motionControllerPromise = import('/js/presentation-motion.mjs').then(function(motionMod) {
+                    var canvas = container.querySelector('#presentation-motion-canvas');
+                    if (!canvas || !container.classList.contains('active')) return null;
+                    var effectivePreset = isReducedMotionPreferred() ? 'off' : _desiredMotionPreset;
+                    if (effectivePreset === 'off') {
+                        stopActiveMotionLoop(container);
+                        return null;
+                    }
+                    if (!_motionController) {
+                        _motionController = motionMod.createPresentationMotionController(canvas, {
+                            preset: effectivePreset,
+                            theme: themeName,
+                            isLight: isLightPresentationTheme(themeName)
+                        });
+                    } else {
+                        _motionController.setPreset(effectivePreset);
+                    }
+                    return _motionController;
+                }).catch(function(err) {
+                    _motionControllerPromise = null;
+                    throw err;
+                });
+            }
+            return _motionControllerPromise;
+        }
 
         function loadAssets() {
             return new Promise(function(resolve, reject) {
@@ -8740,22 +8898,26 @@ themeCss + '\\n' +
 
             if (motionBtn) {
                 motionBtn.onclick = async function() {
+                    if (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                        _desiredMotionPreset = 'off';
+                        activeMotion = 'off';
+                        motionBtn.textContent = formatMotionBadge('off');
+                        motionBtn.classList.remove('active');
+                        container.classList.remove('has-motion-loop');
+                        if (_motionController) _motionController.setPreset('off');
+                        if (typeof window.showToast === 'function') {
+                            window.showToast(isZh ? '系統已開啟「減少動態效果」，已停用背景循環動畫' : 'Motion backdrop disabled due to prefers-reduced-motion');
+                        }
+                        return;
+                    }
                     var idx = (motionPresets.indexOf(activeMotion) + 1) % motionPresets.length;
                     activeMotion = motionPresets[idx];
+                    _desiredMotionPreset = activeMotion;
                     motionBtn.textContent = formatMotionBadge(activeMotion);
                     motionBtn.classList.toggle('active', activeMotion !== 'off');
+                    container.classList.toggle('has-motion-loop', activeMotion !== 'off');
                     try {
-                        if (!_motionController) {
-                            var canvas = container.querySelector('#presentation-motion-canvas');
-                            var motionMod = await import('/js/presentation-motion.mjs');
-                            _motionController = motionMod.createPresentationMotionController(canvas, {
-                                preset: activeMotion,
-                                theme: _presentationThemeName,
-                                isLight: false
-                            });
-                        } else {
-                            _motionController.setPreset(activeMotion);
-                        }
+                        await ensureMotionController(container, _desiredMotionPreset, _presentationThemeName);
                     } catch (err) {
                         console.warn('Motion loop failed:', err);
                     }
@@ -9111,19 +9273,20 @@ themeCss + '\\n' +
                     });
                 }
                 await _reveal.initialize();
-                setupPresentationToolbar(container, _reveal, customTransition, customMotion);
-                if (customMotion !== 'off') {
-                    import('/js/presentation-motion.mjs').then(function(motionMod) {
-                        var canvas = container.querySelector('#presentation-motion-canvas');
-                        if (canvas && container.classList.contains('active')) {
-                            if (_motionController) _motionController.destroy();
-                            _motionController = motionMod.createPresentationMotionController(canvas, {
-                                preset: customMotion,
-                                theme: currentTheme,
-                                isLight: false
-                            });
-                        }
-                    }).catch(function() {});
+                _desiredMotionPreset = isReducedMotionPreferred() ? 'off' : customMotion;
+                container.classList.toggle('has-motion-loop', _desiredMotionPreset !== 'off');
+                setupPresentationToolbar(container, _reveal, customTransition, _desiredMotionPreset);
+                if (typeof window.matchMedia === 'function') {
+                    _reducedMotionMediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+                    _reducedMotionListener = function(ev) {
+                        if (ev && ev.matches) stopActiveMotionLoop(container);
+                    };
+                    if (typeof _reducedMotionMediaQuery.addEventListener === 'function') {
+                        _reducedMotionMediaQuery.addEventListener('change', _reducedMotionListener);
+                    }
+                }
+                if (_desiredMotionPreset !== 'off') {
+                    ensureMotionController(container, _desiredMotionPreset, currentTheme).catch(function() {});
                 }
                 await renderPresentationComponents(container);
 
@@ -9153,6 +9316,13 @@ themeCss + '\\n' +
                     else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
                 } catch(e) {}
             }
+            _desiredMotionPreset = 'off';
+            _motionControllerPromise = null;
+            if (_reducedMotionMediaQuery && _reducedMotionListener && typeof _reducedMotionMediaQuery.removeEventListener === 'function') {
+                _reducedMotionMediaQuery.removeEventListener('change', _reducedMotionListener);
+            }
+            _reducedMotionMediaQuery = null;
+            _reducedMotionListener = null;
             if (_motionController) {
                 try { _motionController.destroy(); } catch(e) {}
                 _motionController = null;
@@ -9160,6 +9330,7 @@ themeCss + '\\n' +
             var c = document.getElementById('presentation-container');
             if (c) {
                 c.classList.remove('active');
+                c.classList.remove('has-motion-loop');
                 c.classList.remove('presentation-authoring');
                 c.classList.remove('laser-active');
                 c.innerHTML = '';

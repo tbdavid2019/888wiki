@@ -915,16 +915,36 @@ export const initMarkdownToolbar = (root = document) => {
     })
 
     imageInput?.addEventListener('change', async () => {
-        const file = imageInput.files?.[0]
-        if (!file) return
+        const files = Array.from(imageInput.files || [])
+        if (files.length === 0) return
         const start = Number(imageInput.dataset.selectionStart || textarea.selectionStart)
         const end = Number(imageInput.dataset.selectionEnd || textarea.selectionEnd)
+        let isAutoOcr = false
+        try {
+            isAutoOcr = typeof localStorage !== 'undefined' && localStorage.getItem('cf-notepad:ocr-auto') === '1'
+        } catch {}
+        if (isAutoOcr && typeof window.__handleImageInput === 'function') {
+            try {
+                for (let i = 0; i < files.length; i += 1) {
+                    const curStart = i === 0 ? start : textarea.selectionStart
+                    const curEnd = i === 0 ? end : textarea.selectionEnd
+                    await window.__handleImageInput(files[i], { start: curStart, end: curEnd })
+                }
+            } catch (error) {
+                window.showToast?.(error?.message || 'Image OCR failed')
+            }
+            return
+        }
         if (!window.ENABLE_R2) {
             runCommand('image')
             return
         }
         try {
-            await uploadImage(file, start, end)
+            for (let i = 0; i < files.length; i += 1) {
+                const curStart = i === 0 ? start : textarea.selectionStart
+                const curEnd = i === 0 ? end : textarea.selectionEnd
+                await uploadImage(files[i], curStart, curEnd)
+            }
         } catch (error) {
             window.showToast?.(error.message || 'Image upload failed')
             if (!window.showToast) alert(error.message || 'Image upload failed')

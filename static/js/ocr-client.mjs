@@ -8,9 +8,71 @@ export const TABLE_OCR_ENDPOINTS = Object.freeze([
     'https://create360.ai/api/ocr?mode=table',
     'https://2md.glsoft.ai/api/ocr?mode=table',
 ])
+export const OCR_MODEL_PRESETS = Object.freeze({
+    tiny: Object.freeze({
+        tier: 'tiny',
+        textDetectionModelName: 'PP-OCRv6_tiny_det',
+        textRecognitionModelName: 'PP-OCRv6_tiny_rec',
+    }),
+    small: Object.freeze({
+        tier: 'small',
+        textDetectionModelName: 'PP-OCRv6_small_det',
+        textRecognitionModelName: 'PP-OCRv6_small_rec',
+    }),
+})
+
+export const OCR_AUTO_STORAGE_KEY = 'cf-notepad:ocr-auto'
+export const OCR_ENHANCED_STORAGE_KEY = 'cf-notepad:ocr-enhanced'
+
 let ocrInstancePromise = null
 let paddleOcrRuntimePromise = null
 let ocrReady = false
+let activeModelTier = null
+let configuredModelTier = null
+let ocrQueueTail = Promise.resolve()
+let ocrBusyCount = 0
+
+const readStoredModelTier = () => {
+    if (configuredModelTier === 'tiny' || configuredModelTier === 'small') return configuredModelTier
+    try {
+        if (typeof localStorage !== 'undefined' && localStorage.getItem(OCR_ENHANCED_STORAGE_KEY) === '1') {
+            return 'small'
+        }
+    } catch {}
+    return 'tiny'
+}
+
+export const getOcrModelTier = () => readStoredModelTier()
+
+export const setOcrModelTier = async tier => {
+    const normalized = tier === 'small' ? 'small' : 'tiny'
+    configuredModelTier = normalized
+    try {
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(OCR_ENHANCED_STORAGE_KEY, normalized === 'small' ? '1' : '0')
+        }
+    } catch {}
+    await runWithOcrMutex(async () => {
+        if (activeModelTier && activeModelTier !== normalized) {
+            await disposeOcr()
+        }
+    })
+    return normalized
+}
+
+export const runWithOcrMutex = task => {
+    const run = async () => {
+        ocrBusyCount += 1
+        try {
+            return await task()
+        } finally {
+            ocrBusyCount = Math.max(0, ocrBusyCount - 1)
+        }
+    }
+    const chained = ocrQueueTail.then(run, run)
+    ocrQueueTail = chained.catch(() => {})
+    return chained
+}
 
 const loadPaddleOcrRuntime = async () => {
     if (!paddleOcrRuntimePromise) {
@@ -76,10 +138,18 @@ export const toUserFacingOcrError = error => {
 }
 
 const getOcrInstance = async () => {
+    const desiredTier = readStoredModelTier()
+    if (ocrInstancePromise && activeModelTier && activeModelTier !== desiredTier) {
+        await disposeOcr()
+    }
     if (!ocrInstancePromise) {
+        const preset = OCR_MODEL_PRESETS[desiredTier] || OCR_MODEL_PRESETS.tiny
+        activeModelTier = preset.tier
         ocrInstancePromise = loadPaddleOcrRuntime().then(({ PaddleOCR }) => PaddleOCR.create({
             lang: 'ch',
             ocrVersion: 'PP-OCRv6',
+            textDetectionModelName: preset.textDetectionModelName,
+            textRecognitionModelName: preset.textRecognitionModelName,
             worker: true,
             ortOptions: {
                 backend: 'auto',
@@ -90,6 +160,7 @@ const getOcrInstance = async () => {
             return instance
         }).catch(error => {
             ocrInstancePromise = null
+            activeModelTier = null
             throw error
         })
     }
@@ -98,21 +169,24 @@ const getOcrInstance = async () => {
 
 export const recognizeImage = async file => {
     validateImage(file)
-    try {
-        const ocr = await getOcrInstance()
-        const [result] = await ocr.predict(file)
-        const text = ocrItemsToText(result?.items || [])
-        if (!text) throw new Error('No readable text was found in the image.')
-        return {
-            text,
-            items: result.items,
-            metrics: result.metrics || null,
-            runtime: result.runtime || null,
+    return runWithOcrMutex(async () => {
+        try {
+            const ocr = await getOcrInstance()
+            const [result] = await ocr.predict(file)
+            const text = ocrItemsToText(result?.items || [])
+            if (!text) throw new Error('No readable text was found in the image.')
+            return {
+                text,
+                items: result.items,
+                metrics: result.metrics || null,
+                runtime: result.runtime || null,
+                modelTier: activeModelTier || getOcrModelTier(),
+            }
+        } catch (error) {
+            if (error?.message === 'No readable text was found in the image.') throw error
+            throw new Error(toUserFacingOcrError(error))
         }
-    } catch (error) {
-        if (error?.message === 'No readable text was found in the image.') throw error
-        throw new Error(toUserFacingOcrError(error))
-    }
+    })
 }
 
 export const recognizeRemoteTableImage = async file => {
@@ -161,23 +235,28 @@ export const recognizeRemoteTableImage = async file => {
 export const recognizeTableImage = async (file, options = {}) => {
     validateImage(file)
 
-    // 1. 純前端本地優先 (WebGPU PP-OCRv6 + 二維幾何重構演算法)
+    // 1. 純前端本地優先 (WebGPU PP-OCRv6 + 二維幾何重構演算法，經互斥鎖串行排隊)
     try {
-        const ocr = await getOcrInstance()
-        const [result] = await ocr.predict(file)
-        const table = reconstructTableFromOcrBoxes(result?.items || [], options)
-        if (table.isTable && table.markdown) {
-            return {
-                markdown: table.markdown,
-                isLocal: true,
-                rowCount: table.rowCount,
-                colCount: table.colCount,
-                grid: table.grid,
-                items: result?.items || [],
-                metrics: result?.metrics || null,
-                runtime: result?.runtime || null,
+        const localTable = await runWithOcrMutex(async () => {
+            const ocr = await getOcrInstance()
+            const [result] = await ocr.predict(file)
+            const table = reconstructTableFromOcrBoxes(result?.items || [], options)
+            if (table.isTable && table.markdown) {
+                return {
+                    markdown: table.markdown,
+                    isLocal: true,
+                    rowCount: table.rowCount,
+                    colCount: table.colCount,
+                    grid: table.grid,
+                    items: result?.items || [],
+                    metrics: result?.metrics || null,
+                    runtime: result?.runtime || null,
+                    modelTier: activeModelTier || getOcrModelTier(),
+                }
             }
-        }
+            return null
+        })
+        if (localTable) return localTable
     } catch (localError) {
         if (typeof console !== 'undefined' && console.warn) {
             console.warn('[Table OCR] Local geometric table reconstruction unavailable or failed, falling back to remote endpoints:', localError)
@@ -192,10 +271,15 @@ export const disposeOcr = async () => {
     const instance = await ocrInstancePromise?.catch(() => null)
     if (instance?.dispose) await instance.dispose()
     ocrInstancePromise = null
+    activeModelTier = null
     ocrReady = false
 }
 
-export const getStatus = () => ({ ready: ocrReady })
+export const getStatus = () => ({
+    ready: ocrReady,
+    modelTier: activeModelTier || getOcrModelTier(),
+    busy: ocrBusyCount > 0,
+})
 
 if (typeof window !== 'undefined') {
     window.cfNotepadOcr = {
@@ -203,6 +287,9 @@ if (typeof window !== 'undefined') {
         recognizeTableImage,
         recognizeRemoteTableImage,
         reconstructTableFromOcrBoxes,
+        setOcrModelTier,
+        getOcrModelTier,
+        runWithOcrMutex,
         disposeOcr,
         getStatus,
     }

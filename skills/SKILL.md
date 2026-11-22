@@ -737,7 +737,7 @@ When generating formal documents (One-Pagers, Whitepapers, Resumes/CVs, Meeting 
 The wiki also includes a browser-based Markdown editor. When helping a user author a note, these features are available:
 
 - **Markdown toolbar**: headings, bold, italic, strikethrough, links, blockquotes, unordered/ordered/task lists, **Inline code**, fenced code blocks, horizontal rules, tables, image insertion, attachment upload, fullscreen editing, Undo / Redo, and AI formatting. Toolbar labels and inserted placeholders follow the selected interface language.
-- **Image Insertion**: the toolbar image button opens a file picker. With R2 enabled, the image is uploaded and a Markdown image URL is inserted automatically. Without R2, an editable Markdown image placeholder is inserted.
+- **Image Insertion & Local OCR**: the toolbar image button, paste, and drag-and-drop support R2 upload or pure client-side PaddleOCR.js (`PP-OCRv6 tiny` default / `PP-OCRv6 small` enhanced ~30 MB toggleable in the Command Palette alongside Auto-OCR on image import, loaded on demand with a serial mutex queue).
 - **888box Attachment Uploads**: the toolbar attachment button uploads videos, audio, documents, archives, and generic files to `box.david888.com`, falling back to `box.aiurl.tw` and then `box.glsoft.ai`. The editor inserts `<video>` for videos, `<audio>` for audio, and Markdown links for files. Images remain on the built-in R2 image upload flow.
 - **ECharts**: put valid JSON chart options in an `echarts` fenced code block to render an interactive chart in the preview. Keep the fence language exactly `echarts`; malformed JSON cannot be rendered as a chart.
 

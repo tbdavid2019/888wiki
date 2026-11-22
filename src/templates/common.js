@@ -223,7 +223,7 @@ export const EDITOR_TOOLBAR = lang => {
             : `<button type="button" class="markdown-toolbar-button" data-command="${item.command}" data-tooltip="${isZh ? item.zh : item.en}" title="${isZh ? item.zh : item.en}" aria-label="${isZh ? item.zh : item.en}" ${item.hidden ? 'style="display: none;"' : ''}><span class="markdown-toolbar-glyph ${item.glyphClass || ''}" aria-hidden="true">${item.glyph}</span></button>`
         ).join('')}
     </div>
-    <input id="markdown-toolbar-image-input" class="visually-hidden-file-input" type="file" accept="image/*" aria-label="${isZh ? '選擇要上傳的圖片' : 'Choose an image to upload'}">
+    <input id="markdown-toolbar-image-input" class="visually-hidden-file-input" type="file" accept="image/*" multiple aria-label="${isZh ? '選擇要上傳的圖片' : 'Choose an image to upload'}">
     <input id="markdown-toolbar-asset-input" class="visually-hidden-file-input" type="file" accept="video/*,audio/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.zip,.rar,.7z" aria-label="${isZh ? '選擇要上傳的附件' : 'Choose an attachment to upload'}">
     </div>
     `
@@ -1845,6 +1845,20 @@ export const COMMAND_PALETTE_MODAL = (lang, { editorFormat = 'markdown' } = {}) 
                     </span>
                 </button>
                 ` : ''}
+                <button type="button" class="cp-item" id="cp-ocr-auto-toggle" data-cp-action="toggle-ocr-auto" data-cp-keywords="ocr auto image import 端側 辨識 自動 圖片">
+                    ${SVG_ICONS.image}
+                    <span class="cp-item-copy">
+                        <strong>${zh ? '匯入圖片時自動啟用端側 OCR' : 'Auto-OCR on Image Import'}</strong>
+                        <small>${zh ? '開啟後貼上／拖曳／選圖不上傳遠端，直接於瀏覽器辨識文字並插入' : 'Skip upload & extract text locally in Web Worker on image import'} · <span id="cp-ocr-auto-badge">${zh ? '關閉' : 'OFF'}</span></small>
+                    </span>
+                </button>
+                <button type="button" class="cp-item" id="cp-ocr-enhanced-toggle" data-cp-action="toggle-ocr-enhanced" data-cp-keywords="ocr enhanced small tiny model 增強 模型 30mb 精度">
+                    ${SVG_ICONS.sparkles}
+                    <span class="cp-item-copy">
+                        <strong>${zh ? '使用增強 OCR 模型（約 30 MB）' : 'Use Enhanced OCR Model (~30 MB)'}</strong>
+                        <small>${zh ? '預設 PP-OCRv6 tiny 輕量快速；開啟後切換至高精度 PP-OCRv6 small' : 'Switch from fast PP-OCRv6 tiny to high-accuracy PP-OCRv6 small'} · <span id="cp-ocr-enhanced-badge">${zh ? '關閉' : 'OFF'}</span></small>
+                    </span>
+                </button>
             </div>
 
             ${editorFormat === 'markdown' ? `

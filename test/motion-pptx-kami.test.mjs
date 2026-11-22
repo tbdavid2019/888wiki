@@ -15,9 +15,17 @@ import {
 
 import {
     parseMarkdownToSlides,
+    splitSlidesOutsideFences,
     createZipUint8Array,
     buildPptxBuffer,
 } from '../static/js/pptx-export.mjs'
+
+import {
+    OCR_MODEL_PRESETS,
+    getOcrModelTier,
+    setOcrModelTier,
+    runWithOcrMutex,
+} from '../static/js/ocr-client.mjs'
 
 import {
     PAPER_TEMPLATES,
@@ -267,4 +275,80 @@ Paragraph
     assert.equal(computeAnchorMappedScrollTop(800, anchors, 'reverse'), 300)
     assert.equal(computeAnchorMappedScrollTop(600, anchors, 'reverse'), 145)
     assert.equal(computeAnchorMappedScrollTop(-10, anchors, 'forward'), 0)
+})
+
+test('pptx-export ignores slide separators inside fenced code blocks (CommonMark fence lengths) and enables normAutofit', () => {
+    const md = `# Cover
+
+---
+
+## Code Sample
+
+\`\`\`\`markdown
+\`\`\`yaml
+---
+key: value
+--
+nested: true
+    \`\`\`
+---
+\`\`\`
+---
+\`\`\`\`
+
+---
+
+## Final`
+
+    const chunks = splitSlidesOutsideFences(md)
+    assert.equal(chunks.length, 3)
+    assert.match(chunks[1], /key: value/)
+    assert.match(chunks[1], /nested: true/)
+
+    const pptx = buildPptxBuffer(md, { title: 'Fence Test' })
+    const text = new TextDecoder().decode(pptx)
+    assert.match(text, /<a:normAutofit\/>/)
+})
+
+test('ocr-client supports tiny/small model tier switching and serial mutex queue', async () => {
+    assert.equal(OCR_MODEL_PRESETS.tiny.textDetectionModelName, 'PP-OCRv6_tiny_det')
+    assert.equal(OCR_MODEL_PRESETS.small.textDetectionModelName, 'PP-OCRv6_small_det')
+    assert.equal(getOcrModelTier(), 'tiny')
+
+    await setOcrModelTier('small')
+    assert.equal(getOcrModelTier(), 'small')
+    await setOcrModelTier('tiny')
+    assert.equal(getOcrModelTier(), 'tiny')
+
+    const order = []
+    await Promise.all([
+        runWithOcrMutex(async () => {
+            order.push('start-1')
+            await new Promise(r => setTimeout(r, 15))
+            order.push('end-1')
+        }),
+        runWithOcrMutex(async () => {
+            order.push('start-2')
+            order.push('end-2')
+        }),
+    ])
+    assert.deepEqual(order, ['start-1', 'end-1', 'start-2', 'end-2'])
+})
+
+test('review remediation: base.js uses showAppDialog, singleton motion controller, theme-aware has-motion-loop CSS, and multiple image input', () => {
+    const base = readFileSync(new URL('../src/templates/base.js', import.meta.url), 'utf8')
+    const common = readFileSync(new URL('../src/templates/common.js', import.meta.url), 'utf8')
+    const baseCss = readFileSync(new URL('../src/styles/base.css.js', import.meta.url), 'utf8')
+
+    assert.doesNotMatch(base, /showAppConfirm/)
+    assert.match(base, /has-motion-loop/)
+    assert.match(base, /ensureMotionController/)
+    assert.match(base, /stopActiveMotionLoop/)
+    assert.match(base, /resolveRange/)
+    assert.match(base, /__previewRenderVersion/)
+    assert.match(base, /imageInputQueue/)
+    assert.match(baseCss, /#presentation-container\.has-motion-loop\[data-presentation-theme="tokyo-night"\] \.reveal \.slides/)
+    assert.match(common, /id="markdown-toolbar-image-input"[^>]*multiple/)
+    assert.match(common, /data-cp-action="toggle-ocr-auto"/)
+    assert.match(common, /data-cp-action="toggle-ocr-enhanced"/)
 })

@@ -14,7 +14,7 @@ The **+ New** menu moves content from wherever it starts into a note:
 - **Live recording:** Save a local recording and player in IndexedDB, transcribe it when online, then upload it to the 888box attachment service when you publish or sync.
 - **Import audio (Transcript):** Get a faithful transcript with timestamps.
 - **Import audio (Smart format):** Turn speech into organized sections with AI.
-- **Import file:** Convert Markdown, Office documents, PDFs, spreadsheets, and more into a note. Supported document conversion runs in the browser; drag and drop also offers attachment upload when you want to keep the original file.
+- **Import file:** Convert Markdown, Office documents, PDFs, spreadsheets, and more into a note. Supported document conversion runs in the browser; drag and drop also offers attachment upload when you want to keep the original file. Images support pure local PaddleOCR.js Web Worker recognition (toggleable **Auto-OCR on Image Import** and **Enhanced `PP-OCRv6 small` (~30 MB) vs lightweight `PP-OCRv6 tiny`** in the Tools Palette, loaded on demand with serial mutex queuing).
 - **Import website:** Extract supported public pages into Markdown; insert or replace content in the current note, or create the note from an empty editor.
 
 The same import choices can create Markdown notes or convert content into editable Block documents.
