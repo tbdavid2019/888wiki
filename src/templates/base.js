@@ -8523,7 +8523,7 @@ themeCss + '\\n' +
                 return Promise.resolve(_motionController);
             }
             if (!_motionControllerPromise) {
-                _motionControllerPromise = import('/js/presentation-motion.mjs?v=20261122c').then(function(motionMod) {
+                _motionControllerPromise = import('/js/presentation-motion.mjs?v=20261122d').then(function(motionMod) {
                     var canvas = container.querySelector('#presentation-motion-canvas');
                     if (!canvas || !container.classList.contains('active')) {
                         _motionControllerPromise = null;
@@ -8919,13 +8919,26 @@ themeCss + '\\n' +
                 transitionBtn.onclick = function() {
                     var idx = (transitions.indexOf(activeTransition) + 1) % transitions.length;
                     activeTransition = transitions[idx];
-                    container.classList.add('transition-user-override');
+                    container.classList.toggle('transition-user-override', activeTransition !== 'none');
                     if (typeof reveal.configure === 'function') {
                         reveal.configure({ transition: activeTransition });
                     }
+                    var revEl = container.querySelector('.reveal');
+                    if (revEl) {
+                        transitions.forEach(function(tr) { revEl.classList.remove(tr); });
+                        revEl.classList.add(activeTransition);
+                    }
+                    var curSec = container.querySelector('.reveal .slides section.present');
+                    if (curSec) {
+                        curSec.classList.remove('ptb-preview-fade', 'ptb-preview-slide', 'ptb-preview-convex', 'ptb-preview-zoom');
+                        if (activeTransition !== 'none') {
+                            void curSec.offsetWidth;
+                            curSec.classList.add('ptb-preview-' + activeTransition);
+                        }
+                    }
                     transitionBtn.textContent = formatTransitionBadge(activeTransition);
                     if (typeof window.showToast === 'function') {
-                        window.showToast((isZh ? '過場動畫：' : 'Transition: ') + activeTransition, 1800);
+                        window.showToast((isZh ? '過場動畫：' : 'Transition: ') + formatTransitionBadge(activeTransition).replace('✨ ', ''), 1800);
                     }
                 };
             }
@@ -9159,8 +9172,7 @@ themeCss + '\\n' +
             _presentationSourceMarkdown = content;
             var currentTheme = (typeof APP_STATE !== 'undefined' && APP_STATE.theme) ? APP_STATE.theme : 'tokyo-night';
             var customTransition = 'fade';
-            var prefersReducedMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            var customMotion = 'off';
+            var customMotion = 'aurora';
 
             // YAML Frontmatter detection (disambiguated from slide separators)
             var yamlMatch = content.match(new RegExp('^---\\\\r?\\\\n([\\\\s\\\\S]*?)\\\\r?\\\\n---\\\\r?\\\\n'));
@@ -9174,7 +9186,7 @@ themeCss + '\\n' +
                     var themeMatch = yamlBlock.match(/theme:\s*([a-zA-Z0-9_-]+)/i);
                     if (themeMatch) currentTheme = themeMatch[1].toLowerCase();
                     var motionMatch = yamlBlock.match(/(?:motionLoop|motion-loop):\s*([a-zA-Z0-9_-]+)/i);
-                    if (motionMatch && !prefersReducedMotion) customMotion = motionMatch[1].toLowerCase();
+                    if (motionMatch) customMotion = motionMatch[1].toLowerCase();
                 }
             }
             content = content.replace(new RegExp('^\\\\s*---\\\\s*\\\\r?\\\\n'), '');
@@ -9305,10 +9317,11 @@ themeCss + '\\n' +
                     });
                 }
                 await _reveal.initialize();
-                _motionUserOverride = false;
-                container.classList.remove('motion-user-override');
-                _desiredMotionPreset = isReducedMotionPreferred() ? 'off' : customMotion;
+                _desiredMotionPreset = customMotion;
+                _motionUserOverride = (_desiredMotionPreset !== 'off');
                 container.classList.toggle('has-motion-loop', _desiredMotionPreset !== 'off');
+                container.classList.toggle('motion-user-override', _motionUserOverride);
+                container.classList.toggle('transition-user-override', customTransition !== 'none');
                 setupPresentationToolbar(container, _reveal, customTransition, _desiredMotionPreset);
                 if (typeof window.matchMedia === 'function') {
                     _reducedMotionMediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -9368,6 +9381,7 @@ themeCss + '\\n' +
                 c.classList.remove('active');
                 c.classList.remove('has-motion-loop');
                 c.classList.remove('motion-user-override');
+                c.classList.remove('transition-user-override');
                 c.classList.remove('presentation-authoring');
                 c.classList.remove('laser-active');
                 c.innerHTML = '';

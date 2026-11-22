@@ -2,6 +2,10 @@
 
 ## [2026-11-22]
 
+- **🎬 預設開啟簡報 Aurora 動態背景、修復過場動畫並放慢首頁 Landing 節奏**：
+  - 於 [src/templates/base.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/base.js) 將簡報模式預設背景改為 **`aurora`（極光循環）預設開啟**（仍支援 YAML `motionLoop: off` 與工具列即時切換），並同步開啟 `.transition-user-override`；於點擊 **`✨ 淡入 / 滑動 / 立體 / 縮放`** 按鈕時立刻同步 `.reveal` 類別與於當前投影片播放即時過場預覽動畫（`ptbPreviewFade` / `Slide` / `Convex` / `Zoom`）。
+  - 於 [src/styles/base.css.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/styles/base.css.js) 為 `.reveal.convex .slides` 與 `.reveal.zoom .slides` 解除 `overflow: hidden` 3D 壓平與縮放裁切，並強化 `prefers-reduced-motion` 下之過場與預覽動畫時長還原。
+  - 於 [static/js/presentation-motion.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/js/presentation-motion.mjs) 支援自訂循環週期 `options.periodMs`，並於 [src/templates/pages.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/pages.js) 將首頁載入環動畫由 `1.1s` 放緩為平靜優雅的 **`3.6s` 緩動呼吸節奏**、搭配 **`36,000ms` 慢速 Aurora 飄移**與首屏零延遲暖色光暈底圖。
 - **✨ 升級簡報 Motion Loops 視覺可見度與 `wiki.david888.com` 首頁 Loading／Landing 動態舞台**：
   - 於 [static/js/presentation-motion.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/js/presentation-motion.mjs) 全面強化 `aurora`（雙層極光帶＋柔和多諧波雲光）、`mesh`（3D 動態波動連線網格＋脈動節點）、`orbits`（星盤同心軌道＋掃掠弧光＋尾焰衛星）在亮／暗色主題與 `warm` 暖白背景下的視覺對比與即時首幀渲染（含簡易 Canvas Mock 安全防護），並於 [src/templates/base.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/base.js) 加入 ES 模組版本快取清除參數 `?v=20261122c`、解除 `prefers-reduced-motion` 手動切換過場時間鎖定（`.transition-user-override`）與 `.reveal .slides` 去模糊銳利透視，徹底解決 `mesh`/`orbits` 被毛玻璃模糊與過場時間歸零之問題。
   - 於 [src/styles/base.css.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/styles/base.css.js) 為淺色簡報主題（`notion-clean`、`ayu-light`、`newsprint`、`retro`、`green-simple`）啟用 `.has-motion-loop` 時配置亮面舞台底色與低遮蔽毛玻璃 `.reveal .slides`，讓動態效果能同時自投影片四周與後方玻璃透出。

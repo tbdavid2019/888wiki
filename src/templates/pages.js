@@ -350,11 +350,11 @@ export const Home = ({ lang = 'zh-TW', canonicalUrl, ogImageUrl }) => `
     ${getFlowTrackerScript()}
     <style>
         :root { color-scheme: light; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-        body { min-height: 100vh; margin: 0; background: #f8f7f3; color: #2c2a29; overflow-x: hidden; }
+        body { min-height: 100vh; margin: 0; background: radial-gradient(circle at 28% 32%, rgba(200, 101, 75, 0.12), transparent 52%), radial-gradient(circle at 75% 64%, rgba(56, 189, 248, 0.12), transparent 55%), #f8f7f3; color: #2c2a29; overflow-x: hidden; }
         .home-motion-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; opacity: 1; }
         .home-shell { position: relative; z-index: 1; display: grid; min-height: 100vh; place-items: center; padding: 24px; box-sizing: border-box; }
         .home-brand-card { display: inline-flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px 30px; border-radius: 18px; border: 1px solid rgba(200, 101, 75, 0.18); background: rgba(255, 255, 255, 0.68); box-shadow: 0 18px 48px rgba(37, 35, 32, 0.10); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
-        .home-brand-spinner { width: 28px; height: 28px; border-radius: 999px; border: 2.5px solid rgba(200, 101, 75, 0.22); border-top-color: #c8654b; animation: homeSpin 1.1s linear infinite; }
+        .home-brand-spinner { width: 26px; height: 26px; border-radius: 999px; border: 2px solid rgba(200, 101, 75, 0.18); border-top-color: #c8654b; animation: homeSpin 3.6s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; opacity: 0.78; }
         @keyframes homeSpin { to { transform: rotate(360deg); } }
         .home-brand { margin: 0; text-align: center; color: #3c3733; font-size: 15px; font-weight: 700; letter-spacing: .12em; }
         .home-brand-sub { margin: 0; text-align: center; color: #716c65; font-size: 12px; letter-spacing: .02em; }
@@ -419,7 +419,7 @@ export const Home = ({ lang = 'zh-TW', canonicalUrl, ogImageUrl }) => `
     ${EDITOR_PREFERENCE_MODAL(lang, { autoOpen: true })}
     <script type="module" src="/js/editor-preference.mjs"></script>
     <script type="module">
-        import { createPresentationMotionController } from '/js/presentation-motion.mjs?v=20261122c';
+        import { createPresentationMotionController } from '/js/presentation-motion.mjs?v=20261122d';
         const canvas = document.getElementById('home-motion-canvas');
         const switcher = document.getElementById('home-motion-switcher');
         const presets = ['aurora', 'orbits', 'mesh'];
@@ -430,6 +430,7 @@ export const Home = ({ lang = 'zh-TW', canonicalUrl, ogImageUrl }) => `
                 preset: presets[presetIdx],
                 isLight: true,
                 variant: 'warm',
+                periodMs: 36000,
             });
             if (switcher) {
                 switcher.addEventListener('click', () => {

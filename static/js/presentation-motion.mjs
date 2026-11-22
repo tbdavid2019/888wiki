@@ -66,6 +66,9 @@ export function createPresentationMotionController(canvas, options = {}) {
     let preset = normalizeMotionPreset(options.preset)
     const isLight = options.isLight === true
     const variant = String(options.variant || '').toLowerCase()
+    const periodMs = Number.isFinite(Number(options.periodMs)) && Number(options.periodMs) > 0
+        ? Number(options.periodMs)
+        : MOTION_LOOP_PERIOD_MS
     let rafId = null
     let destroyed = false
     let width = 0
@@ -296,7 +299,7 @@ export function createPresentationMotionController(canvas, options = {}) {
         syncSize()
         ctx.clearRect(0, 0, width, height)
         const ts = Number.isFinite(now) ? now : (typeof performance !== 'undefined' ? performance.now() : Date.now())
-        const t = ((ts % MOTION_LOOP_PERIOD_MS) / MOTION_LOOP_PERIOD_MS)
+        const t = ((ts % periodMs) / periodMs)
         const phase = t * Math.PI * 2
 
         if (preset === 'aurora') drawAurora(phase)

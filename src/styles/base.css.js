@@ -5812,10 +5812,51 @@ body.preview-device-mobile:not(.share-view) #preview-md.markdown-body > table {
     #presentation-container:not(.motion-user-override) #presentation-motion-canvas {
         display: none !important;
     }
-    #presentation-container.transition-user-override .reveal .slides section,
-    #presentation-container.has-motion-loop .reveal .slides section {
-        transition-duration: 0.55s !important;
+    #presentation-container.transition-user-override .reveal:not(.none) .slides section,
+    #presentation-container.has-motion-loop .reveal:not(.none) .slides section {
+        transition-duration: 0.65s !important;
+        transition-timing-function: cubic-bezier(0.26, 0.86, 0.44, 0.985) !important;
     }
+    #presentation-container.transition-user-override .reveal:not(.none) .fragment {
+        transition-duration: 0.25s !important;
+    }
+    #presentation-container.transition-user-override .reveal .slides section[class*="ptb-preview-"],
+    #presentation-container .reveal .slides section[class*="ptb-preview-"] {
+        animation-duration: 0.55s !important;
+        animation-iteration-count: 1 !important;
+    }
+}
+@keyframes ptbPreviewFade {
+    0% { opacity: 0.25; }
+    100% { opacity: 1; }
+}
+@keyframes ptbPreviewSlide {
+    0% { opacity: 0.4; transform: translateX(48px); }
+    100% { opacity: 1; transform: translateX(0); }
+}
+@keyframes ptbPreviewConvex {
+    0% { opacity: 0.4; transform: perspective(900px) rotateY(16deg) scale(0.95); }
+    100% { opacity: 1; transform: perspective(900px) rotateY(0deg) scale(1); }
+}
+@keyframes ptbPreviewZoom {
+    0% { opacity: 0.35; transform: scale(0.9); }
+    100% { opacity: 1; transform: scale(1); }
+}
+#presentation-container .reveal .slides section.ptb-preview-fade {
+    animation: ptbPreviewFade 0.52s ease;
+}
+#presentation-container .reveal .slides section.ptb-preview-slide {
+    animation: ptbPreviewSlide 0.55s cubic-bezier(0.26, 0.86, 0.44, 0.985);
+}
+#presentation-container .reveal .slides section.ptb-preview-convex {
+    animation: ptbPreviewConvex 0.6s cubic-bezier(0.26, 0.86, 0.44, 0.985);
+}
+#presentation-container .reveal .slides section.ptb-preview-zoom {
+    animation: ptbPreviewZoom 0.52s ease-out;
+}
+#presentation-container .reveal.convex .slides,
+#presentation-container .reveal.zoom .slides {
+    overflow: visible;
 }
 #presentation-close-btn {
     position: fixed;
