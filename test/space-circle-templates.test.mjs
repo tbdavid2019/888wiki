@@ -17,6 +17,8 @@ import {
 import {
     normalizeGuestShareUrl,
     collectGuestShareHistoryCandidates,
+    collectLocalSpaceImportCandidates,
+    parseManualImportInputs,
     readLocalDeviceDrafts,
 } from '../static/js/account-space.mjs'
 import { openCirclePicker } from '../static/js/account-circle-picker.mjs'
@@ -327,6 +329,33 @@ test('account-space.mjs guest share history normalizer enforces same-origin, str
     const drafts = readLocalDeviceDrafts({ getAllNotesMetadata: () => [{ path: 'draft-1', title: 'Local' }] })
     assert.equal(drafts.length, 1)
     assert.equal(drafts[0].path, 'draft-1')
+
+    const combined = collectLocalSpaceImportCandidates({
+        origin,
+        storage: {
+            getItem(k) {
+                if (k === 'cf-notepad:share-history:created') return JSON.stringify([{ url: `${origin}/share/shareTok123456`, title: 'Share 1', savedAt: 1000 }])
+                return null
+            },
+        },
+        store: {
+            getAllNotesMetadata: () => [
+                { path: 'wfat', title: 'Published Local', syncStatus: 'synced', updatedAt: 2000 },
+                { path: 'unsaved-draft', title: 'Draft', syncStatus: 'draft', updatedAt: 3000 },
+                { path: 'local/tmp1', title: 'Local Only', syncStatus: 'draft', updatedAt: 4000 },
+            ],
+        },
+    })
+    assert.deepEqual(combined.map(c => c.path || c.shareId), ['wfat', 'shareTok123456'])
+
+    const manual = parseManualImportInputs(`
+        ${origin}/wfat
+        abc1
+        ${origin}/share/shareTok123456/present
+        https://evil.example/wfat
+        ${origin}/wfat?pw=secret
+    `, origin)
+    assert.deepEqual(manual.map(m => m.path || m.shareId), ['wfat', 'abc1', 'shareTok123456'])
 })
 
 test('account-circle-picker.mjs saves private bookmark first, leaves circles unchecked, and handles LEGACY_TOKEN_INELIGIBLE', async () => {

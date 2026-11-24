@@ -8,7 +8,7 @@
 
 ## Passkeys, My Space, and Share Circles
 
-With D1 configured, create a Passkey account to organize published notes across Markdown, Block, Canvas, and Whiteboard in private My Space (`/_space`). Import browser guest history only after reviewing it; unpublished browser drafts remain on that device. Account sign-in does not grant edit access or bypass note passwords or Seal. Annotations can be signed with your nickname or posted anonymously.
+With D1 configured, create a Passkey account to organize published notes across Markdown, Block, Canvas, and Whiteboard in private My Space (`/_space`). Upon registering or signing in, `/_space` prompts you to review and import locally cached published notes (restoring `edit` access when browser author cookies match) and browser guest share history, or paste existing note/share URLs to claim them; unpublished browser drafts stay local until you publish & sync them from the Local Drafts tab. Account sign-in does not grant edit access or bypass note passwords or Seal. Annotations can be signed with your nickname or posted anonymously.
 
 Bookmarks are private by default. Explicitly add eligible public notes to a Share Circle; circles start off, can be disabled immediately, and their public links can be rotated. Add a second Passkey while you still have access: there is no email or phone recovery. Passkeys are bound to the site's domain, and admin FIDO credentials are separate from user accounts.
 

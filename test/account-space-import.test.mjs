@@ -756,3 +756,91 @@ test('DELETE /api/account/annotations/:messageId self-deletes owned message only
     const bobReply = accountDb.sqlite.prepare('SELECT deleted_at FROM annotation_messages WHERE id = ?').get('msg-bob-reply')
     assert.equal(bobReply.deleted_at, null)
 })
+
+test('user-owned note_path / manual URL import restores edit access with cookie or unpassworded proof and masks protected notes', async () => {
+    const { accountDb, env } = makeSpaceEnv({ splitDb: false })
+    const { accountId, cookie } = seedAccountAndSession(accountDb)
+    const { MD5 } = await import('../src/helper.js')
+
+    const ownedLocked = await commitAuthoritativeNoteWrite({
+        path: 'owned-pw-note',
+        content: 'Owner Secret',
+        nextMetadata: { share: true, pw: 'edit-hash', vpw: 'view-hash', title: 'Owned Locked' },
+        isNewNote: true,
+        env,
+    })
+    const openNote = await commitAuthoritativeNoteWrite({
+        path: 'open-slug-note',
+        content: 'Open Slug',
+        nextMetadata: { share: true, title: 'Open Slug Note' },
+        isNewNote: true,
+        env,
+    })
+    const draftNote = await commitAuthoritativeNoteWrite({
+        path: 'unpublished-draft',
+        content: 'Draft',
+        nextMetadata: { share: false, title: 'Draft Title' },
+        isNewNote: true,
+        env,
+    })
+
+    const ownedAuthorJwt = await jwt.sign({ path: 'owned-pw-note', role: 'author', noteUid: ownedLocked.noteUid, exp: Math.floor(Date.now() / 1000) + 3600 }, SECRET)
+    const draftAuthorJwt = await jwt.sign({ path: 'unpublished-draft', role: 'author', noteUid: draftNote.noteUid, exp: Math.floor(Date.now() / 1000) + 3600 }, SECRET)
+    const ownedCookieName = 'cn_author_' + (await MD5('owned-pw-note')).substring(0, 16)
+    const draftCookieName = 'cn_author_' + (await MD5('unpublished-draft')).substring(0, 16)
+    const authorCookies = `${cookie}; ${ownedCookieName}=${ownedAuthorJwt}; ${draftCookieName}=${draftAuthorJwt}`
+
+    const strangerPreview = await (await handleAccountRoutes(req('/api/space/import/preview', {
+        method: 'POST',
+        cookie,
+        body: {
+            items: [
+                { url: `${ORIGIN}/owned-pw-note`, source: 'created' },
+                { path: 'unpublished-draft', source: 'created' },
+                { path: '_space', source: 'created' },
+            ],
+        },
+    }), env)).json()
+    for (const item of strangerPreview.items) {
+        assert.equal(item.eligible, false)
+        assert.equal(item.status, 'unavailable')
+        assert.equal(item.title, 'Unavailable or Protected Note')
+    }
+
+    const ownerPreview = await (await handleAccountRoutes(req('/api/space/import/preview', {
+        method: 'POST',
+        cookie: authorCookies,
+        body: {
+            items: [
+                { url: `${ORIGIN}/owned-pw-note`, source: 'created' },
+                { path: 'open-slug-note', source: 'created' },
+                { path: 'unpublished-draft', source: 'created' },
+            ],
+        },
+    }), env)).json()
+    assert.equal(ownerPreview.items[0].eligible, true)
+    assert.equal(ownerPreview.items[0].accessLevel, 'edit')
+    assert.equal(ownerPreview.items[1].eligible, true)
+    assert.equal(ownerPreview.items[1].accessLevel, 'edit')
+    assert.equal(ownerPreview.items[2].eligible, false)
+    assert.equal(ownerPreview.items[2].status, 'unpublished')
+
+    const commitJson = await (await handleAccountRoutes(req('/api/space/import', {
+        method: 'POST',
+        cookie: authorCookies,
+        body: {
+            items: [
+                { url: `${ORIGIN}/owned-pw-note`, source: 'created' },
+                { path: 'open-slug-note', source: 'created' },
+                { path: 'unpublished-draft', source: 'created' },
+            ],
+        },
+    }), env)).json()
+    assert.equal(commitJson.importedCount, 2)
+    assert.equal(commitJson.unavailableCount, 1)
+
+    const listed = await listSpaceItems({ env, accountId })
+    assert.equal(listed.items.length, 2)
+    assert.ok(listed.items.every(i => i.accessLevel === 'edit'))
+    assert.deepEqual(listed.items.map(i => i.notePath).sort(), ['open-slug-note', 'owned-pw-note'])
+})

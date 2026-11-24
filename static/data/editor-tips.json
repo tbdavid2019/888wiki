@@ -3,8 +3,8 @@
   "tips": [
     {
       "id": "account-space",
-      "zh-TW": "小訣竅：使用 Passkey 登入後可在個人空間整理跨裝置筆記；未發布的瀏覽器草稿仍只保存在本機，登入不會繞過筆記密碼或 Seal。",
-      "en-US": "Tip: Sign in with a Passkey to organize notes across devices in My Space. Unpublished browser drafts stay local, and signing in does not bypass note passwords or Seal."
+      "zh-TW": "小訣竅：使用 Passkey 登入 `/_space` 後，可一鍵預覽匯入此瀏覽器的既有筆記、貼上網址認領或從「本機草稿」發布同步；未發布草稿仍只保存在本機。",
+      "en-US": "Tip: Sign in with a Passkey at /_space to review & import local notes, paste note URLs to claim, or publish local drafts directly; unpublished drafts stay local."
     },
     {
       "id": "share-circles",

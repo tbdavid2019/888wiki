@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026-11-24]
+
+- **Passkey 使用者自主匯入本機筆記與手動網址認領（User-Owned Local Space Import, Auto-Prompt & Draft Publish-Sync）**：
+  - 於 [src/account_data.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/account_data.mjs) 擴充 `previewGuestHistoryImport` 與 `commitGuestHistoryImport` 支援同網域單段筆記路徑（`/:path` / slug）驗證與認領：持有有效 `cn_author_*` / `auth` 編輯憑證或無密碼公開筆記時可直接以 `edit` 權限歸戶至個人空間；未授權之受保護、封印或未發布筆記仍維持統一反探測遮罩（`Unavailable or Protected Note`）。
+  - 於 [src/templates/space.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/space.js) 與 [static/js/account-space.mjs](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/static/js/account-space.mjs) 整合 `offlineStore` 本機已編輯筆記與 `cf-notepad:share-history` 分享紀錄匯入：新增 Passkey 註冊／首次登入自動預覽彈窗引導、我的筆記索引空狀態大按鈕、匯入彈窗內手動貼上網址／路徑認領（`parseManualImportInputs`），以及「本機筆記快取與未發布草稿」分頁中的單筆／批次「發布並同步至空間」與「同步至空間」按鈕。
+
 ## [2026-11-22]
 
 - **底部右下角統一 Passkey 我的空間快捷入口（Bottom-Right Footer Passkey Launcher）**：於 [src/templates/common.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/common.js) 新增 Lucide `user-round-key` 圖示並於全編輯器／分享頁底部工具列右側（「中 / EN」旁）加入純圖示 Passkey 連結按鈕，點擊以新分頁（`target="_blank" rel="noopener noreferrer"`）直達 `/_space`；帳號功能停用時自動隱藏。

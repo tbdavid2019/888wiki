@@ -521,7 +521,7 @@ export const Space = (data = {}) => {
                         <h2 style="margin-bottom:2px;">${isZh ? '跨裝置私人筆記索引' : 'Personal Note Index'}</h2>
                         <p class="sp-muted" style="margin:0;">${isZh ? '僅索引您建立、編輯、收藏或批註的項目；筆記本身的閱讀鎖與編輯鎖維持不變。' : 'Indexes notes you created, edited, bookmarked, or annotated without bypassing note passwords or Seals.'}</p>
                     </div>
-                    <button type="button" id="open-guest-import-btn" class="sp-btn">${isZh ? '匯入訪客分享紀錄' : 'Import Guest History'}</button>
+                    <button type="button" id="open-guest-import-btn" class="sp-btn sp-btn-primary">${isZh ? '匯入本機筆記與紀錄' : 'Import Local Notes & URLs'}</button>
                 </div>
 
                 <div class="sp-chip-row" id="space-facet-filters" aria-label="${isZh ? '活動分類篩選' : 'Activity facet filter'}">
@@ -580,10 +580,16 @@ export const Space = (data = {}) => {
 
             <div id="space-panel-drafts" data-space-panel="drafts" class="sp-card" hidden>
                 <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
-                    <h2 style="margin:0;">${isZh ? '本機瀏覽器草稿' : 'Local Browser Drafts'}</h2>
-                    <span class="sp-badge sp-badge-warn">${isZh ? '僅存本機裝置，未同步雲端' : 'Device-local only, not synced to cloud'}</span>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <h2 style="margin:0;">${isZh ? '本機筆記快取與未發布草稿' : 'Local Browser Cache & Drafts'}</h2>
+                        <span class="sp-badge sp-badge-warn">${isZh ? '僅存本機裝置，未自動同步' : 'Device-local only, not synced to cloud'}</span>
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button type="button" id="drafts-sync-published-btn" class="sp-btn sp-btn-sm">${isZh ? '匯入已發布筆記至空間' : 'Import Published Notes'}</button>
+                        <button type="button" id="drafts-publish-all-btn" class="sp-btn sp-btn-sm sp-btn-primary" hidden>${isZh ? '一鍵發布並同步全部草稿' : 'Publish & Sync All Drafts'}</button>
+                    </div>
                 </div>
-                <p class="sp-muted">${isZh ? '為節省資源與保護隱私，未發布的草稿只會保留在此裝置的 IndexedDB / localStorage，不會自動上傳至雲端私人空間。' : 'Unpublished drafts remain strictly in this browser (IndexedDB / localStorage) and are never uploaded to your cloud Space until published.'}</p>
+                <p class="sp-muted">${isZh ? '為節省資源與保護隱私，未發布的草稿只會保留在此裝置的 IndexedDB / localStorage。您可在下方直接將草稿「發布並同步至空間」，或將曾編輯過的已發布筆記歸戶到雲端私人空間。' : 'Unpublished drafts remain strictly in this browser (IndexedDB / localStorage) until published. You can publish & sync drafts directly below, or import already-published notes into your cloud Space.'}</p>
                 <div id="space-local-drafts-list" class="sp-item-list"></div>
             </div>
 
@@ -622,10 +628,17 @@ export const Space = (data = {}) => {
     <div id="guest-import-modal" class="sp-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="guest-import-title" aria-hidden="true" hidden>
         <div class="sp-modal-dialog">
             <div class="sp-modal-header">
-                <h2 id="guest-import-title" style="margin:0;">${isZh ? '確認匯入本機訪客分享紀錄' : 'Confirm Guest Share History Import'}</h2>
+                <h2 id="guest-import-title" style="margin:0;">${isZh ? '匯入本機筆記、分享紀錄或貼上網址' : 'Import Local Notes, Share History & URLs'}</h2>
                 <button type="button" id="guest-import-close" class="sp-btn sp-btn-sm" aria-label="${isZh ? '關閉' : 'Close'}">✕</button>
             </div>
-            <p class="sp-muted" style="margin-top:0;">${isZh ? '此步驟僅從本機 cf-notepad:share-history 讀取最多 50 筆分享連結，絕不會靜默自動匯入或上傳未發布草稿。舊版建立紀錄與瀏覽紀錄將以唯讀 (share_only) 身分加入您的私人空間。' : 'Reads up to 50 share links from local cf-notepad:share-history for confirmation. Viewed links and legacy created records import as read-only (share_only). Unpublished drafts are never uploaded.'}</p>
+            <p class="sp-muted" style="margin-top:0;">${isZh ? '自動讀取本機曾編輯過的已發布筆記（憑瀏覽器授權可還原 edit 編輯權限）與 cf-notepad:share-history 分享連結；亦可手動貼上既有筆記或分享網址進行認領。未發布草稿不會被靜默上傳。' : 'Reads locally edited published notes (restoring edit access when browser proof matches) and cf-notepad:share-history links, or paste existing note/share URLs below to claim them. Unpublished drafts are never uploaded silently.'}</p>
+            <div class="sp-field" style="margin-bottom:12px;">
+                <label for="manual-import-input">${isZh ? '手動貼上筆記或分享網址／路徑（每行或逗號分隔）' : 'Paste note or share URLs / slugs (newline or comma separated)'}</label>
+                <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;">
+                    <textarea id="manual-import-input" class="sp-input" rows="2" style="flex:1 1 260px;min-height:42px;resize:vertical;" placeholder="${isZh ? '例如：https://wiki.david888.com/wfat 或 wfat 或 /share/...' : 'e.g. https://wiki.david888.com/wfat or wfat or /share/...'}"></textarea>
+                    <button type="button" id="manual-import-add-btn" class="sp-btn">${isZh ? '檢查並加入預覽' : 'Check & Add'}</button>
+                </div>
+            </div>
             <div id="guest-import-status" class="sp-alert" hidden></div>
             <div id="guest-import-preview-list" class="sp-item-list"></div>
             <div class="sp-modal-footer">

@@ -4,7 +4,7 @@
  * Personal Space indexing & crash-safe guest import, and Public Share Circles.
  */
 
-import { getAdminPassword, getSecret, getTurnstileSiteKey } from './constant.js'
+import { getAdminPassword, getSecret, getTurnstileSiteKey, isReservedSlug } from './constant.js'
 import { Cookies } from './cookie_compat.mjs'
 import { MD5, checkAuth, verifyJwtPayload } from './helper.js'
 import {
@@ -1836,12 +1836,10 @@ function isLiveSharePubliclyReadable(liveEntry, noteUid, now = nowSec()) {
     return { ok: true, activeToken }
 }
 
-/**
- * Verify whether the request carries valid current-generation edit proof for `notePath`.
- */
-export async function verifyNoteEditProof(request, notePath, metadata = {}, providedNoteUid = '', env = globalThis) {
-    if (!notePath || !metadata || !metadata.noteUid) return false
-    if (providedNoteUid && providedNoteUid !== metadata.noteUid) return false
+async function checkCookieNoteEditProof(request, notePath, metadata = {}, env = globalThis) {
+    if (!notePath || !metadata || !metadata.noteUid) {
+        return { matched: false, sawStalePathCookie: false }
+    }
 
     const rawCookie = request?.headers?.get?.('Cookie') || ''
     const cookies = Cookies.parse(rawCookie)
@@ -1851,7 +1849,9 @@ export async function verifyNoteEditProof(request, notePath, metadata = {}, prov
     if (adminPassword && cookies.admin_session) {
         try {
             const adminPayload = await verifyJwtPayload(cookies.admin_session, adminPassword)
-            if (adminPayload?.role === 'admin') return true
+            if (adminPayload?.role === 'admin') {
+                return { matched: true, sawStalePathCookie: false }
+            }
         } catch {}
     }
 
@@ -1863,7 +1863,7 @@ export async function verifyNoteEditProof(request, notePath, metadata = {}, prov
             const authPayload = await verifyJwtPayload(cookies.auth, secret)
             if (authPayload?.path === notePath && (authPayload.role || 'edit') === 'edit') {
                 if ((authPayload.noteUid || '') === metadata.noteUid) {
-                    return true
+                    return { matched: true, sawStalePathCookie: false }
                 }
                 sawStalePathCookie = true
             }
@@ -1879,7 +1879,7 @@ export async function verifyNoteEditProof(request, notePath, metadata = {}, prov
                 const payload = await verifyJwtPayload(cookies[authorCookieKey], authorSecret)
                 if (payload?.path === notePath) {
                     if ((payload.noteUid || '') === metadata.noteUid) {
-                        return true
+                        return { matched: true, sawStalePathCookie: false }
                     }
                     sawStalePathCookie = true
                 }
@@ -1887,8 +1887,21 @@ export async function verifyNoteEditProof(request, notePath, metadata = {}, prov
         }
     }
 
+    return { matched: false, sawStalePathCookie }
+}
+
+/**
+ * Verify whether the request carries valid current-generation edit proof for `notePath`.
+ */
+export async function verifyNoteEditProof(request, notePath, metadata = {}, providedNoteUid = '', env = globalThis) {
+    if (!notePath || !metadata || !metadata.noteUid) return false
+    if (providedNoteUid && providedNoteUid !== metadata.noteUid) return false
+
+    const cookieProof = await checkCookieNoteEditProof(request, notePath, metadata, env)
+    if (cookieProof.matched) return true
+
     // 4. Unpassworded note whose current noteUid is explicitly verified by caller (no stale cookie for path)
-    if (!metadata.pw && !metadata.vpw && !sawStalePathCookie && providedNoteUid && providedNoteUid === metadata.noteUid) {
+    if (!metadata.pw && !metadata.vpw && !cookieProof.sawStalePathCookie && providedNoteUid && providedNoteUid === metadata.noteUid) {
         return true
     }
 
@@ -2577,10 +2590,25 @@ export async function deleteSpaceItem({ env = globalThis, accountId, itemKey } =
  * Normalize a guest history candidate entry against the current request origin.
  * Rejects cross-origin URLs, embedded credentials, query credential parameters, /c/ circle URLs, and non-share paths.
  */
-function normalizeGuestHistoryEntry(rawEntry, requestOrigin) {
+function normalizeSingleSegmentNotePath(rawPath, env = globalThis) {
+    const trimmed = String(rawPath || '').trim()
+    if (!trimmed || trimmed.length > 128) return null
+    if (trimmed.startsWith('local/') || trimmed.includes('/') || trimmed.includes('..') || trimmed.includes('?') || trimmed.includes('#')) {
+        return null
+    }
+    if (isReservedSlug(trimmed, env)) return null
+    return trimmed
+}
+
+/**
+ * Normalize a guest history or local/manual note candidate entry against the current request origin.
+ * Rejects cross-origin URLs, embedded credentials, query credential parameters, /c/ circle URLs, and invalid paths.
+ */
+function normalizeGuestHistoryEntry(rawEntry, requestOrigin, env = globalThis) {
     if (!rawEntry || typeof rawEntry !== 'object') return null
 
     let shareId = ''
+    let notePath = ''
     let normalizedUrl = ''
 
     if (typeof rawEntry.url === 'string' && rawEntry.url.trim()) {
@@ -2598,40 +2626,71 @@ function normalizeGuestHistoryEntry(rawEntry, requestOrigin) {
         if (parsed.search && /[?&](pw|vpw|token|auth|password|secret)=/i.test(parsed.search)) {
             return null
         }
-        const match = parsed.pathname.match(/^\/share\/([^/]+?)(?:\/(present|book))?\/?$/i)
-        if (!match) return null
-        try {
-            shareId = decodeURIComponent(match[1])
-        } catch {
-            return null
+        const shareMatch = parsed.pathname.match(/^\/share\/([^/]+?)(?:\/(present|book))?\/?$/i)
+        if (shareMatch) {
+            try {
+                shareId = decodeURIComponent(shareMatch[1])
+            } catch {
+                return null
+            }
+            if (!shareId || shareId.includes('/') || shareId.includes('..')) return null
+            normalizedUrl = `${requestOrigin}/share/${encodeURIComponent(shareId)}`
+        } else {
+            const pathMatch = parsed.pathname.match(/^\/([^/]+)\/?$/)
+            if (!pathMatch) return null
+            let decodedSeg = ''
+            try {
+                decodedSeg = decodeURIComponent(pathMatch[1])
+            } catch {
+                return null
+            }
+            notePath = normalizeSingleSegmentNotePath(decodedSeg, env) || ''
+            if (!notePath) return null
+            normalizedUrl = `${requestOrigin}/${encodeURIComponent(notePath)}`
         }
-        if (!shareId || shareId.includes('/') || shareId.includes('..')) return null
-        normalizedUrl = `${requestOrigin}/share/${encodeURIComponent(shareId)}`
     } else if (typeof rawEntry.shareId === 'string' && rawEntry.shareId.trim()) {
         shareId = rawEntry.shareId.trim()
         if (shareId.includes('/') || shareId.includes('..') || shareId.includes('?') || shareId.includes('#')) {
             return null
         }
         normalizedUrl = `${requestOrigin}/share/${encodeURIComponent(shareId)}`
+    } else if (typeof rawEntry.path === 'string' && rawEntry.path.trim()) {
+        notePath = normalizeSingleSegmentNotePath(rawEntry.path, env) || ''
+        if (!notePath) return null
+        normalizedUrl = `${requestOrigin}/${encodeURIComponent(notePath)}`
     } else {
         return null
     }
 
-    if (!isCanonicalShareToken(shareId)) {
-        return null
+    if (shareId) {
+        if (!isCanonicalShareToken(shareId)) {
+            return null
+        }
+        const rawSource = rawEntry.source === 'created' || rawEntry.facet === 'created' ? 'created' : 'viewed'
+        const facet = VALID_SPACE_FACETS.has(rawEntry.facet)
+            ? rawEntry.facet
+            : (rawSource === 'created' ? 'created' : 'bookmarked')
+
+        return {
+            kind: 'share',
+            shareId,
+            notePath: '',
+            url: normalizedUrl,
+            source: rawSource,
+            facet,
+            explicitPath: typeof rawEntry.path === 'string' ? rawEntry.path.trim() : '',
+            timestamp: Number(rawEntry.timestamp || rawEntry.savedAt || 0) || 0,
+        }
     }
 
-    const rawSource = rawEntry.source === 'created' || rawEntry.facet === 'created' ? 'created' : 'viewed'
-    const facet = VALID_SPACE_FACETS.has(rawEntry.facet)
-        ? rawEntry.facet
-        : (rawSource === 'created' ? 'created' : 'bookmarked')
-
     return {
-        shareId,
+        kind: 'note_path',
+        shareId: '',
+        notePath,
         url: normalizedUrl,
-        source: rawSource,
-        facet,
-        explicitPath: typeof rawEntry.path === 'string' ? rawEntry.path.trim() : '',
+        source: 'created',
+        facet: 'created',
+        explicitPath: notePath,
         timestamp: Number(rawEntry.timestamp || rawEntry.savedAt || 0) || 0,
     }
 }
@@ -2647,11 +2706,26 @@ function isResolvedShareImportable(resolved, now = nowSec()) {
     return true
 }
 
+function buildMaskedPreviewCandidate(rawEntry = {}, override = {}) {
+    return {
+        shareId: override.shareId ?? (typeof rawEntry?.shareId === 'string' ? rawEntry.shareId : ''),
+        ...(override.path ? { path: override.path } : {}),
+        url: override.url ?? (typeof rawEntry?.url === 'string' ? rawEntry.url : ''),
+        source: override.source ?? (rawEntry?.source === 'created' ? 'created' : 'viewed'),
+        title: 'Unavailable or Protected Note',
+        titleSummary: 'Unavailable or Protected Note',
+        editorFormat: null,
+        eligible: false,
+        alreadyIndexed: false,
+        status: 'unavailable',
+    }
+}
+
 /**
- * Preview guest share-history candidates without leaking existence or lock reasons of protected/unshared notes.
+ * Preview guest share-history & local/manual note candidates without leaking existence or lock reasons of protected/unshared notes.
  */
 export async function previewGuestHistoryImport(request, env = globalThis, accountId, body = {}, { nowUnix } = {}) {
-    const { accountDb } = await assertAccountFeatureReady(env, { write: false })
+    const { accountDb, notesDb } = await assertAccountFeatureReady(env, { write: false })
     if (!accountId) throw new AccountServiceError(401, 'UNAUTHORIZED', 'Authentication required')
 
     const rawItems = Array.isArray(body?.items) ? body.items : null
@@ -2665,43 +2739,152 @@ export async function previewGuestHistoryImport(request, env = globalThis, accou
     const requestOrigin = new URL(request.url).origin
     const now = nowSec(nowUnix)
     const seenShareIds = new Set()
-    const results = []
+    const seenNotePaths = new Set()
+    const normalizedEntries = []
 
     for (const rawEntry of rawItems) {
-        const normalized = normalizeGuestHistoryEntry(rawEntry, requestOrigin)
+        const normalized = normalizeGuestHistoryEntry(rawEntry, requestOrigin, env)
         if (!normalized) {
-            const rawShareId = typeof rawEntry?.shareId === 'string' ? rawEntry.shareId : ''
+            normalizedEntries.push({ rawEntry, normalized: null })
+            continue
+        }
+        if (normalized.kind === 'share') {
+            if (seenShareIds.has(normalized.shareId)) continue
+            seenShareIds.add(normalized.shareId)
+        } else {
+            if (seenNotePaths.has(normalized.notePath)) continue
+            seenNotePaths.add(normalized.notePath)
+        }
+        normalizedEntries.push({ rawEntry, normalized })
+    }
+
+    const notePathCandidates = normalizedEntries
+        .filter(e => e.normalized?.kind === 'note_path')
+        .map(e => e.normalized.notePath)
+    const notePathMetaMap = notePathCandidates.length > 0
+        ? await batchLoadNotesMetadataMap(notesDb, notePathCandidates, now)
+        : new Map()
+
+    const results = []
+
+    for (const { rawEntry, normalized } of normalizedEntries) {
+        if (!normalized) {
+            results.push(buildMaskedPreviewCandidate(rawEntry))
+            continue
+        }
+
+        if (normalized.kind === 'note_path') {
+            const live = notePathMetaMap.get(normalized.notePath)
+            const meta = live?.metadata || {}
+            const noteUid = meta.noteUid || ''
+            if (!live?.exists || !noteUid || live.tombstones.has(noteUid)) {
+                results.push(buildMaskedPreviewCandidate(rawEntry, {
+                    shareId: '',
+                    path: normalized.notePath,
+                    url: normalized.url,
+                    source: 'created',
+                }))
+                continue
+            }
+
+            const cookieProof = await checkCookieNoteEditProof(request, normalized.notePath, meta, env)
+            if (meta.share !== true) {
+                if (cookieProof.matched) {
+                    const titleSummary = meta.titleSummary || computeTitleSummary('', meta) || normalized.notePath
+                    results.push({
+                        shareId: '',
+                        path: normalized.notePath,
+                        url: normalized.url,
+                        source: 'created',
+                        title: titleSummary,
+                        titleSummary,
+                        editorFormat: resolveEditorFormat(meta),
+                        eligible: false,
+                        alreadyIndexed: false,
+                        status: 'unpublished',
+                    })
+                } else {
+                    results.push(buildMaskedPreviewCandidate(rawEntry, {
+                        shareId: '',
+                        path: normalized.notePath,
+                        url: normalized.url,
+                        source: 'created',
+                    }))
+                }
+                continue
+            }
+
+            const activeToken = live.activeTokens.find(t => t.note_uid === noteUid)?.share_id || ''
+            const isProtectedOrSealed = Boolean(
+                meta.vpw
+                || isBurnProtected(meta)
+                || isShareBurned(meta)
+                || isShareExpired(meta, now)
+                || isShareTimeLocked(meta, now)
+                || isShareDeadmanLocked(meta, now)
+            )
+            const canClaimEdit = cookieProof.matched || (!meta.pw && !isProtectedOrSealed && !cookieProof.sawStalePathCookie)
+            const canBookmarkShareOnly = !canClaimEdit && !meta.vpw && !isProtectedOrSealed && Boolean(activeToken)
+
+            if (!canClaimEdit && !canBookmarkShareOnly) {
+                results.push(buildMaskedPreviewCandidate(rawEntry, {
+                    shareId: '',
+                    path: normalized.notePath,
+                    url: normalized.url,
+                    source: 'created',
+                }))
+                continue
+            }
+
+            const existingRow = await accountDb.prepare(`
+                SELECT status, access_level
+                FROM account_space_items
+                WHERE account_id = ? AND note_path = ? AND note_uid = ?
+                LIMIT 1
+            `).bind(accountId, normalized.notePath, noteUid).first()
+
+            const accessLevel = canClaimEdit ? 'edit' : 'share_only'
+            const alreadyIndexed = Boolean(
+                existingRow
+                && existingRow.status === 'active'
+                && (existingRow.access_level === 'edit' || accessLevel === 'share_only')
+            )
+            const titleSummary = meta.titleSummary || computeTitleSummary('', meta) || normalized.notePath
+            const editorFormat = resolveEditorFormat(meta)
+
             results.push({
-                shareId: rawShareId,
-                url: typeof rawEntry?.url === 'string' ? rawEntry.url : '',
-                source: rawEntry?.source === 'created' ? 'created' : 'viewed',
-                title: 'Unavailable or Protected Note',
-                titleSummary: 'Unavailable or Protected Note',
-                editorFormat: null,
-                eligible: false,
-                alreadyIndexed: false,
-                status: 'unavailable',
+                shareId: activeToken,
+                path: normalized.notePath,
+                url: normalized.url,
+                source: 'created',
+                accessLevel,
+                title: titleSummary,
+                titleSummary,
+                editorFormat,
+                eligible: true,
+                alreadyIndexed,
+                status: alreadyIndexed ? 'already_indexed' : 'eligible',
             })
             continue
         }
-        if (seenShareIds.has(normalized.shareId)) continue
-        seenShareIds.add(normalized.shareId)
 
         const resolved = await resolveAuthoritativeShareMetadata(normalized.shareId, { env, nowUnix: now })
         if (!isResolvedShareImportable(resolved, now)) {
-            results.push({
+            results.push(buildMaskedPreviewCandidate(rawEntry, {
                 shareId: normalized.shareId,
                 url: normalized.url,
                 source: normalized.source,
-                title: 'Unavailable or Protected Note',
-                titleSummary: 'Unavailable or Protected Note',
-                editorFormat: null,
-                eligible: false,
-                alreadyIndexed: false,
-                status: 'unavailable',
-            })
+            }))
             continue
         }
+
+        const meta = resolved.metadata || {}
+        const hasEditProof = Boolean(
+            normalized.explicitPath
+            && normalized.explicitPath === resolved.path
+            && await verifyNoteEditProof(request, resolved.path, meta, resolved.noteUid, env)
+        )
+        const accessLevel = hasEditProof ? 'edit' : 'share_only'
 
         const existingRow = await accountDb.prepare(`
             SELECT status, access_level
@@ -2710,15 +2893,20 @@ export async function previewGuestHistoryImport(request, env = globalThis, accou
             LIMIT 1
         `).bind(accountId, resolved.path, resolved.noteUid).first()
 
-        const alreadyIndexed = Boolean(existingRow && existingRow.status === 'active')
-        const meta = resolved.metadata || {}
+        const alreadyIndexed = Boolean(
+            existingRow
+            && existingRow.status === 'active'
+            && (existingRow.access_level === 'edit' || accessLevel === 'share_only')
+        )
         const titleSummary = meta.titleSummary || computeTitleSummary('', meta) || 'Untitled Share'
         const editorFormat = resolveEditorFormat(meta)
 
         results.push({
             shareId: resolved.shareId,
+            ...(hasEditProof ? { path: resolved.path } : {}),
             url: normalized.url,
             source: normalized.source,
+            accessLevel,
             title: titleSummary,
             titleSummary,
             editorFormat,
@@ -2944,25 +3132,95 @@ export async function commitGuestHistoryImport(request, env = globalThis, accoun
     const requestOrigin = new URL(request.url).origin
     const now = nowSec(nowUnix)
     const seenShareIds = new Set()
+    const seenNotePaths = new Set()
     const normalizedCandidates = []
     const resultEntries = []
 
     for (const rawEntry of rawItems) {
-        const normalized = normalizeGuestHistoryEntry(rawEntry, requestOrigin)
+        const normalized = normalizeGuestHistoryEntry(rawEntry, requestOrigin, env)
         if (!normalized) {
             resultEntries.push({
                 shareId: typeof rawEntry?.shareId === 'string' ? rawEntry.shareId : '',
+                ...(typeof rawEntry?.path === 'string' && rawEntry.path.trim() ? { path: rawEntry.path.trim() } : {}),
                 status: 'unavailable',
             })
             continue
         }
-        if (seenShareIds.has(normalized.shareId)) continue
-        seenShareIds.add(normalized.shareId)
+        if (normalized.kind === 'share') {
+            if (seenShareIds.has(normalized.shareId)) continue
+            seenShareIds.add(normalized.shareId)
+        } else {
+            if (seenNotePaths.has(normalized.notePath)) continue
+            seenNotePaths.add(normalized.notePath)
+        }
         normalizedCandidates.push(normalized)
     }
 
+    const notePathCandidates = normalizedCandidates
+        .filter(c => c.kind === 'note_path')
+        .map(c => c.notePath)
+    const notePathMetaMap = notePathCandidates.length > 0
+        ? await batchLoadNotesMetadataMap(notesDb, notePathCandidates, now)
+        : new Map()
+
+    const editClaimItems = []
     const preVerified = []
     for (const candidate of normalizedCandidates) {
+        if (candidate.kind === 'note_path') {
+            const live = notePathMetaMap.get(candidate.notePath)
+            const meta = live?.metadata || {}
+            const noteUid = meta.noteUid || ''
+            if (!live?.exists || !noteUid || live.tombstones.has(noteUid) || meta.share !== true) {
+                resultEntries.push({ path: candidate.notePath, shareId: '', status: 'unavailable' })
+                continue
+            }
+
+            const cookieProof = await checkCookieNoteEditProof(request, candidate.notePath, meta, env)
+            const activeToken = live.activeTokens.find(t => t.note_uid === noteUid)?.share_id || ''
+            const isProtectedOrSealed = Boolean(
+                meta.vpw
+                || isBurnProtected(meta)
+                || isShareBurned(meta)
+                || isShareExpired(meta, now)
+                || isShareTimeLocked(meta, now)
+                || isShareDeadmanLocked(meta, now)
+            )
+            const canClaimEdit = cookieProof.matched || (!meta.pw && !isProtectedOrSealed && !cookieProof.sawStalePathCookie)
+            const canBookmarkShareOnly = !canClaimEdit && !meta.vpw && !isProtectedOrSealed && Boolean(activeToken)
+
+            if (!canClaimEdit && !canBookmarkShareOnly) {
+                resultEntries.push({ path: candidate.notePath, shareId: '', status: 'unavailable' })
+                continue
+            }
+
+            const activityAt = candidate.timestamp > 0
+                ? Math.min(now, Math.floor(candidate.timestamp > 1e12 ? candidate.timestamp / 1000 : candidate.timestamp))
+                : now
+
+            if (canClaimEdit) {
+                editClaimItems.push({
+                    shareId: activeToken,
+                    notePath: candidate.notePath,
+                    noteUid,
+                    editorFormat: resolveEditorFormat(meta),
+                    titleSummary: meta.titleSummary || computeTitleSummary('', meta) || '',
+                    activityAt,
+                })
+            } else {
+                preVerified.push({
+                    shareId: activeToken,
+                    notePath: candidate.notePath,
+                    noteUid,
+                    accessLevel: 'share_only',
+                    importFacet: 'bookmarked',
+                    editorFormat: resolveEditorFormat(meta),
+                    titleSummary: meta.titleSummary || computeTitleSummary('', meta) || '',
+                    activityAt,
+                })
+            }
+            continue
+        }
+
         const resolved = await resolveAuthoritativeShareMetadata(candidate.shareId, { env, nowUnix: now })
         if (!isResolvedShareImportable(resolved, now)) {
             resultEntries.push({ shareId: candidate.shareId, status: 'unavailable' })
@@ -2993,9 +3251,25 @@ export async function commitGuestHistoryImport(request, env = globalThis, accoun
     let importedCount = 0
     let unavailableCount = resultEntries.length
 
+    for (const claim of editClaimItems) {
+        await upsertSpaceActivity({
+            env,
+            accountId,
+            notePath: claim.notePath,
+            noteUid: claim.noteUid,
+            editorFormat: claim.editorFormat,
+            titleSummary: claim.titleSummary,
+            accessLevel: 'edit',
+            facet: 'created',
+            nowUnix: claim.activityAt,
+        })
+        importedCount += 1
+        resultEntries.push({ path: claim.notePath, shareId: claim.shareId, status: 'imported', accessLevel: 'edit' })
+    }
+
     if (preVerified.length === 0) {
         return {
-            importedCount: 0,
+            importedCount,
             unavailableCount,
             results: resultEntries,
         }

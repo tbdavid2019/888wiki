@@ -22,11 +22,18 @@ import { offlineStore } from './offline-store.mjs'
 
 const SHARE_HISTORY_CREATED_KEY = 'cf-notepad:share-history:created'
 const SHARE_HISTORY_VIEWED_KEY = 'cf-notepad:share-history:viewed'
+const SPACE_IMPORT_PROMPTED_KEY = 'cf-notepad:space-import-prompted'
 const MAX_IMPORT_CANDIDATES = 50
 const SPACE_PAGE_SIZE = 50
 
 const VALID_FACETS = new Set(['all', 'created', 'edited', 'bookmarked', 'annotated'])
 const VALID_FORMATS = new Set(['all', 'markdown', 'block', 'canvas', 'whiteboard'])
+const VALID_PUBLISH_THEMES = new Set([
+    'ayu-light', 'claude-canvas', 'catppuccin-latte', 'botanical', 'shopify-mint',
+    'newsprint', 'notion-clean', 'retro', 'organic', 'green-simple', 'professional',
+    'bauhaus', 'neo-brutalism', 'playful-geometric', 'sketch', 'tokyo-night',
+    'catppuccin-macchiato', 'terminal', 'kanagawa', 'x-ai',
+])
 
 export function normalizeGuestShareUrl(rawUrl, currentOrigin) {
     if (!rawUrl || typeof rawUrl !== 'string') return null
@@ -101,6 +108,121 @@ export function collectGuestShareHistoryCandidates({
     return Array.from(seenShareIds.values())
 }
 
+export function collectLocalSpaceImportCandidates({
+    origin = typeof window !== 'undefined' ? window.location.origin : 'https://wiki.david888.com',
+    storage = typeof window !== 'undefined' ? window.localStorage : null,
+    store = offlineStore,
+} = {}) {
+    const shareCandidates = collectGuestShareHistoryCandidates({ origin, storage })
+    const drafts = readLocalDeviceDrafts(store)
+    const combined = []
+    const seenPaths = new Set()
+    const seenShareIds = new Set()
+
+    for (const draft of drafts) {
+        const notePath = String(draft?.path || '').trim()
+        if (!notePath || notePath.startsWith('local/') || notePath.includes('/') || draft?.syncStatus === 'draft') continue
+        if (seenPaths.has(notePath)) continue
+        seenPaths.add(notePath)
+        combined.push({
+            path: notePath,
+            url: `${origin}/${encodeURIComponent(notePath)}`,
+            source: 'created',
+            title: String(draft?.title || notePath).trim() || notePath,
+            savedAt: Number(draft?.updatedAt || 0),
+        })
+        if (combined.length >= MAX_IMPORT_CANDIDATES) return combined
+    }
+
+    for (const entry of shareCandidates) {
+        if (seenShareIds.has(entry.shareId)) continue
+        seenShareIds.add(entry.shareId)
+        combined.push(entry)
+        if (combined.length >= MAX_IMPORT_CANDIDATES) break
+    }
+    return combined
+}
+
+export function parseManualImportInputs(
+    rawText,
+    currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://wiki.david888.com',
+) {
+    if (!rawText || typeof rawText !== 'string') return []
+    const tokens = rawText
+        .split(/[\r\n,\s]+/)
+        .map(t => t.trim())
+        .filter(Boolean)
+
+    const out = []
+    const seen = new Set()
+    for (const token of tokens) {
+        if (out.length >= MAX_IMPORT_CANDIDATES) break
+        const shareNorm = normalizeGuestShareUrl(token, currentOrigin)
+        if (shareNorm) {
+            const key = `share:${shareNorm.shareId}`
+            if (!seen.has(key)) {
+                seen.add(key)
+                out.push({
+                    shareId: shareNorm.shareId,
+                    url: shareNorm.normalizedUrl,
+                    source: 'created',
+                    title: shareNorm.shareId,
+                    savedAt: 0,
+                })
+            }
+            continue
+        }
+
+        if (/^https?:\/\//i.test(token) || token.startsWith('/')) {
+            if (token.startsWith('//')) continue
+            let parsed
+            try {
+                parsed = new URL(token, currentOrigin)
+            } catch {
+                continue
+            }
+            if (parsed.origin !== currentOrigin || parsed.username || parsed.password) continue
+            if (parsed.search && /[?&](pw|vpw|token|auth|password|secret)=/i.test(parsed.search)) continue
+            const pathMatch = parsed.pathname.match(/^\/([^/]+)\/?$/)
+            if (!pathMatch) continue
+            let decoded = ''
+            try {
+                decoded = decodeURIComponent(pathMatch[1])
+            } catch {
+                continue
+            }
+            if (!decoded || decoded.includes('/') || decoded.includes('..')) continue
+            const key = `path:${decoded}`
+            if (!seen.has(key)) {
+                seen.add(key)
+                out.push({
+                    path: decoded,
+                    url: `${currentOrigin}/${encodeURIComponent(decoded)}`,
+                    source: 'created',
+                    title: decoded,
+                    savedAt: 0,
+                })
+            }
+            continue
+        }
+
+        if (!token.includes('/') && !token.includes('..') && !token.includes('?') && !token.includes('#')) {
+            const key = `path:${token}`
+            if (!seen.has(key)) {
+                seen.add(key)
+                out.push({
+                    path: token,
+                    url: `${currentOrigin}/${encodeURIComponent(token)}`,
+                    source: 'created',
+                    title: token,
+                    savedAt: 0,
+                })
+            }
+        }
+    }
+    return out
+}
+
 export function readLocalDeviceDrafts(store = offlineStore) {
     try {
         const list = store?.getAllNotesMetadata ? store.getAllNotesMetadata() : []
@@ -142,10 +264,24 @@ function getSpaceLabels(lang) {
         openShare: isZh ? '開啟分享' : 'Open Share',
         addToCircle: isZh ? '加入分享圈' : 'Add to Circle',
         emptyItems: isZh ? '目前沒有符合條件的筆記項目。' : 'No matching notes in your Space yet.',
+        emptyTitle: isZh ? '您的私人空間目前是空的' : 'Your Personal Space is empty',
+        emptyHint: isZh ? '登入前的匿名筆記與本機瀏覽紀錄不會在背景自動上傳；您可以立即匯入此瀏覽器曾編輯／分享的筆記、貼上既有筆記網址認領，或前往「本機草稿」發布同步。' : 'Existing browser history and anonymous notes are never uploaded silently. You can import notes edited or shared in this browser, paste existing URLs to claim them, or publish local drafts.',
+        emptyImportBtn: isZh ? '匯入本機筆記與紀錄' : 'Import Local Notes & URLs',
+        emptyPasteBtn: isZh ? '貼上筆記網址認領' : 'Paste URLs to Claim',
+        emptyDraftsBtn: isZh ? '前往本機草稿發布' : 'Open Local Drafts',
         emptyAnnotations: isZh ? '目前沒有具名批註紀錄。' : 'No signed annotations yet.',
         emptyDrafts: isZh ? '目前沒有本機未同步草稿。' : 'No device-local drafts found.',
         emptyCircles: isZh ? '尚未建立分享圈。' : 'No Share Circles created yet.',
-        localOnlyBadge: isZh ? '僅存本機裝置，未同步雲端' : 'Device-local only, not synced to cloud',
+        localOnlyBadge: isZh ? '僅存本機未發布' : 'Device-local draft (unpublished)',
+        localCachedBadge: isZh ? '本機快取（曾發布）' : 'Device-local cache (published)',
+        publishAndSync: isZh ? '發布並同步至空間' : 'Publish & Sync',
+        syncToSpace: isZh ? '同步至空間' : 'Sync to Space',
+        publishing: isZh ? '發布中...' : 'Publishing...',
+        syncing: isZh ? '同步中...' : 'Syncing...',
+        draftPublishSuccess: isZh ? '已發布並同步至私人空間！' : 'Published and synced to My Space!',
+        draftPublishTurnstile: isZh ? '此筆記需要完成安全驗證後才能發布，請點「編輯」於編輯器中發布。' : 'Turnstile verification is required to publish this note. Click Edit to publish in the editor.',
+        draftPublishAuthErr: isZh ? '此筆記受密碼保護或無編輯權限，請點「編輯」驗證後再發布。' : 'Password or edit auth required. Click Edit to unlock and publish.',
+        draftSyncNone: isZh ? '此筆記目前在雲端尚未發布或無法同步，請先點「編輯」發布。' : 'This note is not published on the server yet. Click Edit to publish it first.',
         burnWarning: isZh ? '閱後即焚' : 'Burn After Read',
         circleHiddenItem: 'Hidden (currently unavailable)',
         circleOn: 'ON',
@@ -158,13 +294,17 @@ function getSpaceLabels(lang) {
         minOnePasskey: isZh ? '至少須保留 1 組 Passkey' : 'At least 1 Passkey required',
         syncedPasskey: isZh ? '可同步 Passkey' : 'Synced Passkey',
         deviceBoundPasskey: isZh ? '裝置限定 Passkey' : 'Device-bound',
-        importChecking: isZh ? '正在檢查本機分享紀錄的可見狀態...' : 'Checking live availability of local share history...',
-        importNoneFound: isZh ? '本機未找到可匯入的同網域分享紀錄。' : 'No eligible same-origin share links found in local history.',
+        importChecking: isZh ? '正在檢查本機筆記與分享紀錄的可見狀態...' : 'Checking live availability of local notes & share history...',
+        importNoneFound: isZh ? '未偵測到此瀏覽器的本機分享紀錄或已編輯筆記；您可在上方手動貼上既有筆記網址或路徑檢查認領。' : 'No local share history or edited notes found in this browser. You can paste note/share URLs above to claim them.',
+        importEligibleEdit: isZh ? '可匯入 (edit 編輯權限)' : 'Eligible (edit)',
         importEligible: isZh ? '可匯入 (share_only)' : 'Eligible (share_only)',
         importAlready: isZh ? '已在空間中' : 'Already in Space',
+        importUnpublished: isZh ? '尚未發布（請先至本機草稿發布）' : 'Unpublished (publish from Local Drafts)',
         importUnavailable: isZh ? '已失效 / 受保護' : 'Unavailable / Protected',
+        importSourceEditPath: isZh ? '本機已編輯筆記 (/:path)' : 'Local Edited Note (/:path)',
         importSourceCreated: isZh ? '曾分享 (Created → 唯讀匯入)' : 'Created (imports as share_only)',
         importSourceViewed: isZh ? '曾瀏覽 (Viewed → 唯讀匯入)' : 'Viewed (imports as share_only)',
+        importManualEmpty: isZh ? '請輸入至少一個有效的同網域網址或筆記路徑（例如 wfat 或 https://wiki.david888.com/wfat）。' : 'Enter at least one valid same-origin URL or note slug.',
         importSuccess: count => isZh ? `已成功匯入 ${count} 筆紀錄至私人空間。` : `Imported ${count} item(s) to My Space.`,
     }
 }
@@ -305,10 +445,55 @@ export function initSpaceApp() {
         listEl.innerHTML = ''
 
         if (!state.items.length) {
-            const empty = document.createElement('p')
-            empty.className = 'sp-muted'
-            empty.textContent = t.emptyItems
-            listEl.appendChild(empty)
+            if (state.facet === 'all' && state.format === 'all') {
+                const emptyBox = document.createElement('div')
+                emptyBox.className = 'sp-item-card'
+                emptyBox.style.flexDirection = 'column'
+                emptyBox.style.alignItems = 'flex-start'
+
+                const heading = document.createElement('h3')
+                heading.className = 'sp-item-title'
+                heading.textContent = t.emptyTitle
+
+                const desc = document.createElement('p')
+                desc.className = 'sp-muted'
+                desc.style.margin = '0 0 8px'
+                desc.textContent = t.emptyHint
+
+                const btnRow = document.createElement('div')
+                btnRow.className = 'sp-item-actions'
+
+                const importBtn = document.createElement('button')
+                importBtn.type = 'button'
+                importBtn.className = 'sp-btn sp-btn-primary'
+                importBtn.textContent = t.emptyImportBtn
+                importBtn.addEventListener('click', () => openImportModal({ focusManual: false }))
+
+                const pasteBtn = document.createElement('button')
+                pasteBtn.type = 'button'
+                pasteBtn.className = 'sp-btn'
+                pasteBtn.textContent = t.emptyPasteBtn
+                pasteBtn.addEventListener('click', () => openImportModal({ focusManual: true }))
+
+                btnRow.append(importBtn, pasteBtn)
+
+                if (readLocalDeviceDrafts().length > 0) {
+                    const draftsBtn = document.createElement('button')
+                    draftsBtn.type = 'button'
+                    draftsBtn.className = 'sp-btn'
+                    draftsBtn.textContent = t.emptyDraftsBtn
+                    draftsBtn.addEventListener('click', () => switchSpaceTab('drafts'))
+                    btnRow.appendChild(draftsBtn)
+                }
+
+                emptyBox.append(heading, desc, btnRow)
+                listEl.appendChild(emptyBox)
+            } else {
+                const empty = document.createElement('p')
+                empty.className = 'sp-muted'
+                empty.textContent = t.emptyItems
+                listEl.appendChild(empty)
+            }
         } else {
             for (const item of state.items) {
                 const card = document.createElement('article')
@@ -569,11 +754,84 @@ export function initSpaceApp() {
         }
     }
 
+    const publishAndSyncSingleDraft = async (draft, { silent = false } = {}) => {
+        const t = getSpaceLabels(state.lang)
+        const notePath = String(draft?.path || '').trim()
+        if (!notePath) return { ok: false, reason: 'invalid' }
+        const fullNote = await offlineStore.getNote(notePath).catch(() => null)
+        const content = typeof fullNote?.content === 'string' ? fullNote.content : ''
+        const format = draft?.format || fullNote?.format || 'markdown'
+        const rawTheme = draft?.theme || fullNote?.theme || ''
+        const validTheme = VALID_PUBLISH_THEMES.has(rawTheme) ? rawTheme : undefined
+
+        if (notePath.startsWith('local/')) {
+            const res = await fetch('/api/new-note', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content, editorFormat: format, share: true }),
+            })
+            const data = await res.json().catch(() => ({}))
+            if (!res.ok || data?.err !== 0 || !data?.data?.path) {
+                if (!silent) setStatus(data?.msg || data?.error || 'Publish failed', 'error')
+                return { ok: false, reason: 'failed' }
+            }
+            const nextPath = String(data.data.path)
+            await offlineStore.deleteNote(notePath).catch(() => {})
+            await offlineStore.saveNote(nextPath, {
+                title: draft?.title || nextPath,
+                content,
+                theme: validTheme || 'claude-canvas',
+                format,
+                syncStatus: 'synced',
+            }).catch(() => {})
+            if (!silent) setStatus(t.draftPublishSuccess, 'success')
+            return { ok: true, path: nextPath }
+        }
+
+        const res = await fetch(`/${encodeURIComponent(notePath)}/setting`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                share: true,
+                content,
+                ...(validTheme ? { theme: validTheme } : {}),
+            }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (data?.needTurnstile) {
+            if (!silent) setStatus(t.draftPublishTurnstile, 'warn')
+            return { ok: false, reason: 'turnstile' }
+        }
+        if (data?.err === 10002 || res.status === 401 || res.status === 403) {
+            if (!silent) setStatus(t.draftPublishAuthErr, 'warn')
+            return { ok: false, reason: 'auth' }
+        }
+        if (!res.ok || data?.err !== 0) {
+            if (!silent) setStatus(data?.msg || data?.error || 'Publish failed', 'error')
+            return { ok: false, reason: 'failed' }
+        }
+        await offlineStore.updateSyncStatus(notePath, 'synced').catch(() => {})
+        if (!silent) setStatus(t.draftPublishSuccess, 'success')
+        return { ok: true, path: notePath }
+    }
+
     const renderLocalDrafts = () => {
         const listEl = $('space-local-drafts-list')
+        const syncPublishedBtn = $('drafts-sync-published-btn')
+        const publishAllBtn = $('drafts-publish-all-btn')
         if (!listEl) return
         const t = getSpaceLabels(state.lang)
         const drafts = readLocalDeviceDrafts()
+        const unpublishedDrafts = drafts.filter(d => d?.syncStatus === 'draft')
+        const cachedPublished = drafts.filter(d => d?.syncStatus !== 'draft' && d?.path && !String(d.path).startsWith('local/'))
+
+        if (syncPublishedBtn) {
+            syncPublishedBtn.hidden = cachedPublished.length === 0
+        }
+        if (publishAllBtn) {
+            publishAllBtn.hidden = unpublishedDrafts.length === 0
+        }
+
         listEl.innerHTML = ''
         if (!drafts.length) {
             const empty = document.createElement('p')
@@ -583,6 +841,7 @@ export function initSpaceApp() {
             return
         }
         for (const draft of drafts) {
+            const isUnpublished = draft.syncStatus === 'draft'
             const card = document.createElement('article')
             card.className = 'sp-item-card'
 
@@ -597,8 +856,8 @@ export function initSpaceApp() {
             meta.className = 'sp-item-meta'
 
             const localBadge = document.createElement('span')
-            localBadge.className = 'sp-badge sp-badge-warn'
-            localBadge.textContent = t.localOnlyBadge
+            localBadge.className = `sp-badge ${isUnpublished ? 'sp-badge-warn' : ''}`
+            localBadge.textContent = isUnpublished ? t.localOnlyBadge : t.localCachedBadge
             meta.appendChild(localBadge)
 
             if (draft.format) {
@@ -616,12 +875,66 @@ export function initSpaceApp() {
 
             const actions = document.createElement('div')
             actions.className = 'sp-item-actions'
-            if (draft.path) {
+
+            if (draft.path && !String(draft.path).startsWith('local/')) {
                 const openLink = document.createElement('a')
                 openLink.className = 'sp-btn sp-btn-sm'
                 openLink.href = `/${encodeURIComponent(draft.path)}`
                 openLink.textContent = t.edit
                 actions.appendChild(openLink)
+            }
+
+            if (isUnpublished) {
+                const pubBtn = document.createElement('button')
+                pubBtn.type = 'button'
+                pubBtn.className = 'sp-btn sp-btn-sm sp-btn-primary'
+                pubBtn.textContent = t.publishAndSync
+                pubBtn.addEventListener('click', async () => {
+                    pubBtn.disabled = true
+                    pubBtn.textContent = t.publishing
+                    try {
+                        const res = await publishAndSyncSingleDraft(draft)
+                        if (res.ok) {
+                            renderLocalDrafts()
+                            await loadSpaceItems()
+                        } else {
+                            pubBtn.disabled = false
+                            pubBtn.textContent = t.publishAndSync
+                        }
+                    } catch (err) {
+                        setStatus(err?.message || 'Publish failed.', 'error')
+                        pubBtn.disabled = false
+                        pubBtn.textContent = t.publishAndSync
+                    }
+                })
+                actions.appendChild(pubBtn)
+            } else if (draft.path && !String(draft.path).startsWith('local/')) {
+                const syncBtn = document.createElement('button')
+                syncBtn.type = 'button'
+                syncBtn.className = 'sp-btn sp-btn-sm sp-btn-primary'
+                syncBtn.textContent = t.syncToSpace
+                syncBtn.addEventListener('click', async () => {
+                    syncBtn.disabled = true
+                    syncBtn.textContent = t.syncing
+                    try {
+                        const res = await accountFetch('/api/space/import', {
+                            method: 'POST',
+                            body: { items: [{ path: draft.path, source: 'created', savedAt: draft.updatedAt || 0 }] },
+                        })
+                        if (Number(res?.importedCount || 0) > 0) {
+                            setStatus(t.importSuccess(res.importedCount), 'success')
+                            await loadSpaceItems()
+                        } else {
+                            setStatus(t.draftSyncNone, 'warn')
+                        }
+                    } catch (err) {
+                        setStatus(err?.message || 'Sync failed.', 'error')
+                    } finally {
+                        syncBtn.disabled = false
+                        syncBtn.textContent = t.syncToSpace
+                    }
+                })
+                actions.appendChild(syncBtn)
             }
 
             card.append(main, actions)
@@ -848,7 +1161,20 @@ export function initSpaceApp() {
         renderCircles()
     }
 
-    async function hydrateAuthenticatedWorkspace() {
+    const switchSpaceTab = target => {
+        if (!target) return
+        document.querySelectorAll('[data-space-tab]').forEach(other => {
+            const active = other.getAttribute('data-space-tab') === target
+            other.classList.toggle('is-active', active)
+            other.setAttribute('aria-selected', active ? 'true' : 'false')
+        })
+        document.querySelectorAll('[data-space-panel]').forEach(panel => {
+            panel.hidden = panel.getAttribute('data-space-panel') !== target
+        })
+        if (target === 'drafts') renderLocalDrafts()
+    }
+
+    async function hydrateAuthenticatedWorkspace({ fromAuthAction = false } = {}) {
         const me = await accountFetch('/api/account/me', { method: 'GET' })
         if (!me?.authenticated) {
             state.authenticated = false
@@ -861,21 +1187,13 @@ export function initSpaceApp() {
         renderAuthVisibility()
         renderLocalDrafts()
         await Promise.all([loadSpaceItems(), loadPasskeys(), loadAnnotations(), loadCircles()])
+        maybeAutoPromptLocalImport({ forceCheck: fromAuthAction }).catch(() => {})
     }
 
     // Tabs
     document.querySelectorAll('[data-space-tab]').forEach(btn => {
         btn.addEventListener('click', () => {
-            const target = btn.getAttribute('data-space-tab')
-            document.querySelectorAll('[data-space-tab]').forEach(other => {
-                const active = other === btn
-                other.classList.toggle('is-active', active)
-                other.setAttribute('aria-selected', active ? 'true' : 'false')
-            })
-            document.querySelectorAll('[data-space-panel]').forEach(panel => {
-                panel.hidden = panel.getAttribute('data-space-panel') !== target
-            })
-            if (target === 'drafts') renderLocalDrafts()
+            switchSpaceTab(btn.getAttribute('data-space-tab'))
         })
     })
 
@@ -920,7 +1238,7 @@ export function initSpaceApp() {
         setStatus('')
         try {
             await loginWithPasskey()
-            await hydrateAuthenticatedWorkspace()
+            await hydrateAuthenticatedWorkspace({ fromAuthAction: true })
         } catch (err) {
             setStatus(err?.message || 'Passkey sign-in failed.', 'error')
         }
@@ -937,7 +1255,7 @@ export function initSpaceApp() {
                 deviceLabel,
                 turnstileToken: state.turnstileToken,
             })
-            await hydrateAuthenticatedWorkspace()
+            await hydrateAuthenticatedWorkspace({ fromAuthAction: true })
         } catch (err) {
             setStatus(err?.message || 'Passkey registration failed.', 'error')
             if (state.turnstileWidgetId !== null && typeof window.turnstile?.reset === 'function') {
@@ -1005,7 +1323,7 @@ export function initSpaceApp() {
         }
     })
 
-    // Guest History Confirmation Import Modal
+    // Guest History & Local Notes Confirmation Import Modal
     const importModal = $('guest-import-modal')
     const closeImportModal = () => {
         if (!importModal) return
@@ -1013,19 +1331,117 @@ export function initSpaceApp() {
         importModal.setAttribute('aria-hidden', 'true')
     }
 
-    $('open-guest-import-btn')?.addEventListener('click', async () => {
+    const getImportCandidateKey = entry => {
+        if (entry?.path) return `path:${entry.path}`
+        if (entry?.shareId) return `share:${entry.shareId}`
+        return `url:${entry?.url || ''}`
+    }
+
+    const renderImportPreviewItems = (previewItems, { append = false } = {}) => {
+        const t = getSpaceLabels(state.lang)
+        const listEl = $('guest-import-preview-list')
+        const statusEl = $('guest-import-status')
+        const confirmBtn = $('guest-import-confirm')
+        if (!listEl) return
+
+        const merged = append ? [...state.importCandidates] : []
+        const seenKeys = new Set(merged.map(getImportCandidateKey))
+        for (const item of previewItems) {
+            const key = getImportCandidateKey(item)
+            if (seenKeys.has(key)) {
+                const idx = merged.findIndex(existing => getImportCandidateKey(existing) === key)
+                if (idx >= 0) merged[idx] = item
+            } else {
+                seenKeys.add(key)
+                merged.unshift(item)
+            }
+        }
+        state.importCandidates = merged.slice(0, MAX_IMPORT_CANDIDATES)
+
+        if (statusEl) statusEl.hidden = true
+        listEl.innerHTML = ''
+
+        let hasEligible = false
+        for (const entry of state.importCandidates) {
+            const key = getImportCandidateKey(entry)
+            const row = document.createElement('label')
+            row.className = 'sp-item-card'
+            row.style.cursor = entry.eligible ? 'pointer' : 'default'
+
+            const left = document.createElement('div')
+            left.className = 'sp-item-main'
+
+            const header = document.createElement('div')
+            header.style.display = 'flex'
+            header.style.alignItems = 'center'
+            header.style.gap = '8px'
+
+            const checkbox = document.createElement('input')
+            checkbox.type = 'checkbox'
+            checkbox.value = key
+            checkbox.checked = Boolean(entry.eligible && !entry.alreadyIndexed)
+            checkbox.disabled = !entry.eligible
+            checkbox.dataset.importCandidateKey = key
+            if (entry.shareId) checkbox.dataset.importShareId = entry.shareId
+            if (entry.eligible) hasEligible = true
+
+            const title = document.createElement('span')
+            title.className = 'sp-item-title'
+            title.style.margin = '0'
+            title.textContent = entry.titleSummary || entry.title || entry.path || entry.shareId
+            header.append(checkbox, title)
+
+            const meta = document.createElement('div')
+            meta.className = 'sp-item-meta'
+            const srcBadge = document.createElement('span')
+            srcBadge.className = 'sp-badge'
+            srcBadge.textContent = entry.path
+                ? t.importSourceEditPath
+                : (entry.source === 'created' ? t.importSourceCreated : t.importSourceViewed)
+
+            const statusBadge = document.createElement('span')
+            statusBadge.className = `sp-badge ${entry.eligible ? 'sp-badge-success' : ''}`
+            if (entry.alreadyIndexed) {
+                statusBadge.textContent = t.importAlready
+            } else if (entry.eligible) {
+                statusBadge.textContent = entry.accessLevel === 'edit' ? t.importEligibleEdit : t.importEligible
+            } else if (entry.status === 'unpublished') {
+                statusBadge.textContent = t.importUnpublished
+            } else {
+                statusBadge.textContent = t.importUnavailable
+            }
+            meta.append(srcBadge, statusBadge)
+
+            left.append(header, meta)
+            row.appendChild(left)
+            listEl.appendChild(row)
+        }
+        if (confirmBtn) confirmBtn.disabled = !hasEligible
+    }
+
+    const openImportModal = async ({ focusManual = false, preloadedPreview = null, customCandidates = null } = {}) => {
         if (!importModal) return
         const t = getSpaceLabels(state.lang)
         const listEl = $('guest-import-preview-list')
         const statusEl = $('guest-import-status')
         const confirmBtn = $('guest-import-confirm')
+        const manualInput = $('manual-import-input')
         importModal.hidden = false
         importModal.setAttribute('aria-hidden', 'false')
         if (listEl) listEl.innerHTML = ''
         if (confirmBtn) confirmBtn.disabled = true
+        if (focusManual && manualInput) {
+            setTimeout(() => manualInput.focus(), 20)
+        }
 
-        const localCandidates = collectGuestShareHistoryCandidates()
+        if (Array.isArray(preloadedPreview)) {
+            renderImportPreviewItems(preloadedPreview, { append: false })
+            return
+        }
+
+        const localCandidates = Array.isArray(customCandidates) ? customCandidates : collectLocalSpaceImportCandidates()
         if (!localCandidates.length) {
+            state.importCandidates = []
             if (statusEl) {
                 statusEl.className = 'sp-alert'
                 statusEl.textContent = t.importNoneFound
@@ -1046,63 +1462,125 @@ export function initSpaceApp() {
                 body: { items: localCandidates },
             })
             const previewItems = Array.isArray(previewRes?.items) ? previewRes.items : []
-            state.importCandidates = previewItems
-            if (statusEl) statusEl.hidden = true
-            if (listEl) listEl.innerHTML = ''
-
-            let hasEligible = false
-            for (const entry of previewItems) {
-                const row = document.createElement('label')
-                row.className = 'sp-item-card'
-                row.style.cursor = entry.eligible ? 'pointer' : 'default'
-
-                const left = document.createElement('div')
-                left.className = 'sp-item-main'
-
-                const header = document.createElement('div')
-                header.style.display = 'flex'
-                header.style.alignItems = 'center'
-                header.style.gap = '8px'
-
-                const checkbox = document.createElement('input')
-                checkbox.type = 'checkbox'
-                checkbox.value = entry.shareId
-                checkbox.checked = Boolean(entry.eligible && !entry.alreadyIndexed)
-                checkbox.disabled = !entry.eligible
-                checkbox.dataset.importShareId = entry.shareId
-                if (entry.eligible) hasEligible = true
-
-                const title = document.createElement('span')
-                title.className = 'sp-item-title'
-                title.style.margin = '0'
-                title.textContent = entry.titleSummary || entry.title || entry.shareId
-                header.append(checkbox, title)
-
-                const meta = document.createElement('div')
-                meta.className = 'sp-item-meta'
-                const srcBadge = document.createElement('span')
-                srcBadge.className = 'sp-badge'
-                srcBadge.textContent = entry.source === 'created' ? t.importSourceCreated : t.importSourceViewed
-                const statusBadge = document.createElement('span')
-                statusBadge.className = `sp-badge ${entry.eligible ? 'sp-badge-success' : ''}`
-                statusBadge.textContent = entry.alreadyIndexed
-                    ? t.importAlready
-                    : entry.eligible
-                        ? t.importEligible
-                        : t.importUnavailable
-                meta.append(srcBadge, statusBadge)
-
-                left.append(header, meta)
-                row.appendChild(left)
-                listEl?.appendChild(row)
-            }
-            if (confirmBtn) confirmBtn.disabled = !hasEligible
+            renderImportPreviewItems(previewItems, { append: false })
         } catch (err) {
             if (statusEl) {
                 statusEl.className = 'sp-alert sp-alert-danger'
                 statusEl.textContent = err?.message || 'Failed to preview guest history.'
                 statusEl.hidden = false
             }
+        }
+    }
+
+    async function maybeAutoPromptLocalImport({ forceCheck = false } = {}) {
+        if (!state.authenticated) return
+        if (!forceCheck) {
+            try {
+                if (localStorage.getItem(SPACE_IMPORT_PROMPTED_KEY) === '1') return
+            } catch {}
+            if (state.items.length > 0) return
+        }
+        const localCandidates = collectLocalSpaceImportCandidates()
+        if (!localCandidates.length) return
+        try {
+            const previewRes = await accountFetch('/api/space/import/preview', {
+                method: 'POST',
+                body: { items: localCandidates },
+            })
+            try { localStorage.setItem(SPACE_IMPORT_PROMPTED_KEY, '1') } catch {}
+            const previewItems = Array.isArray(previewRes?.items) ? previewRes.items : []
+            const hasImportable = previewItems.some(item => item.eligible && !item.alreadyIndexed)
+            if (hasImportable) {
+                await openImportModal({ preloadedPreview: previewItems })
+            }
+        } catch {}
+    }
+
+    $('open-guest-import-btn')?.addEventListener('click', () => {
+        openImportModal({ focusManual: false }).catch(() => {})
+    })
+
+    $('manual-import-add-btn')?.addEventListener('click', async () => {
+        const t = getSpaceLabels(state.lang)
+        const manualInput = $('manual-import-input')
+        const statusEl = $('guest-import-status')
+        const parsed = parseManualImportInputs(manualInput?.value || '')
+        if (!parsed.length) {
+            if (statusEl) {
+                statusEl.className = 'sp-alert sp-alert-warn'
+                statusEl.textContent = t.importManualEmpty
+                statusEl.hidden = false
+            }
+            return
+        }
+        const addBtn = $('manual-import-add-btn')
+        if (addBtn) addBtn.disabled = true
+        if (statusEl) {
+            statusEl.className = 'sp-alert'
+            statusEl.textContent = t.importChecking
+            statusEl.hidden = false
+        }
+        try {
+            const previewRes = await accountFetch('/api/space/import/preview', {
+                method: 'POST',
+                body: { items: parsed },
+            })
+            const previewItems = Array.isArray(previewRes?.items) ? previewRes.items : []
+            renderImportPreviewItems(previewItems, { append: true })
+            if (manualInput) manualInput.value = ''
+        } catch (err) {
+            if (statusEl) {
+                statusEl.className = 'sp-alert sp-alert-danger'
+                statusEl.textContent = err?.message || 'Failed to check URLs.'
+                statusEl.hidden = false
+            }
+        } finally {
+            if (addBtn) addBtn.disabled = false
+        }
+    })
+
+    $('drafts-sync-published-btn')?.addEventListener('click', () => {
+        const drafts = readLocalDeviceDrafts()
+            .filter(d => d?.syncStatus !== 'draft' && d?.path && !String(d.path).startsWith('local/'))
+            .slice(0, MAX_IMPORT_CANDIDATES)
+            .map(d => ({
+                path: d.path,
+                url: `${window.location.origin}/${encodeURIComponent(d.path)}`,
+                source: 'created',
+                title: d.title || d.path,
+                savedAt: Number(d.updatedAt || 0),
+            }))
+        openImportModal({ customCandidates: drafts }).catch(() => {})
+    })
+
+    $('drafts-publish-all-btn')?.addEventListener('click', async () => {
+        const t = getSpaceLabels(state.lang)
+        const btn = $('drafts-publish-all-btn')
+        const unpublished = readLocalDeviceDrafts().filter(d => d?.syncStatus === 'draft')
+        if (!unpublished.length) return
+        if (btn) {
+            btn.disabled = true
+            btn.textContent = t.publishing
+        }
+        let publishedCount = 0
+        let blocked = false
+        for (const draft of unpublished) {
+            const res = await publishAndSyncSingleDraft(draft, { silent: false }).catch(() => ({ ok: false }))
+            if (res.ok) {
+                publishedCount += 1
+            } else {
+                blocked = true
+                if (res.reason === 'turnstile') break
+            }
+        }
+        renderLocalDrafts()
+        if (publishedCount > 0) {
+            await loadSpaceItems().catch(() => {})
+            if (!blocked) setStatus(t.importSuccess(publishedCount), 'success')
+        }
+        if (btn) {
+            btn.disabled = false
+            btn.textContent = state.lang === 'zh-TW' ? '一鍵發布並同步全部草稿' : 'Publish & Sync All Drafts'
         }
     })
 
@@ -1116,11 +1594,13 @@ export function initSpaceApp() {
 
     $('guest-import-confirm')?.addEventListener('click', async () => {
         const t = getSpaceLabels(state.lang)
-        const selectedShareIds = new Set(
+        const selectedKeys = new Set(
             Array.from(document.querySelectorAll('#guest-import-preview-list input[type="checkbox"]:checked'))
                 .map(cb => cb.value),
         )
-        const selectedItems = state.importCandidates.filter(item => selectedShareIds.has(item.shareId)).slice(0, MAX_IMPORT_CANDIDATES)
+        const selectedItems = state.importCandidates
+            .filter(item => selectedKeys.has(getImportCandidateKey(item)))
+            .slice(0, MAX_IMPORT_CANDIDATES)
         if (!selectedItems.length) return
         const btn = $('guest-import-confirm')
         if (btn) btn.disabled = true
@@ -1130,6 +1610,7 @@ export function initSpaceApp() {
                 body: { items: selectedItems },
             })
             const importedCount = Number(res?.importedCount ?? selectedItems.length)
+            try { localStorage.setItem(SPACE_IMPORT_PROMPTED_KEY, '1') } catch {}
             closeImportModal()
             setStatus(t.importSuccess(importedCount), 'success')
             await loadSpaceItems()
@@ -1152,9 +1633,10 @@ export function initSpaceApp() {
         renderCircles()
         renderLocalDrafts()
         loadAnnotations().catch(() => {})
+        maybeAutoPromptLocalImport({ forceCheck: false }).catch(() => {})
     }
 
-    return { state, loadSpaceItems, loadCircles, loadPasskeys, loadAnnotations }
+    return { state, loadSpaceItems, loadCircles, loadPasskeys, loadAnnotations, openImportModal }
 }
 
 if (typeof document !== 'undefined') {
