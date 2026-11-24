@@ -2158,7 +2158,7 @@ export async function bookmarkNoteToSpace({
 
         // Only grant 'edit' if caller explicitly provided the un-derived edit path AND holds edit proof
         const explicitEditAccess = Boolean(cleanNotePath && cleanNotePath === resolved.path && hasEditProof)
-        const resolvedTitle = meta.titleSummary || computeTitleSummary('', meta) || String(titleSummary || '').slice(0, 70).trim()
+        const resolvedTitle = await resolveAuthoritativeTitleSummary(notesDb, resolved.path, meta, titleSummary)
         const resolvedFormat = resolveEditorFormat(meta) || normalizeEditorFormat(editorFormat)
 
         const upserted = await upsertSpaceActivity({
@@ -2234,7 +2234,7 @@ export async function bookmarkNoteToSpace({
         throw new AccountServiceError(403, 'EDIT_PROOF_REQUIRED', 'Current-generation edit proof is required to bookmark an edit path')
     }
 
-    const resolvedTitle = meta.titleSummary || computeTitleSummary('', meta) || String(titleSummary || '').slice(0, 70).trim()
+    const resolvedTitle = await resolveAuthoritativeTitleSummary(notesDb, cleanNotePath, meta, titleSummary)
     const resolvedFormat = resolveEditorFormat(meta) || normalizeEditorFormat(editorFormat)
 
     const upserted = await upsertSpaceActivity({
@@ -2590,6 +2590,23 @@ export async function deleteSpaceItem({ env = globalThis, accountId, itemKey } =
  * Normalize a guest history candidate entry against the current request origin.
  * Rejects cross-origin URLs, embedded credentials, query credential parameters, /c/ circle URLs, and non-share paths.
  */
+async function resolveAuthoritativeTitleSummary(notesDb, notePath, meta = {}, fallbackTitle = '') {
+    const fromMeta = String(meta?.titleSummary || computeTitleSummary('', meta) || '').slice(0, 70).trim()
+    if (fromMeta) return fromMeta
+    if (notesDb && notePath && typeof notesDb.prepare === 'function') {
+        try {
+            const row = await notesDb.prepare('SELECT content FROM notes WHERE path = ? LIMIT 1').bind(notePath).first()
+            const fromContent = String(computeTitleSummary(row?.content || '', meta) || '').slice(0, 70).trim()
+            if (fromContent) return fromContent
+        } catch {}
+    }
+    return String(fallbackTitle || '')
+        .replace(UNSAFE_TEXT_CHARS_RE, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 70)
+}
+
 function normalizeSingleSegmentNotePath(rawPath, env = globalThis) {
     const trimmed = String(rawPath || '').trim()
     if (!trimmed || trimmed.length > 128) return null
@@ -2671,6 +2688,9 @@ function normalizeGuestHistoryEntry(rawEntry, requestOrigin, env = globalThis) {
             ? rawEntry.facet
             : (rawSource === 'created' ? 'created' : 'bookmarked')
 
+        const rawFallbackTitle = typeof rawEntry.titleSummary === 'string' && rawEntry.titleSummary.trim()
+            ? rawEntry.titleSummary
+            : (typeof rawEntry.title === 'string' ? rawEntry.title : '')
         return {
             kind: 'share',
             shareId,
@@ -2679,10 +2699,14 @@ function normalizeGuestHistoryEntry(rawEntry, requestOrigin, env = globalThis) {
             source: rawSource,
             facet,
             explicitPath: typeof rawEntry.path === 'string' ? rawEntry.path.trim() : '',
+            fallbackTitle: rawFallbackTitle,
             timestamp: Number(rawEntry.timestamp || rawEntry.savedAt || 0) || 0,
         }
     }
 
+    const rawFallbackTitle = typeof rawEntry.titleSummary === 'string' && rawEntry.titleSummary.trim()
+        ? rawEntry.titleSummary
+        : (typeof rawEntry.title === 'string' ? rawEntry.title : '')
     return {
         kind: 'note_path',
         shareId: '',
@@ -2691,6 +2715,7 @@ function normalizeGuestHistoryEntry(rawEntry, requestOrigin, env = globalThis) {
         source: 'created',
         facet: 'created',
         explicitPath: notePath,
+        fallbackTitle: rawFallbackTitle,
         timestamp: Number(rawEntry.timestamp || rawEntry.savedAt || 0) || 0,
     }
 }
@@ -2849,7 +2874,7 @@ export async function previewGuestHistoryImport(request, env = globalThis, accou
                 && existingRow.status === 'active'
                 && (existingRow.access_level === 'edit' || accessLevel === 'share_only')
             )
-            const titleSummary = meta.titleSummary || computeTitleSummary('', meta) || normalized.notePath
+            const titleSummary = (await resolveAuthoritativeTitleSummary(notesDb, normalized.notePath, meta, normalized.fallbackTitle)) || normalized.notePath
             const editorFormat = resolveEditorFormat(meta)
 
             results.push({
@@ -2898,7 +2923,7 @@ export async function previewGuestHistoryImport(request, env = globalThis, accou
             && existingRow.status === 'active'
             && (existingRow.access_level === 'edit' || accessLevel === 'share_only')
         )
-        const titleSummary = meta.titleSummary || computeTitleSummary('', meta) || 'Untitled Share'
+        const titleSummary = (await resolveAuthoritativeTitleSummary(notesDb, resolved.path, meta, normalized.fallbackTitle)) || 'Untitled Share'
         const editorFormat = resolveEditorFormat(meta)
 
         results.push({
@@ -3197,13 +3222,14 @@ export async function commitGuestHistoryImport(request, env = globalThis, accoun
                 ? Math.min(now, Math.floor(candidate.timestamp > 1e12 ? candidate.timestamp / 1000 : candidate.timestamp))
                 : now
 
+            const resolvedTitle = await resolveAuthoritativeTitleSummary(notesDb, candidate.notePath, meta, candidate.fallbackTitle)
             if (canClaimEdit) {
                 editClaimItems.push({
                     shareId: activeToken,
                     notePath: candidate.notePath,
                     noteUid,
                     editorFormat: resolveEditorFormat(meta),
-                    titleSummary: meta.titleSummary || computeTitleSummary('', meta) || '',
+                    titleSummary: resolvedTitle,
                     activityAt,
                 })
             } else {
@@ -3214,7 +3240,7 @@ export async function commitGuestHistoryImport(request, env = globalThis, accoun
                     accessLevel: 'share_only',
                     importFacet: 'bookmarked',
                     editorFormat: resolveEditorFormat(meta),
-                    titleSummary: meta.titleSummary || computeTitleSummary('', meta) || '',
+                    titleSummary: resolvedTitle,
                     activityAt,
                 })
             }
@@ -3236,6 +3262,7 @@ export async function commitGuestHistoryImport(request, env = globalThis, accoun
             }
         }
 
+        const resolvedTitle = await resolveAuthoritativeTitleSummary(notesDb, resolved.path, meta, candidate.fallbackTitle)
         preVerified.push({
             shareId: resolved.shareId,
             notePath: resolved.path,
@@ -3243,7 +3270,7 @@ export async function commitGuestHistoryImport(request, env = globalThis, accoun
             accessLevel,
             importFacet: candidate.facet,
             editorFormat: resolveEditorFormat(meta),
-            titleSummary: meta.titleSummary || computeTitleSummary('', meta) || '',
+            titleSummary: resolvedTitle,
             activityAt: candidate.timestamp > 0 ? Math.min(now, Math.floor(candidate.timestamp > 1e12 ? candidate.timestamp / 1000 : candidate.timestamp)) : now,
         })
     }

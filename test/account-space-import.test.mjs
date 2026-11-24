@@ -844,3 +844,40 @@ test('user-owned note_path / manual URL import restores edit access with cookie 
     assert.ok(listed.items.every(i => i.accessLevel === 'edit'))
     assert.deepEqual(listed.items.map(i => i.notePath).sort(), ['open-slug-note', 'owned-pw-note'])
 })
+
+test('legacy notes lacking metadata.titleSummary extract heading title from content during preview, import, and bookmark without breaking list zero-content rule', async () => {
+    const { accountDb, notesDb, env } = makeSpaceEnv({ splitDb: false })
+    const { accountId, cookie } = seedAccountAndSession(accountDb)
+    const now = Math.floor(Date.now() / 1000)
+    const legacyUid = 'uid-legacy-no-title-meta'
+    const legacyShareId = 'legacyTitleTok123456789'
+
+    notesDb.sqlite.prepare('INSERT INTO notes (path, content, metadata, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')
+        .run('legacy-md', '# 📊 Legacy Markdown Heading\n\nBody text', JSON.stringify({ noteUid: legacyUid, metaVersion: 1, share: true, shareId: legacyShareId, shareSlug: legacyShareId }), now, now)
+    notesDb.sqlite.prepare('INSERT INTO share_token_registry (share_id, target_path, note_uid, is_csprng_v1, created_at) VALUES (?, ?, ?, 1, ?)')
+        .run(legacyShareId, 'legacy-md', legacyUid, now)
+    notesDb.sqlite.prepare('INSERT INTO shares (share_id, path, created_at) VALUES (?, ?, ?)')
+        .run(legacyShareId, 'legacy-md', now)
+
+    const previewRes = await (await handleAccountRoutes(req('/api/space/import/preview', {
+        method: 'POST',
+        cookie,
+        body: { items: [{ url: `${ORIGIN}/share/${legacyShareId}`, source: 'created' }] },
+    }), env)).json()
+    assert.equal(previewRes.items[0].eligible, true)
+    assert.equal(previewRes.items[0].titleSummary, '📊 Legacy Markdown Heading')
+
+    const commitRes = await (await handleAccountRoutes(req('/api/space/import', {
+        method: 'POST',
+        cookie,
+        body: { items: [{ url: `${ORIGIN}/share/${legacyShareId}`, source: 'created' }] },
+    }), env)).json()
+    assert.equal(commitRes.importedCount, 1)
+
+    const listed = await listSpaceItems({ env, accountId })
+    assert.equal(listed.items.length, 1)
+    assert.equal(listed.items[0].titleSummary, '📊 Legacy Markdown Heading')
+
+    const bm = await bookmarkNoteToSpace({ env, accountId, shareId: legacyShareId })
+    assert.equal(bm.item.titleSummary, '📊 Legacy Markdown Heading')
+})
