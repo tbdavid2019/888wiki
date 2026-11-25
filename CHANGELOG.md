@@ -1,5 +1,12 @@
 # Changelog
 
+## [2026-11-25]
+
+- **擴充預覽與閱讀字體至 11 款（2 本機 + 9 Google Fonts 外部 CDN 按需載入）**：
+  - 新增統一字體註冊表 [src/font_data.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/font_data.js)（`SHARE_FONTS`、`normalizeShareFont`、`isValidShareFont`），保留本機內建的 **JetBrains Mono**（預設）與 **Maple Mono**，並新增 9 款 Google Fonts 官方託管字體：**Fira Code**、**Google Sans Code**、**Geist Mono**、**Source Code Pro**、**Intel One Mono**、**Lilex**、**Atkinson Hyperlegible Mono**、**Atkinson Hyperlegible** 與 **Anonymous Pro**（全數維持 `"GenJyuu Gothic CJK"` 中文字元前置回退）。
+  - 實作 **On-Demand Lazy Load（按需動態載入）**：使用預設本機字體時零外部字體請求；僅當筆記指定或使用者切換至某款 Google Fonts 字體時，才於 SSR `<head>` 或客戶端 `ensureShareFontLoaded()` 動態注入對應 `fonts.googleapis.com/css2` 樣式表。
+  - 升級 [src/templates/common.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/common.js)、[src/templates/base.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/templates/base.js)、[src/styles/base.css.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/styles/base.css.js) 與 [src/index.js](file:///Users/david/Documents/git/tbdavid2019/cf-notepad/src/index.js)：`#theme-dropdown` 改以兩欄精簡網格（`.cp-font-grid`）呈現 11 款字體、分享頁底欄 `#share-font-selector` 升級為下拉選單（`#share-font-dropdown`）、「更多」選單 `#more-menu-font-btn` 支援輪流切換全部字體，並於 `POST /:path/setting` 驗證 `shareFont`。
+
 ## [2026-11-24]
 
 - **Passkey 使用者自主匯入本機筆記與手動網址認領（User-Owned Local Space Import, Auto-Prompt & Draft Publish-Sync）**：

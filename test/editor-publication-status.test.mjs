@@ -52,7 +52,7 @@ test('light and dark toolbars share restrained active states and reserve solid f
     assert.match(baseCssSource, /\.segmented-toggle-btn\.active \{[\s\S]*background: var\(--toolbar-active-bg\);[\s\S]*color: var\(--toolbar-active-text\);[\s\S]*box-shadow: inset 0 -2px 0 var\(--toolbar-active-border\);/)
     assert.match(baseCssSource, /\.toolbar-active-button \{[\s\S]*background: var\(--toolbar-primary-bg\);[\s\S]*color: var\(--toolbar-primary-text\);/)
     assert.match(baseCssSource, /\.share-menu-trigger\.is-published/)
-    assert.match(baseCssSource, /#share-font-selector \.footer-rail-switch \{[\s\S]*--rail-checked-bg: var\(--toolbar-active-bg\);/)
+    assert.match(baseCssSource, /#share-font-selector \.share-font-trigger\.is-active,\s*#share-font-selector \.footer-rail-switch \{[\s\S]*--rail-checked-bg: var\(--toolbar-active-bg\);/)
     assert.match(baseCssSource, /#language-selector \.footer-rail-switch \{[\s\S]*--rail-checked-bg: var\(--toolbar-active-bg\);/)
 })
 

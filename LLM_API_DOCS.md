@@ -267,9 +267,7 @@ When you need to preserve note appearance, the app uses these values:
 
 - `theme`: one of the bundled themes listed above
 - `width`: `100%`, `960px`, `1200px`, `1440px`
-- `shareFont`: `jetbrains` or `maple`
-  - `jetbrains` = JetBrains Mono
-  - `maple` = Maple Mono
+- `shareFont`: `jetbrains`, `maple`, `fira-code`, `google-sans-code`, `geist-mono`, `source-code-pro`, `intel-one-mono`, `lilex`, `atkinson-hyperlegible-mono`, `atkinson-hyperlegible`, or `anonymous-pro`
 - `previewDevice`: `desktop` or `mobile`
 
 If the human did not specify appearance details, the safest defaults are:
@@ -679,7 +677,7 @@ Supported JSON fields:
 - `theme`: Custom preview theme name
 - `title`: Document title override
 - `width`: Preview max-width (`100%`, `960px`, `1200px`, `1440px`)
-- `shareFont`: Shared typography font (`jetbrains` or `maple`)
+- `shareFont`: Shared typography font (`jetbrains`, `maple`, `fira-code`, `google-sans-code`, `geist-mono`, `source-code-pro`, `intel-one-mono`, `lilex`, `atkinson-hyperlegible-mono`, `atkinson-hyperlegible`, or `anonymous-pro`)
 - `publicIndex`: Inclusion in sitemap.xml
 - `autosave`: Real-time cloud sync toggle
 

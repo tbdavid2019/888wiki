@@ -330,7 +330,7 @@ Supported JSON fields on `POST /:path/setting`:
 - `share`: whether the note has a public share link
 - `theme`: persisted theme name
 - `width`: preview/share width metadata
-- `shareFont`: `jetbrains` or `maple`
+- `shareFont`: `jetbrains`, `maple`, `fira-code`, `google-sans-code`, `geist-mono`, `source-code-pro`, `intel-one-mono`, `lilex`, `atkinson-hyperlegible-mono`, `atkinson-hyperlegible`, or `anonymous-pro`
 - `publicIndex`: whether the shared note should be included in `/sitemap.xml`
 
 If `share` is set to `false`, `publicIndex` is automatically forced to `false`.
@@ -493,9 +493,9 @@ When an agent needs to preserve the reader/editor presentation, use these persis
 
 - `theme`: one of the bundled theme names listed above
 - `width`: `100%`, `960px`, `1200px`, or `1440px`
-- `shareFont`: `jetbrains` or `maple`
-  - `jetbrains` = JetBrains Mono
-  - `maple` = Maple Mono
+- `shareFont`:
+  - Built-in local: `jetbrains` (JetBrains Mono), `maple` (Maple Mono)
+  - On-demand Google Fonts CDN: `fira-code`, `google-sans-code`, `geist-mono`, `source-code-pro`, `intel-one-mono`, `lilex`, `atkinson-hyperlegible-mono`, `atkinson-hyperlegible`, `anonymous-pro`
 - `previewDevice`: `desktop` or `mobile`
 - `publicIndex`: `true` or `false`
 

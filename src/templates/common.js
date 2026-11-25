@@ -4,6 +4,7 @@
  */
 import dayjs from 'dayjs'
 import { DARK_PREVIEW_THEMES, DEFAULT_PREVIEW_WIDTH, SUPPORTED_LANG, VAULT_QUICK_PRESETS } from '../constant.js'
+import { SHARE_FONTS, DEFAULT_SHARE_FONT, normalizeShareFont, getShareFontMeta } from '../font_data.js'
 import { THEMES } from '../theme_data.js'
 
 const getLangText = lang => SUPPORTED_LANG[lang] || SUPPORTED_LANG['en-US']
@@ -453,11 +454,18 @@ export const THEME_DROPDOWN_MENU = (lang, currentTheme, getThemeLabel, { width =
                                 <button type="button" class="cp-seg-btn" data-cp-ui-theme="auto"><span>${isZh ? '自動' : 'Auto'}</span></button>
                             </div>
                         </div>
-                        <div class="theme-appearance-row">
-                            <span class="theme-appearance-label">${isZh ? '預覽字體' : 'Preview Font'}</span>
-                            <div class="cp-segmented-group" role="group" aria-label="${isZh ? '預覽字體' : 'Preview Font'}">
-                                <button type="button" class="cp-seg-btn" data-cp-font="jetbrains">JetBrains Mono</button>
-                                <button type="button" class="cp-seg-btn" data-cp-font="maple">Maple Mono</button>
+                        <div class="theme-appearance-row theme-appearance-row-stack">
+                            <div class="theme-appearance-header">
+                                <span class="theme-appearance-label">${isZh ? '預覽字體' : 'Preview Font'}</span>
+                                <span class="theme-appearance-hint">${isZh ? '2 本機 + 9 Google Fonts 按需載入' : '2 Local + 9 Google Fonts on demand'}</span>
+                            </div>
+                            <div class="cp-font-grid" role="group" aria-label="${isZh ? '預覽字體' : 'Preview Font'}">
+                                ${SHARE_FONTS.map(font => `
+                                    <button type="button" class="cp-seg-btn cp-font-btn" data-cp-font="${font.id}" title="${font.source === 'google-fonts' ? `${font.label} (Google Fonts)` : `${font.label} (${isZh ? '內建' : 'Built-in'})`}">
+                                        <span class="cp-font-btn-label">${font.label}</span>
+                                        ${font.source === 'google-fonts' ? '<span class="cp-font-badge" aria-hidden="true">GF</span>' : ''}
+                                    </button>
+                                `).join('')}
                             </div>
                         </div>
                         <div class="theme-appearance-row">
@@ -570,8 +578,8 @@ export const MORE_DROPDOWN_MENU = (lang, { isEdit = false } = {}) => {
                 <button type="button" class="dropdown-item dropdown-item-rich" id="more-menu-font-btn" role="menuitem">
                     ${SVG_ICONS.type}
                     <span class="dropdown-item-copy">
-                        <strong>${isZh ? '切換字型 (JetBrains / Maple)' : 'Switch Font'}</strong>
-                        <small>${isZh ? '切換 Maple Mono 或 JetBrains Mono' : 'Toggle Maple Mono / JetBrains Mono'}</small>
+                        <strong>${isZh ? '切換預覽字型' : 'Switch Preview Font'}</strong>
+                        <small>${isZh ? '輪流切換 11 款等寬與高易讀字體' : 'Cycle through 11 coding & reading fonts'}</small>
                     </span>
                 </button>
                 <button type="button" class="dropdown-item dropdown-item-rich" id="more-menu-ui-theme-btn" role="menuitem">
@@ -694,14 +702,14 @@ const LANGUAGE_SELECTOR_CONTROL = (lang, t) => `
     </div>
 `
 
-export const FOOTER = ({ lang, isEdit, isAuthor, isBurnInterstitial = false, updateAt, pw, vpw, mode, share, shareId, path, theme, width, sharePath, noteHistoryEnabled, publicIndex, authPath, autosave, viewCount, annotationsEnabled, accountEnabled = false, editorFormat = 'markdown', shareExpiresAt, shareExpiresIn = 'none', shareBurnAfterReading = false, shareMode = 'standard', shareUnlockIn = '1d', sharePulseInterval = 604800, sharePulseDueAt, sharePulseToken, shareMaxViews = 1 }) => {
+export const FOOTER = ({ lang, isEdit, isAuthor, isBurnInterstitial = false, updateAt, pw, vpw, mode, share, shareId, path, theme, width, shareFont = DEFAULT_SHARE_FONT, sharePath, noteHistoryEnabled, publicIndex, authPath, autosave, viewCount, annotationsEnabled, accountEnabled = false, editorFormat = 'markdown', shareExpiresAt, shareExpiresIn = 'none', shareBurnAfterReading = false, shareMode = 'standard', shareUnlockIn = '1d', sharePulseInterval = 604800, sharePulseDueAt, sharePulseToken, shareMaxViews = 1 }) => {
     const t = getLangText(lang)
     const effectiveShareMode = (shareBurnAfterReading === true || shareMode === 'burn_after_reading' || shareMode === 'burn') ? 'burn' : (shareMode || 'standard')
     const effectiveWidth = width || DEFAULT_PREVIEW_WIDTH
+    const activeShareFont = normalizeShareFont(shareFont)
+    const activeShareFontMeta = getShareFontMeta(activeShareFont)
     const showNoteHistory = noteHistoryEnabled === true && isEdit
     const shareFontAriaLabel = lang === 'zh-TW' ? '分享頁字型' : 'Share font'
-    const jetbrainsTitle = lang === 'zh-TW' ? '切換為 JetBrains Mono' : 'Switch to JetBrains Mono'
-    const mapleTitle = lang === 'zh-TW' ? '切換為 Maple Mono' : 'Switch to Maple Mono'
     const unpublishTitle = lang === 'zh-TW' ? '取消發布' : 'Unpublish'
     const publicIndexTitle = publicIndex === true ? t.publicIndexDisable : t.publicIndexEnable
     const isBlockEditor = isEdit && editorFormat === 'block'
@@ -1169,19 +1177,28 @@ export const FOOTER = ({ lang, isEdit, isAuthor, isBurnInterstitial = false, upd
                         ${sharePath ? `
                             <div class="footer-control-group footer-toggle-control-group">
                                 <div id="share-font-selector" class="share-font-toggle" role="group" aria-label="${shareFontAriaLabel}">
-                                    ${RAIL_SWITCH({
-                                        className: 'share-font-switch',
-                                        checked: true,
-                                        checkedTitle: 'Font',
-                                        uncheckedTitle: 'Font',
-                                        checkedText: 'JB',
-                                        uncheckedText: 'Maple',
-                                        ariaLabel: shareFontAriaLabel,
-                                        checkedValue: 'jetbrains',
-                                        uncheckedValue: 'maple',
-                                        checkedIcon: SVG_ICONS.type,
-                                        uncheckedIcon: SVG_ICONS.type,
-                                    })}
+                                    <div class="dropdown-container share-font-dropdown" id="share-font-dropdown">
+                                        <button type="button" id="share-font-menu-btn" class="toolbar-icon-button dropdown-trigger share-font-trigger" data-tooltip="${shareFontAriaLabel}" title="${shareFontAriaLabel}" aria-label="${shareFontAriaLabel}" aria-haspopup="menu" aria-expanded="false">
+                                            ${SVG_ICONS.type}
+                                            <span class="toolbar-button-label share-font-current-label">${activeShareFontMeta.shortLabel}</span>
+                                            <span class="toolbar-button-caret" aria-hidden="true">▾</span>
+                                        </button>
+                                        <div class="dropdown-menu share-font-dropdown-menu" role="menu">
+                                            <div class="dropdown-menu-label">${lang === 'zh-TW' ? '預覽字體 (按需載入)' : 'Preview Font (On-Demand)'}</div>
+                                            ${SHARE_FONTS.map(font => {
+                                                const isActive = font.id === activeShareFont
+                                                return `
+                                                    <button type="button" class="dropdown-item share-font-item ${isActive ? 'is-active' : ''}" data-cp-font="${font.id}" role="menuitem">
+                                                        <span class="share-font-item-name">${font.label}</span>
+                                                        <span class="share-font-item-meta">
+                                                            ${font.source === 'google-fonts' ? '<span class="cp-font-badge">GF</span>' : ''}
+                                                            ${isActive ? '<span class="share-font-item-check" aria-hidden="true">✓</span>' : ''}
+                                                        </span>
+                                                    </button>
+                                                `
+                                            }).join('')}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         ` : ''}

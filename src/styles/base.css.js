@@ -3,6 +3,8 @@
  * Base CSS styles: reset, layout, loading, footer, utilities
  * Returns CSS as a string for inlining in templates
  */
+import { getShareFontCssVars } from '../font_data.js'
+
 export const getBaseCss = () => `
 @font-face {
     font-family: "Maple Mono";
@@ -31,8 +33,7 @@ export const getBaseCss = () => `
 
 :root {
     --editor-font-family: "GenJyuu Gothic CJK", "Maple Mono", "Menlo", "Monaco", "Courier New", monospace;
-    --share-font-jetbrains-family: "GenJyuu Gothic CJK", "JetBrains Mono", "SF Mono", "Monaco", "Cascadia Code", "Fira Code", "JetBrains Mono NL", "Roboto Mono", "Consolas", "Menlo", monospace;
-    --share-font-maple-family: "GenJyuu Gothic CJK", "Maple Mono", "Menlo", "Monaco", "Courier New", monospace;
+${getShareFontCssVars()}
     --preview-max-width: 100%;
     --toolbar-height: 28px;
     --toolbar-radius: 4px;
@@ -2729,6 +2730,54 @@ html[data-ui-theme="dark"] .share-menu-trigger.is-published {
     justify-content: space-between;
     gap: 10px;
 }
+.theme-appearance-row-stack {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+}
+.theme-appearance-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.theme-appearance-hint {
+    font-size: 11px;
+    color: var(--modal-muted, #655a43);
+    opacity: 0.85;
+}
+.cp-font-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--modal-border, #ddc58b);
+    border-radius: 7px;
+    background: var(--modal-bg, #fff9e8);
+}
+.cp-font-btn {
+    justify-content: space-between !important;
+    padding: 0 8px;
+    height: 28px;
+    font-size: 12px;
+    width: 100%;
+    min-width: 0;
+}
+.cp-font-btn-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.cp-font-badge {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: color-mix(in srgb, currentColor 12%, transparent);
+    opacity: 0.78;
+    flex-shrink: 0;
+}
 .theme-appearance-label {
     font-size: 12.5px;
     font-weight: 700;
@@ -3719,10 +3768,48 @@ html[data-ui-theme="dark"] .share-menu-trigger.is-published {
     display: inline-flex;
     align-items: center;
 }
+.share-font-trigger {
+    max-width: 148px;
+}
+.share-font-trigger .share-font-current-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.share-font-dropdown .dropdown-menu {
+    min-width: 230px;
+    max-height: min(65vh, 420px);
+    overflow-y: auto;
+}
+.share-font-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between !important;
+    gap: 8px;
+    padding: 7px 10px;
+    font-size: 13px;
+}
+.share-font-item-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.share-font-item-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+.share-font-item-check {
+    font-weight: bold;
+    color: var(--accent-color, #0969da);
+}
 .share-font-switch {
     min-width: 62px;
     width: auto;
 }
+#share-font-selector .share-font-trigger.is-active,
 #share-font-selector .footer-rail-switch {
     --rail-checked-bg: var(--toolbar-active-bg);
 }

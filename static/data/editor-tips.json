@@ -228,8 +228,8 @@
     },
     {
       "id": "theme-personalization",
-      "zh-TW": "小訣竅：點擊底欄「主題」按鈕，即可在同一面板切換淺色／深色／自動外觀、JetBrains Mono / Maple Mono 字體、預覽寬度與 20 款排版主題（切到東京夜景等深色主題會同步暗化 Markdown 與 Block 編輯區）。",
-      "en-US": "Tip: Click 'Theme' on the bottom bar to switch Light/Dark/Auto appearance, JetBrains Mono / Maple Mono font, preview width, and 20 typography themes—picking dark themes like Tokyo Night automatically adapts Markdown & Block editors."
+      "zh-TW": "小訣竅：點擊底欄「主題」按鈕，即可在同一面板切換淺色／深色／自動外觀、11 款精選程式與閱讀字體（內建 JetBrains / Maple 與按需載入的 Google Fonts）、預覽寬度與 20 款排版主題。",
+      "en-US": "Tip: Click 'Theme' on the bottom bar to switch Light/Dark/Auto appearance, 11 curated coding & reading fonts (built-in JetBrains / Maple plus on-demand Google Fonts), preview width, and 20 typography themes."
     },
     {
       "id": "essential-shortcuts",

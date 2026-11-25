@@ -4,6 +4,7 @@ import { Cookies } from './cookie_compat.mjs'
 import jwt from '@tsndr/cloudflare-worker-jwt'
 import { queryNote, MD5, checkAuth, verifyJwtPayload, genRandomStr, returnPage, returnJSON, saltPw, passwordMatches, constantTimeStringCompare, getPasswordRole, getI18n, deleteEmptyPages, deleteNoteHistoryForPath } from './helper.js'
 import { APP_NAME, ALL_PREVIEW_THEMES, RESERVED_SLUGS, SUPPORTED_LANG, isReservedSlug, getSlugLength, getAdminPath, getAdminPassword, getEnableR2, getR2Domain, getGaMeasurementId, getWebtalkConfig, getSecret, DEFAULT_PREVIEW_WIDTH, normalizePreviewWidth, isTurnstileEnabled } from './constant.js'
+import { isValidShareFont } from './font_data.js'
 import { resolveTurnstilePolicy, verifyTurnstileAccess } from './turnstile.mjs'
 import { NOTEPAD_ICON_SVG } from './icon.js'
 import { NOTEPAD_FAVICON_ICO, NOTEPAD_ICON_PNG, NOTEPAD_OG_IMAGE_PNG } from './icon_assets.js'
@@ -4621,6 +4622,9 @@ router.post('/:path/setting', async request => {
                             return returnJSON(400, 'Invalid theme', { status: 400 })
                         }
                         validatedTheme = trimmedTheme
+                    }
+                    if (shareFont !== undefined && shareFont !== '' && !isValidShareFont(shareFont)) {
+                        return returnJSON(400, 'Invalid shareFont', { status: 400 })
                     }
                     let nextMetadata = {
                         ...metadata,

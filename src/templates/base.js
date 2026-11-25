@@ -3,6 +3,7 @@
  * HTML wrapper function (base page structure for editor/share pages)
  */
 import { CDN_PREFIX, SUPPORTED_LANG, APP_NAME, DEFAULT_PREVIEW_WIDTH, DARK_PREVIEW_THEMES, ALL_PREVIEW_THEMES, getFlowTrackerScript, getWebtalkConfig } from '../constant.js'
+import { SHARE_FONTS, SHARE_FONT_MAP, DEFAULT_SHARE_FONT, normalizeShareFont, getShareFontMeta, getShareFontBodyCss } from '../font_data.js'
 import { THEMES } from '../theme_data.js'
 import { EDITOR_TOOLBAR, FOOTER, MODAL, EDITOR_PREFERENCE_MODAL, MATH_FORMAT_MODAL, URL_IMPORT_MODAL, CITE_MODAL, VAULT_PRESETS_MODAL, COMMAND_PALETTE_MODAL, SVG_ICONS } from './common.js'
 import { getBaseCss } from '../styles/base.css.js'
@@ -135,7 +136,11 @@ const EDITOR_PUBLICATION_STATUS = ({ lang, ext = {}, shareId = '', isEdit = true
 export const HTML = ({ lang = 'zh-TW', title, content = '', ext = {}, tips, isEdit, showPwPrompt, path, shareId }) => {
     const flowTrackerScript = ext.flowTrackerScript ?? getFlowTrackerScript()
     const gaMeasurementId = ext.gaMeasurementId ? String(ext.gaMeasurementId).trim() : ''
-    const initialShareFont = ext.shareFont === 'maple' ? 'maple' : 'jetbrains'
+    const initialShareFont = normalizeShareFont(ext.shareFont)
+    const initialShareFontMeta = getShareFontMeta(initialShareFont)
+    const initialShareFontHeadLinks = initialShareFontMeta?.googleFontsUrl
+        ? `<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />\n    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />\n    <link rel="stylesheet" data-share-font-cdn="${escapeHtml(initialShareFont)}" href="${escapeHtml(initialShareFontMeta.googleFontsUrl)}" />`
+        : ''
     const isEmbed = ext.embed === true
     const htmlLang = lang === 'zh-TW' ? 'zh-Hant-TW' : 'en'
     const ogLocale = lang === 'zh-TW' ? 'zh_TW' : 'en_US'
@@ -268,6 +273,7 @@ export const HTML = ({ lang = 'zh-TW', title, content = '', ext = {}, tips, isEd
     <meta name="twitter:title" content="${escapeHtml(effectiveTitle || APP_NAME)}" />
     <meta name="twitter:description" content="${escapeHtml(pageDescription)}" />`}
     <link rel="stylesheet" href="https://ka-f.webawesome.com/webawesome@${WEB_AWESOME_VERSION}/styles/webawesome.css" />
+    ${initialShareFontHeadLinks}
     ${annotationsUiEnabled ? '<link rel="stylesheet" href="/css/share-annotations.css" />' : ''}
     ${isEdit && isBlockDocument ? '<link rel="stylesheet" href="/js/block-editor.bundle.css?v=2.0" />' : ''}
     ${isCanvasDocument ? '<link rel="stylesheet" href="/js/canvas-editor.bundle.css?v=3.9" />' : ''}
@@ -356,14 +362,21 @@ ${getMarkdownCss()}
             font-size: 0.92em;
         }
 
-        body.share-font-jetbrains {
-            --share-font-family: var(--share-font-jetbrains-family);
-        }
+${getShareFontBodyCss()}
 
-        body.share-font-maple {
-            --share-font-family: var(--share-font-maple-family);
-        }
-
+        body[data-share-font] #preview-md,
+        body[data-share-font] #preview-plain,
+        body[data-share-font] #preview-md.markdown-body,
+        body[data-share-font] #preview-plain.markdown-body,
+        body[data-share-font] #preview-md.markdown-body :is(
+            p, li, dd, dt, blockquote, strong, b, em, i, del, s, strike, mark, small,
+            span, a, figcaption, summary, table, thead, tbody, tfoot, tr, th, td,
+            ul, ol, dl, h1, h2, h3, h4, h5, h6
+        ),
+        body[data-share-font] #preview-md.markdown-body code,
+        body[data-share-font] #preview-md.markdown-body pre,
+        body[data-share-font] #preview-md.markdown-body pre code,
+        body[data-share-font] #preview-plain.markdown-body code,
         body:is(.share-font-jetbrains, .share-font-maple) #preview-md,
         body:is(.share-font-jetbrains, .share-font-maple) #preview-plain,
         body:is(.share-font-jetbrains, .share-font-maple) #preview-md.markdown-body,
@@ -380,6 +393,13 @@ ${getMarkdownCss()}
             font-family: var(--share-font-family);
         }
 
+        body[data-share-font] #preview-plain.markdown-body :is(
+            p, li, dd, dt, blockquote, strong, b, em, i, del, s, strike, mark, small,
+            span, a, figcaption, summary, table, thead, tbody, tfoot, tr, th, td,
+            ul, ol, dl, h1, h2, h3, h4, h5, h6
+        ),
+        body[data-share-font] #preview-plain.markdown-body pre,
+        body[data-share-font] #preview-plain.markdown-body pre code,
         body:is(.share-font-jetbrains, .share-font-maple) #preview-plain.markdown-body :is(
             p, li, dd, dt, blockquote, strong, b, em, i, del, s, strike, mark, small,
             span, a, figcaption, summary, table, thead, tbody, tfoot, tr, th, td,
@@ -405,7 +425,7 @@ ${getMarkdownCss()}
     ${gaScript}
     ${ext.turnstileSiteKey ? `<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer onerror="window.__turnstileDegraded = true; window.__turnstileScriptFailed = true;"></script>` : ''}
 </head>
-<body class="${ext.sharePath && !isEdit ? `share-view share-font-${initialShareFont}${isEmbed ? ' share-embed' : ''}${ext.autoToc ? ' is-toc-pinned' : ''}` : `share-font-${initialShareFont}${isEdit && !isBurnInterstitial ? ' ide-single-bar' : ''}`}">
+<body data-share-font="${initialShareFont}" class="${ext.sharePath && !isEdit ? `share-view share-font-${initialShareFont}${isEmbed ? ' share-embed' : ''}${ext.autoToc ? ' is-toc-pinned' : ''}` : `share-font-${initialShareFont}${isEdit && !isBurnInterstitial ? ' ide-single-bar' : ''}`}">
     ${ext.turnstileSiteKey ? `
     <div id="turnstile-modal" class="modal turnstile-modal" role="dialog" aria-modal="true" aria-labelledby="turnstile-modal-title" aria-describedby="turnstile-modal-desc" aria-hidden="true" style="display:none;">
         <div class="modal-mask" data-modal-close></div>
@@ -548,7 +568,7 @@ ${getMarkdownCss()}
                 </div>
             </div>
         </div>
-        ${isEmbed ? '' : FOOTER({ ...(ext.isAuthor || !isSharePage ? ext : { ...ext, pw: undefined, vpw: undefined, sharePulseToken: undefined }), mode: ext.mode || 'md', isEdit, isAuthor: ext.isAuthor === true, isBurnInterstitial, lang, path: (ext.isAuthor || !isSharePage) ? path : '', shareId, sharePath: ext.sharePath, autosave: ext.autosave === true, annotationsEnabled, theme: pageTheme, editorFormat: isWhiteboardDocument ? 'whiteboard' : (isCanvasDocument ? 'canvas' : (isBlockDocument ? 'block' : 'markdown')) })}
+        ${isEmbed ? '' : FOOTER({ ...(ext.isAuthor || !isSharePage ? ext : { ...ext, pw: undefined, vpw: undefined, sharePulseToken: undefined }), mode: ext.mode || 'md', isEdit, isAuthor: ext.isAuthor === true, isBurnInterstitial, lang, path: (ext.isAuthor || !isSharePage) ? path : '', shareId, sharePath: ext.sharePath, autosave: ext.autosave === true, annotationsEnabled, theme: pageTheme, shareFont: initialShareFont, editorFormat: isWhiteboardDocument ? 'whiteboard' : (isCanvasDocument ? 'canvas' : (isBlockDocument ? 'block' : 'markdown')) })}
     </div>
     ${annotationsUiEnabled ? `<div id="share-annotation-root" data-share-id="${escapeHtml(shareId)}" data-lang="${escapeHtml(lang)}"></div>` : ''}
     ${ext.sharePath && !isEdit && !isEmbed ? '<button type="button" id="share-back-to-top" class="share-back-to-top" aria-label="Back to top">＾</button>' : ''}
@@ -4461,6 +4481,7 @@ ${getMarkdownCss()}
                 const wasPublished = APP_STATE.isPublished === true
                 const currentWidth = APP_STATE.noteSettings.width || (APP_STATE.isEdit ? '1200px' : '100%')
                 const currentTheme = APP_STATE.theme || 'claude-canvas'
+                const currentShareFont = document.body.getAttribute('data-share-font') || APP_STATE.noteSettings.shareFont || 'jetbrains'
                 const draftModeSelect = document.querySelector('#share-vault-mode-select-draft')
                 const draftExpiresSelect = document.querySelector('#share-expires-select-draft')
                 const draftBurnBtn = document.querySelector('#burn-after-reading-btn-draft')
@@ -4493,6 +4514,7 @@ ${getMarkdownCss()}
                         content: currentContent,
                         width: currentWidth,
                         theme: currentTheme,
+                        shareFont: currentShareFont,
                         autosave: preferences.autosave,
                         publicIndex: preferences.publicIndex,
                         shareMode,
@@ -7077,11 +7099,25 @@ ${getMarkdownCss()}
                 btn.classList.toggle('is-active', active);
                 btn.setAttribute('aria-pressed', active ? 'true' : 'false');
             });
-            const currentFont = document.body.classList.contains('share-font-maple') ? 'maple' : 'jetbrains';
+            const currentFont = document.body.getAttribute('data-share-font') || (document.body.classList.contains('share-font-maple') ? 'maple' : 'jetbrains');
             document.querySelectorAll('[data-cp-font]').forEach(btn => {
                 const active = btn.getAttribute('data-cp-font') === currentFont;
                 btn.classList.toggle('is-active', active);
-                btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+                if (btn.classList.contains('share-font-item')) {
+                    let check = btn.querySelector('.share-font-item-check');
+                    if (active && !check) {
+                        const checkEl = document.createElement('span');
+                        checkEl.className = 'share-font-item-check';
+                        checkEl.setAttribute('aria-hidden', 'true');
+                        checkEl.textContent = '✓';
+                        const meta = btn.querySelector('.share-font-item-meta') || btn;
+                        meta.appendChild(checkEl);
+                    } else if (!active && check) {
+                        check.remove();
+                    }
+                } else {
+                    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+                }
             });
             const currentLang = APP_STATE.lang || 'zh-TW';
             document.querySelectorAll('[data-cp-lang]').forEach(btn => {
@@ -7219,9 +7255,10 @@ ${getMarkdownCss()}
                 const nextFont = fontBtn.getAttribute('data-cp-font');
                 window.__setShareFont?.(nextFont);
                 syncCommandPaletteQuickStates();
+                const fontLabel = (window.__SHARE_FONTS_META && window.__SHARE_FONTS_META[nextFont]?.label) || nextFont;
                 window.showToast?.(APP_STATE.lang === 'zh-TW'
-                    ? ('已切換預覽字體：' + (nextFont === 'maple' ? 'Maple Mono' : 'JetBrains Mono'))
-                    : ('Preview font: ' + (nextFont === 'maple' ? 'Maple Mono' : 'JetBrains Mono')));
+                    ? ('已切換預覽字體：' + fontLabel)
+                    : ('Preview font: ' + fontLabel));
                 return;
             }
             const langBtn = e.target.closest('[data-cp-lang]');
@@ -7349,6 +7386,10 @@ ${getMarkdownCss()}
 
     <script>
         const THEMES = ${safeJsonForInlineScript(THEMES)};
+        const SHARE_FONTS = ${safeJsonForInlineScript(SHARE_FONTS.map(({ id, label, shortLabel, source, googleFontsUrl }) => ({ id, label, shortLabel, source, googleFontsUrl })))};
+        const SHARE_FONTS_META = Object.fromEntries(SHARE_FONTS.map(font => [font.id, font]));
+        window.__SHARE_FONTS_META = SHARE_FONTS_META;
+        const DEFAULT_SHARE_FONT = ${safeJsonForInlineScript(DEFAULT_SHARE_FONT)};
         const DEFAULT_PREVIEW_WIDTH = ${safeJsonForInlineScript(DEFAULT_PREVIEW_WIDTH)};
         const PREVIEW_WIDTH_STORAGE_KEY = 'cf-notepad-preview-width';
         const PREVIEW_DEVICE_STORAGE_KEY = 'cf-notepad-preview-device';
@@ -7430,15 +7471,59 @@ ${getMarkdownCss()}
             setRailSwitchState(splitDirectionSelector, direction === 'horizontal');
         }
 
+        function normalizeClientShareFont(value) {
+            if (value === true || value === 'true') return 'maple';
+            if (typeof value === 'string' && Object.prototype.hasOwnProperty.call(SHARE_FONTS_META, value.trim())) {
+                return value.trim();
+            }
+            return DEFAULT_SHARE_FONT;
+        }
+
+        function ensureShareFontLoaded(fontId) {
+            const fontMeta = SHARE_FONTS_META[fontId];
+            if (!fontMeta || !fontMeta.googleFontsUrl || typeof document === 'undefined' || !document.head) return;
+            if (document.querySelector('link[data-share-font-cdn="' + fontId + '"]')) return;
+            if (!document.querySelector('link[data-share-font-preconnect="googleapis"]')) {
+                const preconnectApi = document.createElement('link');
+                preconnectApi.rel = 'preconnect';
+                preconnectApi.href = 'https://fonts.googleapis.com';
+                preconnectApi.setAttribute('crossorigin', '');
+                preconnectApi.setAttribute('data-share-font-preconnect', 'googleapis');
+                document.head.appendChild(preconnectApi);
+            }
+            if (!document.querySelector('link[data-share-font-preconnect="gstatic"]')) {
+                const preconnectStatic = document.createElement('link');
+                preconnectStatic.rel = 'preconnect';
+                preconnectStatic.href = 'https://fonts.gstatic.com';
+                preconnectStatic.setAttribute('crossorigin', '');
+                preconnectStatic.setAttribute('data-share-font-preconnect', 'gstatic');
+                document.head.appendChild(preconnectStatic);
+            }
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = fontMeta.googleFontsUrl;
+            link.setAttribute('data-share-font-cdn', fontId);
+            document.head.appendChild(link);
+        }
+
         function applyShareFont(value) {
-            const shareFont = value === 'maple' ? 'maple' : 'jetbrains';
-            shareViewBody.classList.toggle('share-font-jetbrains', shareFont === 'jetbrains');
-            shareViewBody.classList.toggle('share-font-maple', shareFont === 'maple');
-            setRailSwitchState(shareFontSelector, shareFont === 'jetbrains');
+            const shareFont = normalizeClientShareFont(value);
+            const fontMeta = SHARE_FONTS_META[shareFont] || SHARE_FONTS_META[DEFAULT_SHARE_FONT];
+            ensureShareFontLoaded(shareFont);
+            shareViewBody.setAttribute('data-share-font', shareFont);
+            SHARE_FONTS.forEach(font => {
+                shareViewBody.classList.toggle('share-font-' + font.id, font.id === shareFont);
+            });
+            const shareFontMenuBtn = document.getElementById('share-font-menu-btn');
+            if (shareFontMenuBtn && fontMeta) {
+                const labelEl = shareFontMenuBtn.querySelector('.share-font-current-label');
+                if (labelEl) labelEl.textContent = fontMeta.shortLabel || fontMeta.label;
+            }
             window.__syncAppearanceStates?.();
         }
         window.__setShareFont = (shareFont) => {
-            const normalized = shareFont === 'maple' ? 'maple' : 'jetbrains';
+            const normalized = normalizeClientShareFont(shareFont);
+            APP_STATE.noteSettings.shareFont = normalized;
             applyShareFont(normalized);
             if (canPersistSettings) {
                 window.localStorage.setItem(SHARE_FONT_STORAGE_KEY, normalized);
@@ -7482,7 +7567,7 @@ ${getMarkdownCss()}
             const initialShareFont = APP_STATE.noteSettings.shareFont
                 || (savedShareFont === 'maple' || savedShareFont === 'true'
                 ? 'maple'
-                : 'jetbrains');
+                : (savedShareFont || 'jetbrains'));
             applyShareFont(initialShareFont);
         }
 
@@ -7507,19 +7592,6 @@ ${getMarkdownCss()}
 
         if (languageSelector) {
             setRailSwitchState(languageSelector, APP_STATE.lang === 'zh-TW');
-        }
-
-        if (shareFontSelector) {
-            const shareFontSwitch = getRailSwitch(shareFontSelector)
-            if (shareFontSwitch) shareFontSwitch.addEventListener('click', function() {
-                const current = this.getAttribute('aria-pressed') === 'true' ? 'jetbrains' : 'maple';
-                const shareFont = current === 'jetbrains' ? 'maple' : 'jetbrains';
-                applyShareFont(shareFont);
-                if (canPersistSettings) {
-                    window.localStorage.setItem(SHARE_FONT_STORAGE_KEY, shareFont);
-                    persistSetting({ shareFont }).catch(err => errHandle(err.message || err));
-                }
-            });
         }
 
         function initExportAndThemeControls() {
@@ -7851,15 +7923,14 @@ themeCss + '\\n' +
             const moreMenuFontBtn = document.getElementById('more-menu-font-btn');
             if (moreMenuFontBtn) {
                 moreMenuFontBtn.addEventListener('click', () => {
-                    const fontBtn = document.getElementById('share-font-selector')?.querySelector('.footer-rail-switch') || document.querySelector('.share-font-switch');
-                    if (fontBtn) {
-                        fontBtn.click();
-                    } else if (typeof window.__setShareFont === 'function') {
-                        const nextFont = document.body.classList.contains('share-font-maple') ? 'jetbrains' : 'maple';
-                        window.__setShareFont(nextFont);
+                    if (typeof window.__setShareFont === 'function') {
+                        const currentFont = document.body.getAttribute('data-share-font') || DEFAULT_SHARE_FONT;
+                        const currentIdx = SHARE_FONTS.findIndex(f => f.id === currentFont);
+                        const nextMeta = SHARE_FONTS[(currentIdx + 1) % SHARE_FONTS.length] || SHARE_FONTS[0];
+                        window.__setShareFont(nextMeta.id);
                         window.showToast?.(isZh
-                            ? ('已切換字體：' + (nextFont === 'maple' ? 'Maple Mono' : 'JetBrains Mono'))
-                            : ('Font: ' + (nextFont === 'maple' ? 'Maple Mono' : 'JetBrains Mono')));
+                            ? ('已切換字體：' + nextMeta.label)
+                            : ('Font: ' + nextMeta.label));
                     }
                 });
             }
