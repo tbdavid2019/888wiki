@@ -90,6 +90,13 @@ export function isMaintenanceMode(env = globalThis) {
     return String(readEnv(env, 'SCN_MAINTENANCE_MODE') || '').trim() === '1'
 }
 
+export function isLegacyMd5ShareAllowed(env = globalThis) {
+    const raw = readEnv(env, 'SCN_ALLOW_LEGACY_MD5_SHARE')
+    if (raw === undefined || raw === null || String(raw).trim() === '') return true
+    const normalized = String(raw).trim().toLowerCase()
+    return normalized !== '0' && normalized !== 'false'
+}
+
 function randomBase64Url(byteLength = 16) {
     const bytes = new Uint8Array(byteLength)
     if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
@@ -1286,8 +1293,8 @@ export async function driverDeleteNote(path, options = {}) {
     // Clean up SHARE KV token entries for deleted share tokens
     const shareKv = getShareKv(env)
     if (shareKv) {
-        for (const tok of [targetMeta?.shareSlug, targetMeta?.shareId].filter(Boolean)) {
-            if (isCanonicalShareToken(tok, path, md5Path) && typeof shareKv.delete === 'function') {
+        for (const tok of [targetMeta?.shareSlug, targetMeta?.shareId, md5Path].filter(Boolean)) {
+            if ((tok === md5Path || isCanonicalShareToken(tok, path, md5Path)) && typeof shareKv.delete === 'function') {
                 await shareKv.delete(tok).catch(() => {})
             }
         }
@@ -1376,6 +1383,180 @@ async function pinLegacyTerminalRegistryEntry(db, shareId, targetPath, noteUid, 
     } catch {}
 }
 
+async function findLegacyMd5TargetPath(md5Key, {
+    db = null,
+    shareKv = null,
+    notesKv = null,
+    driver = 'auto',
+} = {}) {
+    if (db) {
+        const sharesRow = await db.prepare('SELECT path FROM shares WHERE share_id = ? LIMIT 1').bind(md5Key).first()
+        if (sharesRow?.path && (await md5Hex(sharesRow.path)).toLowerCase() === md5Key) {
+            return sharesRow.path
+        }
+    }
+
+    if (shareKv && (!db || driver === 'auto')) {
+        const kvTarget = await shareKv.get(md5Key)
+        if (kvTarget && (await md5Hex(kvTarget)).toLowerCase() === md5Key) {
+            return kvTarget
+        }
+    }
+
+    if (db) {
+        const candidates = await db.prepare(`
+            SELECT path FROM notes
+            WHERE json_extract(metadata, '$.share') = 1
+               OR json_extract(metadata, '$.share') = true
+               OR ${IS_LEGACY_BURNED_SQL}
+               OR json_extract(metadata, '$.shareExpiresAt') IS NOT NULL
+        `).all()
+        for (const row of candidates?.results || []) {
+            if (row?.path && (await md5Hex(row.path)).toLowerCase() === md5Key) {
+                return row.path
+            }
+        }
+    }
+
+    if (notesKv && typeof notesKv.list === 'function' && (!db || driver === 'auto')) {
+        let cursor = undefined
+        do {
+            const listed = await notesKv.list(cursor ? { cursor } : undefined)
+            for (const key of listed?.keys || []) {
+                const meta = key?.metadata
+                const eligibleMeta = !meta || meta.share === true || isShareBurned(meta) || Boolean(meta.shareExpiresAt)
+                if (eligibleMeta && key?.name && (await md5Hex(key.name)).toLowerCase() === md5Key) {
+                    return key.name
+                }
+            }
+            cursor = listed?.list_complete === false ? listed.cursor : undefined
+        } while (cursor)
+    }
+
+    return null
+}
+
+/**
+ * Resolve a legacy MD5(path) share token for backwards compatibility.
+ * Always keeps isCsprngV1: false so legacy MD5 tokens remain excluded from public Share Circles.
+ * When includeContent is false (resolveAuthoritativeShareMetadata), NEVER selects `notes.content`.
+ */
+async function resolveLegacyMd5Target(shareId, targetPath, {
+    db = null,
+    notesKv = null,
+    driver = 'auto',
+    includeContent = true,
+    nowUnix = Math.floor(Date.now() / 1000),
+    env = globalThis,
+} = {}) {
+    if (!isLegacyMd5ShareAllowed(env)) return null
+    if (typeof shareId !== 'string' || !/^[0-9a-f]{32}$/i.test(shareId) || !targetPath) return null
+
+    const md5Path = await md5Hex(targetPath)
+    if (shareId.toLowerCase() !== md5Path.toLowerCase()) return null
+
+    if (db) {
+        const cols = includeContent ? 'content, metadata' : 'metadata'
+        const noteRow = await db.prepare(`SELECT ${cols} FROM notes WHERE path = ? LIMIT 1`).bind(targetPath).first()
+        if (noteRow) {
+            const metadata = parseMetaSafe(noteRow.metadata)
+            const tombUid = metadata.noteUid || '__legacy__'
+            const tomb = await db.prepare(
+                'SELECT 1 AS ok FROM note_tombstones WHERE path = ? AND deleted_note_uid = ? LIMIT 1'
+            ).bind(targetPath, tombUid).first()
+            if (tomb) return { status: 'not_found' }
+            if (isShareBurned(metadata)) {
+                return {
+                    status: 'burned',
+                    shareId,
+                    path: targetPath,
+                    noteUid: metadata.noteUid || '',
+                    metadata,
+                    ...(includeContent ? { value: noteRow.content || '' } : {}),
+                    isCsprngV1: false,
+                    source: 'd1',
+                }
+            }
+            if (isShareExpired(metadata, nowUnix)) {
+                return {
+                    status: 'expired',
+                    shareId,
+                    path: targetPath,
+                    noteUid: metadata.noteUid || '',
+                    metadata,
+                    ...(includeContent ? { value: noteRow.content || '' } : {}),
+                    isCsprngV1: false,
+                    source: 'd1',
+                }
+            }
+            if (metadata.share !== true) return { status: 'not_found' }
+            return {
+                status: 'active',
+                shareId,
+                path: targetPath,
+                noteUid: metadata.noteUid || '',
+                metadata,
+                ...(includeContent ? { value: noteRow.content || '' } : {}),
+                isCsprngV1: false,
+                source: 'd1',
+            }
+        }
+
+        if (driver === 'auto' && notesKv) {
+            const tomb = await db.prepare(
+                "SELECT 1 AS ok FROM note_tombstones WHERE path = ? AND deleted_note_uid = '__legacy__' LIMIT 1"
+            ).bind(targetPath).first()
+            if (tomb) return { status: 'not_found' }
+
+            const kvNote = await notesKv.getWithMetadata(targetPath)
+            const kvMeta = kvNote?.metadata || {}
+            if (kvNote?.value === null && !kvNote?.metadata) return { status: 'not_found' }
+            if (isShareBurned(kvMeta)) {
+                return { status: 'burned', shareId, isCsprngV1: false }
+            }
+            if (isShareExpired(kvMeta, nowUnix)) {
+                return { status: 'expired', shareId, isCsprngV1: false }
+            }
+            if (kvMeta.share !== true) return { status: 'not_found' }
+            return {
+                status: 'active',
+                shareId,
+                path: targetPath,
+                noteUid: '',
+                metadata: kvMeta,
+                ...(includeContent ? { value: kvNote?.value || '' } : {}),
+                isCsprngV1: false,
+                source: 'kv',
+                unbackfilled: true,
+            }
+        }
+
+        return { status: 'not_found' }
+    }
+
+    const noteResult = await driverQueryNote(targetPath, env)
+    const metadata = noteResult?.metadata || {}
+    if (isShareBurned(metadata)) {
+        return { status: 'burned', shareId, path: targetPath, metadata, isCsprngV1: false, source: 'kv' }
+    }
+    if (isShareExpired(metadata, nowUnix)) {
+        return { status: 'expired', shareId, path: targetPath, metadata, isCsprngV1: false, source: 'kv' }
+    }
+    if (metadata.share !== true) {
+        return { status: 'not_found' }
+    }
+    return {
+        status: 'active',
+        shareId,
+        path: targetPath,
+        noteUid: metadata.noteUid || '',
+        metadata,
+        ...(includeContent ? { value: noteResult.value || '' } : {}),
+        isCsprngV1: false,
+        source: 'kv',
+    }
+}
+
 /**
  * Authoritative share resolver across ALL share, Circle, Space, and Sitemap entrypoints.
  * When includeContent is false (resolveAuthoritativeShareMetadata), NEVER selects `notes.content`.
@@ -1402,6 +1583,14 @@ export async function resolveAuthoritativeShare(shareId, {
         const targetPath = shareKv ? await shareKv.get(shareId) : null
         if (targetPath) {
             const md5Path = await md5Hex(targetPath)
+            if (isLegacyMd5ShareAllowed(env) && shareId.toLowerCase() === md5Path.toLowerCase()) {
+                const legacyMd5Result = await resolveLegacyMd5Target(shareId, targetPath, {
+                    includeContent,
+                    nowUnix,
+                    env,
+                })
+                if (legacyMd5Result) return legacyMd5Result
+            }
             if (!isCanonicalShareToken(shareId, targetPath, md5Path)) {
                 return { status: 'not_found' }
             }
@@ -1434,6 +1623,20 @@ export async function resolveAuthoritativeShare(shareId, {
         const tombstone = await driverGetShareStatus(shareId, env)
         if (tombstone?.status === 'burned' || tombstone?.status === 'expired') {
             return { status: tombstone.status, shareId, isCsprngV1: false }
+        }
+        if (isLegacyMd5ShareAllowed(env) && /^[0-9a-f]{32}$/i.test(shareId)) {
+            const md5Key = shareId.toLowerCase()
+            const md5TargetPath = await findLegacyMd5TargetPath(md5Key, { shareKv, notesKv, driver })
+            if (md5TargetPath) {
+                const legacyMd5Result = await resolveLegacyMd5Target(md5Key, md5TargetPath, {
+                    includeContent,
+                    nowUnix,
+                    env,
+                })
+                if (legacyMd5Result && legacyMd5Result.status !== 'not_found') {
+                    return legacyMd5Result
+                }
+            }
         }
         return { status: 'not_found' }
     }
@@ -1680,6 +1883,25 @@ export async function resolveAuthoritativeShare(shareId, {
                 await pinLegacyTerminalRegistryEntry(db, shareId, pinPath, pinUid, tombstone.status, nowUnix)
             }
             return { status: tombstone.status, shareId, isCsprngV1: false }
+        }
+
+        // 5. Legacy MD5(path) share backwards compatibility (enabled by default unless SCN_ALLOW_LEGACY_MD5_SHARE=0)
+        if (isLegacyMd5ShareAllowed(env) && /^[0-9a-f]{32}$/i.test(shareId)) {
+            const md5Key = shareId.toLowerCase()
+            const md5TargetPath = await findLegacyMd5TargetPath(md5Key, { db, shareKv, notesKv, driver })
+            if (md5TargetPath) {
+                const legacyMd5Result = await resolveLegacyMd5Target(md5Key, md5TargetPath, {
+                    db,
+                    notesKv,
+                    driver,
+                    includeContent,
+                    nowUnix,
+                    env,
+                })
+                if (legacyMd5Result && legacyMd5Result.status !== 'not_found') {
+                    return legacyMd5Result
+                }
+            }
         }
     } catch (err) {
         if (err instanceof StorageAuthorityError) throw err

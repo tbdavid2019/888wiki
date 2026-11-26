@@ -301,8 +301,8 @@ test('Task 2.2: alias retirement & canonical token validation across both pure-K
                 notesDb.sqlite.prepare('INSERT INTO shares (share_id, path, created_at) VALUES (?, ?, ?)').run(md5Alias, targetPath, 1000)
             }
 
-            // All legacy aliases MUST 404 across share routes & ai-assistant & auth
-            for (const badToken of [targetPath, md5Alias, `${targetPath}-1234`, 'noncan88']) {
+            // Path and non-canonical aliases MUST 404 across share routes & ai-assistant; MD5(path) stays backwards-compatible by default
+            for (const badToken of [targetPath, `${targetPath}-1234`, 'noncan88']) {
                 const resShare = await worker.fetch(new Request(`https://wiki.david888.com/share/${badToken}`), env, ctx)
                 assert.equal(resShare.status, 404, `[${mode}] /share/${badToken} must 404`)
 
@@ -313,6 +313,9 @@ test('Task 2.2: alias retirement & canonical token validation across both pure-K
                 }), env, ctx)
                 assert.equal(resAi.status, 404, `[${mode}] /api/shares/${badToken}/ai-assistant must 404`)
             }
+
+            const resMd5Compat = await worker.fetch(new Request(`https://wiki.david888.com/share/${md5Alias}`), env, ctx)
+            assert.equal(resMd5Compat.status, 200, `[${mode}] /share/${md5Alias} should remain backwards-compatible by default`)
 
             // Valid 6-char canonical token resolves
             const resOk = await worker.fetch(new Request('https://wiki.david888.com/share/Valid6'), env, ctx)
@@ -1259,4 +1262,83 @@ test('unrestricted KV note deletion removes the note and its share keys', async 
         ['delete share', 'slug'],
         ['delete share', 'id'],
     ])
+})
+
+test('legacy MD5(path) share URLs resolve by default across kv and auto/d1 (including notes scan fallback without shares/SHARE mapping) without minting new MD5 aliases', async () => {
+    for (const mode of ['kv', 'auto']) {
+        const notesKv = createKvMap()
+        const shareKv = createKvMap()
+        const notesDb = mode === 'auto' ? createSqliteD1(['notes_d1.sql', 'notes_registry.sql']) : undefined
+        const env = {
+            SCN_STORAGE_DRIVER: mode,
+            SCN_SECRET: 'md5-compat-secret',
+            NOTES: notesKv,
+            SHARE: shareKv,
+            ...(notesDb ? { NOTES_DB: notesDb } : {}),
+        }
+        const ctx = { waitUntil: () => {} }
+
+        try {
+            const legacyPath = 'legacy-md5-note'
+            const md5Token = await MD5(legacyPath)
+            await notesKv.put(legacyPath, '# Legacy MD5 Note', {
+                metadata: { share: true, shareSlug: 'Leg6Id' },
+            })
+            await shareKv.put(md5Token, legacyPath)
+            await shareKv.put('Leg6Id', legacyPath)
+
+            if (notesDb) {
+                notesDb.sqlite.prepare('INSERT INTO notes (path, content, metadata, updated_at) VALUES (?, ?, ?, ?)').run(
+                    legacyPath,
+                    '# Legacy MD5 Note',
+                    JSON.stringify({ share: true, shareSlug: 'Leg6Id', noteUid: 'uid-md5-1', metaVersion: 1 }),
+                    1000,
+                )
+                notesDb.sqlite.prepare('INSERT INTO shares (share_id, path, created_at) VALUES (?, ?, ?)').run(md5Token, legacyPath, 1000)
+            }
+
+            const resMd5 = await worker.fetch(new Request(`https://wiki.david888.com/share/${md5Token}`), env, ctx)
+            assert.equal(resMd5.status, 200, `[${mode}] /share/${md5Token} should resolve by default`)
+
+            // Mapping-less fallback: even after shares/SHARE MD5 mapping is removed, notes/NOTES scan still resolves MD5(path)
+            const unmappedPath = 'legacy-md5-unmapped'
+            const unmappedMd5 = await MD5(unmappedPath)
+            await notesKv.put(unmappedPath, '# Legacy Unmapped MD5 Note', {
+                metadata: { share: true, shareSlug: 'Unmap6' },
+            })
+            if (notesDb) {
+                notesDb.sqlite.prepare('INSERT INTO notes (path, content, metadata, updated_at) VALUES (?, ?, ?, ?)').run(
+                    unmappedPath,
+                    '# Legacy Unmapped MD5 Note',
+                    JSON.stringify({ share: true, shareSlug: 'Unmap6', noteUid: 'uid-md5-2', metaVersion: 1 }),
+                    1000,
+                )
+            }
+            const resUnmapped = await worker.fetch(new Request(`https://wiki.david888.com/share/${unmappedMd5}`), env, ctx)
+            assert.equal(resUnmapped.status, 200, `[${mode}] unmapped /share/${unmappedMd5} should resolve via scan fallback`)
+
+            // Explicit opt-out SCN_ALLOW_LEGACY_MD5_SHARE=0 blocks MD5(path)
+            const resOptOut = await worker.fetch(new Request(`https://wiki.david888.com/share/${md5Token}`), {
+                ...env,
+                SCN_ALLOW_LEGACY_MD5_SHARE: '0',
+            }, ctx)
+            assert.equal(resOptOut.status, 404, `[${mode}] SCN_ALLOW_LEGACY_MD5_SHARE=0 should block MD5(path)`)
+
+            // Path alias and arbitrary non-canonical tokens still 404
+            const resPath = await worker.fetch(new Request(`https://wiki.david888.com/share/${legacyPath}`), env, ctx)
+            assert.equal(resPath.status, 404, `[${mode}] /share/${legacyPath} must still 404`)
+
+            // Newly published note does NOT mint MD5 alias
+            const pubRes = await worker.fetch(new Request('https://wiki.david888.com/api/new-after-md5-compat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: '# New Note', share: true }),
+            }), env, ctx)
+            assert.equal(pubRes.status, 200)
+            const newMd5 = await MD5('new-after-md5-compat')
+            assert.equal(shareKv.map.has(newMd5), false, `[${mode}] new publish must not write MD5 alias`)
+        } finally {
+            cleanupGlobals()
+        }
+    }
 })

@@ -16,7 +16,7 @@ Space marks deleted or replaced notes unavailable and lets you remove stale entr
 
 Accounts, Space, and Circles require D1 and disable gracefully in intentional pure KV mode. Operators must initialize the correct bindings, set `SCN_SECRET`, and follow the [installation guide](docs/INSTALLATION.md) for the mandatory one-way legacy cutover, pinned D1 fail-closed settings, optional paired Turnstile keys, and secret hygiene.
 
-During `SCN_MAINTENANCE_MODE=1`, note and share reads, exports, annotations, Space and Circle access, and MCP note tools return maintenance errors; static assets and `/api/health` remain available. Required or pinned note registries also protect KV deletion if D1 is unavailable. For `db:init --env` and legacy migration with `--env`, configure vars and KV, R2, and D1 bindings explicitly in that named environment; root values are not inherited.
+During `SCN_MAINTENANCE_MODE=1`, note and share reads, exports, annotations, Space and Circle access, and MCP note tools return maintenance errors; static assets and `/api/health` remain available. Legacy `MD5(path)` `/share/<hash>` URLs remain backwards-compatible by default (set `SCN_ALLOW_LEGACY_MD5_SHARE="0"` to disable them) while remaining excluded from public Share Circles and newly minted share links. Required or pinned note registries also protect KV deletion if D1 is unavailable. For `db:init --env` and legacy migration with `--env`, configure vars and KV, R2, and D1 bindings explicitly in that named environment; root values are not inherited.
 
 ## Capture voice, files, or web pages in one menu
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026-11-26]
+
+- **預設恢復舊版 `MD5(path)` 分享連結向下相容性**：
+  - 於 [src/storage_driver.mjs](file:///Users/david/git/tbdavid2019/cf-notepad/src/storage_driver.mjs) 新增 `isLegacyMd5ShareAllowed()`（預設啟用；僅於顯式設定 `SCN_ALLOW_LEGACY_MD5_SHARE="0"` 時停用）、`findLegacyMd5TargetPath()` 與 `resolveLegacyMd5Target()`。
+  - 在 `kv` 與 `auto`/`d1` 模式下，所有既有的 `/share/<md5(path)>` 分享連結預設皆可向下相容解析（依序支援 `shares` D1、`SHARE` KV、以及無舊映射時的 `notes` D1／`NOTES` KV 公開筆記雜湊回查），同時維持 `isCsprngV1: false`（不進入公開分享圈 `/c/:publicToken`）、不為新筆記產生 MD5 別名，並尊重 `note_tombstones`、焚毀／過期與取消發布狀態。
+
 ## [2026-11-25]
 
 - **擴充預覽與閱讀字體至 11 款（2 本機 + 9 Google Fonts 外部 CDN 按需載入）**：
